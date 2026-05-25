@@ -1,9 +1,14 @@
+var themeOptions = ["dark", "light"];
+var accentOptions = ["teal", "blue", "gold", "rose", "violet"];
+
 var state = {
   token: localStorage.getItem("lph_token") || "",
-  view: "dashboard",
+  view: localStorage.getItem("lph_view") || "dashboard",
   pageByView: {},
   filtersByView: {},
-  logTab: "admin-operations"
+  logTab: "admin-operations",
+  theme: localStorage.getItem("lph_theme") || "dark",
+  accent: localStorage.getItem("lph_accent") || "teal"
 };
 
 var titles = {
@@ -28,9 +33,16 @@ var titles = {
 function $(id) { return document.getElementById(id); }
 
 function init() {
+  if (!titles[state.view]) state.view = "dashboard";
+  if (themeOptions.indexOf(state.theme) < 0) state.theme = "dark";
+  if (accentOptions.indexOf(state.accent) < 0) state.accent = "teal";
+  applyTheme();
   $("loginForm").addEventListener("submit", login);
   $("logoutBtn").addEventListener("click", logout);
   $("refreshBtn").addEventListener("click", renderCurrent);
+  $("themeToggleBtn").addEventListener("click", toggleTheme);
+  $("accentSelect").addEventListener("change", function () { setAccent($("accentSelect").value); });
+  $("accentSelect").value = state.accent;
   $("modalCloseBtn").addEventListener("click", closeModal);
   $("modalMask").addEventListener("click", function (e) {
     if (e.target === $("modalMask")) closeModal();
@@ -42,6 +54,31 @@ function init() {
     btn.addEventListener("click", function () { switchView(btn.dataset.view); });
   });
   if (state.token) showApp(); else showLogin();
+}
+
+function applyTheme() {
+  document.documentElement.setAttribute("data-theme", state.theme);
+  document.documentElement.setAttribute("data-accent", state.accent);
+  localStorage.setItem("lph_theme", state.theme);
+  localStorage.setItem("lph_accent", state.accent);
+  var metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.setAttribute("content", state.theme === "dark" ? "#0e1116" : "#f5f7fb");
+  var btn = $("themeToggleBtn");
+  if (btn) {
+    btn.textContent = state.theme === "dark" ? "浅" : "深";
+    btn.title = state.theme === "dark" ? "切换浅色" : "切换深色";
+    btn.setAttribute("aria-pressed", state.theme === "dark" ? "true" : "false");
+  }
+}
+
+function toggleTheme() {
+  state.theme = state.theme === "dark" ? "light" : "dark";
+  applyTheme();
+}
+
+function setAccent(accent) {
+  state.accent = accentOptions.indexOf(accent) >= 0 ? accent : "teal";
+  applyTheme();
 }
 
 function api(path, options) {
@@ -167,9 +204,9 @@ function table(columns, rows) {
       return "<td>" + val + "</td>";
     }).join("") + "</tr>";
   }).join("");
-  return "<table><thead><tr>" + head + "</tr></thead><tbody>" +
-    (body || '<tr><td colspan="' + columns.length + '">暂无数据</td></tr>') +
-    "</tbody></table>";
+  return '<div class="table-wrap"><table><thead><tr>' + head + "</tr></thead><tbody>" +
+    (body || '<tr><td class="empty-cell" colspan="' + columns.length + '">暂无数据</td></tr>') +
+    "</tbody></table></div>";
 }
 
 function renderPager(view, meta, reloadFn) {
@@ -261,8 +298,11 @@ function logout() {
 
 function switchView(view) {
   state.view = view;
+  localStorage.setItem("lph_view", view);
   Array.prototype.forEach.call(document.querySelectorAll(".nav"), function (btn) {
-    btn.classList.toggle("active", btn.dataset.view === view);
+    var active = btn.dataset.view === view;
+    btn.classList.toggle("active", active);
+    if (active) btn.setAttribute("aria-current", "page"); else btn.removeAttribute("aria-current");
   });
   Array.prototype.forEach.call(document.querySelectorAll(".view"), function (el) {
     el.classList.toggle("hidden", el.id !== view);
@@ -291,7 +331,23 @@ function renderCurrent() {
     admins: renderAdmins,
     tools: renderTools
   };
-  map[state.view]().catch(function (err) { toast(err.message); });
+  if (!map[state.view]) return Promise.resolve();
+  setBusy(true);
+  var task;
+  try {
+    task = map[state.view]();
+  } catch (err) {
+    task = Promise.reject(err);
+  }
+  return Promise.resolve(task)
+    .catch(function (err) { toast(err.message); })
+    .then(function () { setBusy(false); });
+}
+
+function setBusy(busy) {
+  document.body.classList.toggle("is-busy", !!busy);
+  var refreshBtn = $("refreshBtn");
+  if (refreshBtn) refreshBtn.disabled = !!busy;
 }
 
 function openModal(title, body, footer) {

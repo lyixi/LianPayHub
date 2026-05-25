@@ -558,7 +558,7 @@
 
 ### 8.3 前端与展示
 
-- 管理后台：当前提供静态 HTML/CSS/JS 页面先跑通运营流程，后续可升级为 Vue 3 + Ant Design Vue 或 React + Ant Design；
+- 管理后台：当前提供静态 HTML/CSS/JS 页面先跑通运营流程，采用轻量 Material 操作台布局，支持深色/浅色模式、主题色切换、加载反馈和响应式表格；后续可升级为 Vue 3 + Ant Design Vue 或 React + Ant Design；
 - 可视化：ECharts；
 - 数据表格：高级筛选、分页、CSV 导出；
 - 权限：登录账户、角色管理，后台界面权限控制。
