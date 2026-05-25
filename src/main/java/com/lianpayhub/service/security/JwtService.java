@@ -1,0 +1,52 @@
+package com.lianpayhub.service.security;
+
+import com.lianpayhub.config.SecurityProperties;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import java.util.Date;
+import org.springframework.stereotype.Service;
+
+@Service
+public class JwtService {
+
+    private final SecurityProperties securityProperties;
+
+    public JwtService(SecurityProperties securityProperties) {
+        this.securityProperties = securityProperties;
+    }
+
+    public String generateAdminToken(Long adminId, String username) {
+        Date now = new Date();
+        Date expireAt = new Date(now.getTime() + securityProperties.getJwtExpireMinutes() * 60L * 1000L);
+        return Jwts.builder()
+                .setSubject(String.valueOf(adminId))
+                .claim("username", username)
+                .claim("type", "ADMIN")
+                .setIssuedAt(now)
+                .setExpiration(expireAt)
+                .signWith(SignatureAlgorithm.HS256, securityProperties.getJwtSecret())
+                .compact();
+    }
+
+    public String generateUserToken(Long userId, String appId, String mobile) {
+        Date now = new Date();
+        Date expireAt = new Date(now.getTime() + securityProperties.getJwtExpireMinutes() * 60L * 1000L);
+        return Jwts.builder()
+                .setSubject(String.valueOf(userId))
+                .claim("appId", appId)
+                .claim("mobile", mobile)
+                .claim("type", "USER")
+                .setIssuedAt(now)
+                .setExpiration(expireAt)
+                .signWith(SignatureAlgorithm.HS256, securityProperties.getJwtSecret())
+                .compact();
+    }
+
+    public Claims parse(String token) {
+        return Jwts.parser()
+                .setSigningKey(securityProperties.getJwtSecret())
+                .parseClaimsJws(token)
+                .getBody();
+    }
+}

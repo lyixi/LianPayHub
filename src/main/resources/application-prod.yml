@@ -1,0 +1,13 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+lianpayhub:
+  security:
+    api-auth-enabled: true
+    api-auth-mode: signature
+    sms-code-required: true
+  payment:
+    dev-tools-enabled: false

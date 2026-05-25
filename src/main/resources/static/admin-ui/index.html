@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>联付中枢</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="loginView" class="login-shell">
+    <form id="loginForm" class="login-panel">
+      <div class="brand">联付中枢</div>
+      <label>用户名<input id="username" autocomplete="username" value="admin"></label>
+      <label>密码<input id="password" type="password" autocomplete="current-password" value="admin123456"></label>
+      <button type="submit">登录</button>
+      <p id="loginError" class="error"></p>
+    </form>
+  </div>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="sidebar-title">联付中枢</div>
+      <button data-view="dashboard" class="nav active">总览</button>
+      <button data-view="apps" class="nav">APP</button>
+      <button data-view="paymentConfigs" class="nav">支付配置</button>
+      <button data-view="packages" class="nav">套餐</button>
+      <button data-view="users" class="nav">用户</button>
+      <button data-view="bindings" class="nav">绑定</button>
+      <button data-view="devices" class="nav">设备</button>
+      <button data-view="members" class="nav">会员</button>
+      <button data-view="orders" class="nav">订单</button>
+      <button data-view="refunds" class="nav">退款</button>
+      <button data-view="callbacks" class="nav">回调</button>
+      <button data-view="launches" class="nav">启动</button>
+      <button data-view="adapter" class="nav">适配</button>
+      <button data-view="logs" class="nav">日志</button>
+      <button data-view="admins" class="nav">管理员</button>
+      <button data-view="tools" class="nav">工具</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">总览</h1>
+          <span id="subTitle">运营数据与接口状态</span>
+        </div>
+        <div class="top-actions">
+          <button id="refreshBtn" class="secondary">刷新</button>
+          <button id="logoutBtn" class="secondary">退出</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view"></section>
+      <section id="apps" class="view hidden"></section>
+      <section id="paymentConfigs" class="view hidden"></section>
+      <section id="packages" class="view hidden"></section>
+      <section id="users" class="view hidden"></section>
+      <section id="bindings" class="view hidden"></section>
+      <section id="devices" class="view hidden"></section>
+      <section id="members" class="view hidden"></section>
+      <section id="orders" class="view hidden"></section>
+      <section id="refunds" class="view hidden"></section>
+      <section id="callbacks" class="view hidden"></section>
+      <section id="launches" class="view hidden"></section>
+      <section id="adapter" class="view hidden"></section>
+      <section id="logs" class="view hidden"></section>
+      <section id="admins" class="view hidden"></section>
+      <section id="tools" class="view hidden"></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <div id="modalMask" class="modal-mask hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modalTitle"></h2>
+        <button id="modalCloseBtn" class="icon-btn" type="button">×</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalFooter" class="modal-footer"></div>
+    </div>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>

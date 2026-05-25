@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: lianpayhub-server
+  devtools:
+    restart:
+      enabled: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/lianpayhub?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: iwxyiroot
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL57Dialect
+        format_sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+lianpayhub:
+  security:
+    jwt-secret: change-me-to-a-long-random-secret-for-production
+    jwt-expire-minutes: 720
+    sms-code-required: false
+    api-auth-enabled: false
+    api-auth-mode: secret
+    api-signature-time-window-seconds: 300
+  admin:
+    default-username: admin
+    default-password: admin123456
+  payment:
+    dev-tools-enabled: true

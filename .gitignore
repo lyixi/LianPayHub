@@ -1,0 +1,48 @@
+# Build output
+target/
+out/
+build/
+
+# Java / Maven
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+
+# Logs and runtime files
+*.log
+*.tmp
+*.pid
+hs_err_pid*
+replay_pid*
+logs/
+uploads/
+
+# Local environment
+.env
+.env.*
+!.env.example
+application-local.yml
+application-*.local.yml
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Test and coverage
+coverage/
+htmlcov/
+.jacoco/
+jacoco.exec
