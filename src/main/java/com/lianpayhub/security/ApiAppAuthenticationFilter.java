@@ -1,8 +1,11 @@
 package com.lianpayhub.security;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lianpayhub.config.SecurityProperties;
 import com.lianpayhub.domain.app.AppInfo;
 import com.lianpayhub.domain.app.AppStatus;
+import com.lianpayhub.domain.app.AppType;
 import com.lianpayhub.repository.AppInfoRepository;
 import com.lianpayhub.service.security.ApiSignatureService;
 import com.lianpayhub.service.security.AppSecretService;
@@ -32,29 +35,39 @@ public class ApiAppAuthenticationFilter extends OncePerRequestFilter {
     private final AppSecretService appSecretService;
     private final ApiSignatureService apiSignatureService;
     private final NonceCacheService nonceCacheService;
+    private final ObjectMapper objectMapper;
 
     public ApiAppAuthenticationFilter(SecurityProperties securityProperties,
                                       AppInfoRepository appInfoRepository,
                                       AppSecretService appSecretService,
                                       ApiSignatureService apiSignatureService,
-                                      NonceCacheService nonceCacheService) {
+                                      NonceCacheService nonceCacheService,
+                                      ObjectMapper objectMapper) {
         this.securityProperties = securityProperties;
         this.appInfoRepository = appInfoRepository;
         this.appSecretService = appSecretService;
         this.apiSignatureService = apiSignatureService;
         this.nonceCacheService = nonceCacheService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !Boolean.TRUE.equals(securityProperties.getApiAuthEnabled())
-                || !request.getRequestURI().startsWith("/api/");
+                || !request.getRequestURI().startsWith("/api/")
+                || request.getRequestURI().startsWith("/api/payment/notify/");
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String appId = request.getHeader(HEADER_APP_ID);
+        HttpServletRequest requestToUse = request;
+        String appId = resolveAppId(request);
+        if (isBlank(appId) && canHaveJsonBody(request)) {
+            CachedBodyHttpServletRequest wrapped = new CachedBodyHttpServletRequest(request);
+            requestToUse = wrapped;
+            appId = resolveAppIdFromBody(wrapped);
+        }
         if (appId == null || appId.trim().isEmpty()) {
             writeError(response, 401, "缺少 APP 鉴权信息");
             return;
@@ -65,12 +78,56 @@ public class ApiAppAuthenticationFilter extends OncePerRequestFilter {
             writeError(response, 401, "APP 不存在或已停用");
             return;
         }
-        if (!authenticate(request, appInfo)) {
+        if (isDeviceOnlyPublicRequest(requestToUse, appInfo)) {
+            filterChain.doFilter(requestToUse, response);
+            return;
+        }
+        if (!authenticate(requestToUse, appInfo)) {
             writeError(response, 401, "APP 鉴权失败");
             return;
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(requestToUse, response);
+    }
+
+    private String resolveAppId(HttpServletRequest request) {
+        String headerAppId = request.getHeader(HEADER_APP_ID);
+        if (!isBlank(headerAppId)) {
+            return headerAppId.trim();
+        }
+        String parameterAppId = request.getParameter("appId");
+        return isBlank(parameterAppId) ? null : parameterAppId.trim();
+    }
+
+    private String resolveAppIdFromBody(CachedBodyHttpServletRequest request) {
+        String body = request.getCachedBodyAsString();
+        if (isBlank(body)) {
+            return null;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            JsonNode appIdNode = root.path("appId");
+            return appIdNode.isMissingNode() || isBlank(appIdNode.asText()) ? null : appIdNode.asText().trim();
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private boolean canHaveJsonBody(HttpServletRequest request) {
+        String method = request.getMethod();
+        return "POST".equalsIgnoreCase(method)
+                || "PUT".equalsIgnoreCase(method)
+                || "PATCH".equalsIgnoreCase(method);
+    }
+
+    private boolean isDeviceOnlyPublicRequest(HttpServletRequest request, AppInfo appInfo) {
+        if (appInfo.getAppType() != AppType.DEVICE_ONLY) {
+            return false;
+        }
+        String uri = request.getRequestURI();
+        return uri.startsWith("/api/device/")
+                || "/api/member/status".equals(uri)
+                || "/api/payment/create-order".equals(uri);
     }
 
     private boolean authenticate(HttpServletRequest request, AppInfo appInfo) {
@@ -98,10 +155,6 @@ public class ApiAppAuthenticationFilter extends OncePerRequestFilter {
         if (!timestampValid(timestamp)) {
             return false;
         }
-        String nonceKey = appInfo.getAppId() + ":" + nonce;
-        if (!nonceCacheService.markIfAbsent(nonceKey, securityProperties.getApiSignatureTimeWindowSeconds())) {
-            return false;
-        }
         String expected = apiSignatureService.sign(
                 appInfo.getAppId(),
                 timestamp,
@@ -110,7 +163,11 @@ public class ApiAppAuthenticationFilter extends OncePerRequestFilter {
                 request.getRequestURI(),
                 appInfo.getAppSecretHash()
         );
-        return apiSignatureService.matches(expected, signature);
+        if (!apiSignatureService.matches(expected, signature)) {
+            return false;
+        }
+        String nonceKey = appInfo.getAppId() + ":" + nonce;
+        return nonceCacheService.markIfAbsent(nonceKey, securityProperties.getApiSignatureTimeWindowSeconds());
     }
 
     private boolean timestampValid(String timestampText) {
@@ -122,6 +179,10 @@ public class ApiAppAuthenticationFilter extends OncePerRequestFilter {
         } catch (NumberFormatException ex) {
             return false;
         }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     private void writeError(HttpServletResponse response, int code, String message) throws IOException {

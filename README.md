@@ -274,7 +274,9 @@ X-App-Signature: 签名结果
 appId + "\n" + timestamp + "\n" + nonce + "\n" + HTTP_METHOD + "\n" + requestPath
 ```
 
-当前 1.0 实现使用服务端保存的 `app_secret_hash` 作为 HMAC-SHA256 校验 key 的派生材料；后续如需标准客户端 HMAC，可改为加密保存明文 secret 或引入独立 signing key。
+签名 key 使用 `SHA-256(appSecret 明文)` 的十六进制结果。服务端保存的也是该 hash，不保存明文 secret；客户端拿到创建或重置 APP 时返回的明文 secret 后，先计算同样的 SHA-256 hash，再用该 hash 做 HMAC-SHA256。
+
+支付回调 `/api/payment/notify/{payChannel}` 不走 APP Secret/签名鉴权，后续接真实支付宝、微信或聚合支付时应在对应 `PaymentProvider` 中做官方验签。设备码会员 APP（`DEVICE_ONLY`）的设备注册、启动、会员状态查询和创建订单不强制 APP Secret/签名，但仍有接口限频；标准 APP 仍需要按上述方式鉴权。
 
 ## 运行方式
 
@@ -371,6 +373,18 @@ mvn -q -Dtest=FullWorkflowIntegrationTest test
 ```powershell
 $env:MAVEN_OPTS='-Xms16m -Xmx96m -XX:MaxMetaspaceSize=64m -XX:+UseSerialGC -XX:CompressedClassSpaceSize=16m'
 mvn -q -Dtest=FullWorkflowIntegrationTest test
+```
+
+Windows 本地也可以直接运行完整回归脚本：
+
+```powershell
+.\scripts\test-full.ps1
+```
+
+脚本会先编译，再按顺序运行 APP Secret 鉴权、签名鉴权、完整业务流程和主链路烟测，并使用 H2 内存库，不会连接 MySQL。若已经编译过，可以加 `-SkipCompile`：
+
+```powershell
+.\scripts\test-full.ps1 -SkipCompile
 ```
 
 ## 后续计划
