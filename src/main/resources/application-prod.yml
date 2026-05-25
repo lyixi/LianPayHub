@@ -11,3 +11,4 @@ lianpayhub:
     sms-code-required: true
   payment:
     dev-tools-enabled: false
+    order-auto-close-enabled: true

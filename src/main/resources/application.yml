@@ -39,3 +39,6 @@ lianpayhub:
     default-password: admin123456
   payment:
     dev-tools-enabled: true
+    order-expire-minutes: 30
+    order-auto-close-enabled: true
+    order-close-scan-fixed-delay-ms: 60000

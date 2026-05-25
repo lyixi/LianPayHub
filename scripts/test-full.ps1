@@ -29,7 +29,7 @@ function Resolve-Maven {
 }
 
 $maven = Resolve-Maven
-$tests = "ApiSecretAuthIntegrationTest,ApiSignatureAuthIntegrationTest,FullWorkflowIntegrationTest,AdminApiSmokeTest"
+$tests = "ApiSecretAuthIntegrationTest,ApiSignatureAuthIntegrationTest,PaymentOrderLifecycleIntegrationTest,FullWorkflowIntegrationTest,AdminApiSmokeTest"
 
 if (-not $SkipCompile) {
     & $maven -q "-DskipTests" compile

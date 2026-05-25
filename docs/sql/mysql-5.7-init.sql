@@ -124,13 +124,17 @@ CREATE TABLE IF NOT EXISTS payment_order (
   callback_count INT NOT NULL DEFAULT 0,
   refunded_amount_cents INT NOT NULL DEFAULT 0,
   paid_at DATETIME NULL,
+  expire_at DATETIME NULL,
+  closed_at DATETIME NULL,
+  close_reason VARCHAR(512) NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uk_payment_order_no (order_no),
   KEY idx_payment_order_app (app_id),
   KEY idx_payment_order_user (user_id),
-  KEY idx_payment_order_device (device_id)
+  KEY idx_payment_order_device (device_id),
+  KEY idx_payment_order_status_expire (pay_status, expire_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS payment_refund (

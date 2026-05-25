@@ -2,6 +2,7 @@ package com.lianpayhub.service.payment;
 
 import com.lianpayhub.common.error.BusinessException;
 import com.lianpayhub.common.error.ErrorCode;
+import com.lianpayhub.config.PaymentProperties;
 import com.lianpayhub.domain.app.AppInfo;
 import com.lianpayhub.domain.app.AppType;
 import com.lianpayhub.domain.log.PaymentEventLog;
@@ -19,7 +20,9 @@ import com.lianpayhub.repository.PaymentRefundRepository;
 import com.lianpayhub.service.app.AppService;
 import com.lianpayhub.service.member.ActivateMemberCommand;
 import com.lianpayhub.service.member.MemberService;
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -37,6 +40,7 @@ public class PaymentService {
     private final PaymentChannelConfigService paymentChannelConfigService;
     private final AppService appService;
     private final MemberService memberService;
+    private final PaymentProperties paymentProperties;
 
     public PaymentService(PaymentOrderRepository paymentOrderRepository,
                           PaymentCallbackLogRepository callbackLogRepository,
@@ -46,7 +50,8 @@ public class PaymentService {
                           PaymentProviderRegistry providerRegistry,
                           PaymentChannelConfigService paymentChannelConfigService,
                           AppService appService,
-                          MemberService memberService) {
+                          MemberService memberService,
+                          PaymentProperties paymentProperties) {
         this.paymentOrderRepository = paymentOrderRepository;
         this.callbackLogRepository = callbackLogRepository;
         this.paymentEventLogRepository = paymentEventLogRepository;
@@ -56,6 +61,7 @@ public class PaymentService {
         this.paymentChannelConfigService = paymentChannelConfigService;
         this.appService = appService;
         this.memberService = memberService;
+        this.paymentProperties = paymentProperties;
     }
 
     @Transactional
@@ -92,12 +98,13 @@ public class PaymentService {
                 orderNo,
                 packageInfo.getPriceCents(),
                 provider.payChannel(),
-                payProvider
+                payProvider,
+                LocalDateTime.now().plusMinutes(orderExpireMinutes())
         ));
         paymentEventLogRepository.save(new PaymentEventLog(
                 order.getAppId(), order.getId(), PaymentEventType.ORDER_CREATED, provider.payChannel(),
                 payProvider, order.getAmountCents(), null, PaymentEventOperatorType.SYSTEM,
-                null, "{\"orderNo\":\"" + order.getOrderNo() + "\"}"
+                null, "{\"orderNo\":\"" + order.getOrderNo() + "\",\"expireAt\":\"" + order.getExpireAt() + "\"}"
         ));
         PaymentCreateResult payment = provider.createPayment(new PaymentCreateContext(
                 order.getOrderNo(),
@@ -144,6 +151,7 @@ public class PaymentService {
         if (order.isPaid()) {
             return;
         }
+        closeIfExpired(order, "订单已过期，不能手动标记支付");
         PackageInfo packageInfo = packageInfoRepository.findById(order.getPackageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "套餐不存在"));
         order.markPaid(tradeNo, tradeNo, "{}");
@@ -198,6 +206,15 @@ public class PaymentService {
             ));
             return new PaymentNotifyResult(order.getOrderNo(), callback.tradeNo(), false, "duplicate");
         }
+        closeIfExpiredForCallback(order, payChannel, provider.providerCode(), callback);
+        if (!order.isPending()) {
+            callbackLogRepository.save(new PaymentCallbackLog(
+                    order.getAppId(), order.getId(), payChannel, provider.providerCode(), callback.tradeNo(),
+                    callback.rawPayload(), CallbackVerifyStatus.VERIFIED, CallbackProcessStatus.FAILED,
+                    "当前订单状态不允许支付成功"
+            ));
+            throw new BusinessException(ErrorCode.CONFLICT, "当前订单状态不允许支付成功");
+        }
 
         PackageInfo packageInfo = packageInfoRepository.findById(order.getPackageId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "套餐不存在"));
@@ -221,6 +238,23 @@ public class PaymentService {
                 callback.rawPayload(), CallbackVerifyStatus.VERIFIED, CallbackProcessStatus.SUCCESS, null
         ));
         return new PaymentNotifyResult(order.getOrderNo(), callback.tradeNo(), true, "success");
+    }
+
+    @Transactional
+    public void closeOrderByAdmin(Long orderId, String reason, String operatorId) {
+        PaymentOrder order = paymentOrderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "订单不存在"));
+        closePendingOrder(order, safeCloseReason(reason, "管理员关闭"), PaymentEventOperatorType.ADMIN, operatorId);
+    }
+
+    @Transactional
+    public int closeExpiredOrders() {
+        List<PaymentOrder> orders = paymentOrderRepository
+                .findTop100ByPayStatusAndExpireAtBeforeOrderByExpireAtAsc(PayStatus.PENDING, LocalDateTime.now());
+        for (PaymentOrder order : orders) {
+            closePendingOrder(order, "订单超时自动关闭", PaymentEventOperatorType.SYSTEM, null);
+        }
+        return orders.size();
     }
 
     @Transactional
@@ -252,6 +286,54 @@ public class PaymentService {
                 "{\"refundNo\":\"" + refund.getRefundNo() + "\"}"
         ));
         return new RefundResult(refund.getId(), refund.getRefundNo(), refund.getAmountCents(), refund.getStatus());
+    }
+
+    private void closeIfExpired(PaymentOrder order, String message) {
+        if (order.isPending() && order.isExpired(LocalDateTime.now())) {
+            closePendingOrder(order, "订单超时自动关闭", PaymentEventOperatorType.SYSTEM, null);
+            throw new BusinessException(ErrorCode.CONFLICT, message);
+        }
+    }
+
+    private void closeIfExpiredForCallback(PaymentOrder order, PayChannel payChannel, String payProvider,
+                                           PaymentCallbackResult callback) {
+        if (!order.isPending() || !order.isExpired(LocalDateTime.now())) {
+            return;
+        }
+        closePendingOrder(order, "订单超时自动关闭", PaymentEventOperatorType.SYSTEM, null);
+        callbackLogRepository.save(new PaymentCallbackLog(
+                order.getAppId(), order.getId(), payChannel, payProvider, callback.tradeNo(),
+                callback.rawPayload(), CallbackVerifyStatus.VERIFIED, CallbackProcessStatus.FAILED,
+                "订单已超时关闭，支付回调不再入账"
+        ));
+        throw new BusinessException(ErrorCode.CONFLICT, "订单已超时关闭，支付回调不再入账");
+    }
+
+    private void closePendingOrder(PaymentOrder order, String reason, PaymentEventOperatorType operatorType,
+                                   String operatorId) {
+        order.close(reason);
+        paymentEventLogRepository.save(new PaymentEventLog(
+                order.getAppId(), order.getId(), PaymentEventType.ORDER_CLOSED, order.getPayChannel(),
+                order.getPayProvider(), order.getAmountCents(), order.getTradeNo(), operatorType, operatorId,
+                "{\"reason\":\"" + escapeJson(reason) + "\"}"
+        ));
+    }
+
+    private String safeCloseReason(String reason, String fallback) {
+        if (reason == null || reason.trim().isEmpty()) {
+            return fallback;
+        }
+        String value = reason.trim();
+        return value.length() > 512 ? value.substring(0, 512) : value;
+    }
+
+    private int orderExpireMinutes() {
+        Integer value = paymentProperties.getOrderExpireMinutes();
+        return value == null || value < 1 ? 30 : value;
+    }
+
+    private String escapeJson(String value) {
+        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     @Transactional

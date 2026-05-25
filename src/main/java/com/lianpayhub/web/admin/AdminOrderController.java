@@ -32,4 +32,16 @@ public class AdminOrderController {
         );
         return ApiResponse.ok();
     }
+
+    @PostMapping("/{id}/close")
+    public ApiResponse<Void> close(@PathVariable Long id,
+                                   @RequestBody(required = false) AdminCloseOrderRequest request,
+                                   @AuthenticationPrincipal AdminPrincipal principal) {
+        paymentService.closeOrderByAdmin(
+                id,
+                request == null ? null : request.reason(),
+                principal == null ? null : String.valueOf(principal.getAdminId())
+        );
+        return ApiResponse.ok();
+    }
 }

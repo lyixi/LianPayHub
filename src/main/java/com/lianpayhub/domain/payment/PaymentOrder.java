@@ -67,11 +67,21 @@ public class PaymentOrder extends BaseEntity {
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
+    @Column(name = "expire_at")
+    private LocalDateTime expireAt;
+
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
+    @Column(name = "close_reason", length = 512)
+    private String closeReason;
+
     protected PaymentOrder() {
     }
 
     public PaymentOrder(String appId, Long userId, Long deviceId, Long packageId, String orderNo,
-                        Integer amountCents, PayChannel payChannel, String payProvider) {
+                        Integer amountCents, PayChannel payChannel, String payProvider,
+                        LocalDateTime expireAt) {
         this.appId = appId;
         this.userId = userId;
         this.deviceId = deviceId;
@@ -80,6 +90,7 @@ public class PaymentOrder extends BaseEntity {
         this.amountCents = amountCents;
         this.payChannel = payChannel;
         this.payProvider = payProvider;
+        this.expireAt = expireAt;
     }
 
     public Long getId() {
@@ -142,8 +153,28 @@ public class PaymentOrder extends BaseEntity {
         return paidAt;
     }
 
+    public LocalDateTime getExpireAt() {
+        return expireAt;
+    }
+
+    public LocalDateTime getClosedAt() {
+        return closedAt;
+    }
+
+    public String getCloseReason() {
+        return closeReason;
+    }
+
     public boolean isPaid() {
         return payStatus == PayStatus.PAID;
+    }
+
+    public boolean isPending() {
+        return payStatus == PayStatus.PENDING;
+    }
+
+    public boolean isExpired(LocalDateTime now) {
+        return expireAt != null && expireAt.isBefore(now);
     }
 
     public boolean canRefund(Integer amountCents) {
@@ -177,5 +208,14 @@ public class PaymentOrder extends BaseEntity {
         this.callbackCount++;
         this.payStatus = PayStatus.PAID;
         this.paidAt = LocalDateTime.now();
+    }
+
+    public void close(String reason) {
+        if (payStatus != PayStatus.PENDING) {
+            throw new BusinessException(ErrorCode.CONFLICT, "只有待支付订单可以关闭");
+        }
+        this.payStatus = PayStatus.CANCELLED;
+        this.closedAt = LocalDateTime.now();
+        this.closeReason = reason;
     }
 }

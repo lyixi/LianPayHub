@@ -1158,12 +1158,16 @@ function renderOrders(page) {
           {
             title: "操作",
             render: function (r) {
-            return '<div class="actions">' +
-                '<button class="small" onclick="openOrderDetail(' + r.id + ')">详情</button>' +
-              '<button class="small" onclick="markPaid(' + r.id + ')">标记支付</button>' +
+              var actions = '<button class="small" onclick="openOrderDetail(' + r.id + ')">详情</button>';
+              if (r.payStatus === "PENDING") {
+                actions += '<button class="small" onclick="markPaid(' + r.id + ')">标记支付</button>' +
+                  '<button class="small danger" onclick="closeOrder(' + r.id + ')">关闭</button>';
+              }
+              return '<div class="actions">' +
+                actions +
                 '</div>';
+            }
           }
-        }
         ], rows)) +
         renderPager("orders", pageMeta(data), "renderOrders");
     });
@@ -1230,7 +1234,10 @@ function openOrderDetail(id) {
       "渠道订单号": item.channelOrderNo,
       "回调次数": item.callbackCount,
       "退款金额(分)": item.refundedAmountCents,
-      "支付时间": item.paidAt
+      "支付时间": item.paidAt,
+      "过期时间": item.expireAt,
+      "关闭时间": item.closedAt,
+      "关闭原因": item.closeReason
     }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
@@ -1241,6 +1248,18 @@ function markPaid(id) {
     body: { tradeNo: "MANUAL-" + Date.now() }
   }).then(function () {
     toast("已标记支付");
+    renderOrders(currentPage("orders"));
+  }).catch(function (err) { toast(err.message); });
+}
+
+function closeOrder(id) {
+  var reason = window.prompt("关闭原因", "后台手动关闭");
+  if (reason === null) return;
+  api("/admin/orders/" + id + "/close", {
+    method: "POST",
+    body: { reason: reason }
+  }).then(function () {
+    toast("订单已关闭");
     renderOrders(currentPage("orders"));
   }).catch(function (err) { toast(err.message); });
 }

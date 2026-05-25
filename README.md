@@ -40,6 +40,7 @@
 - 设备会员/账号会员状态查询
 - 支付订单创建与支付适配层骨架
 - 支付统一回调入口、幂等处理、回调日志
+- 待支付订单过期时间、后台手动关闭、定时自动关闭
 - 后台订单手动标记支付、退款申请、手动确认成功/失败、退款事件日志
 - 会员开通/续期基础流程
 - 适配型 APP 数据上报
@@ -221,6 +222,8 @@ Content-Type: application/json
 
 退款手动确认只能处理 `PENDING` 退款单，重复确认会返回业务冲突，避免订单重复累计退款金额。
 
+订单默认 30 分钟过期，可通过 `lianpayhub.payment.order-expire-minutes` 调整。后台订单页可以手动关闭待支付订单；定时任务会按 `lianpayhub.payment.order-close-scan-fixed-delay-ms` 扫描并自动关闭过期待支付订单。关闭后的订单不会再接受支付回调、手动标记支付或退款申请，相关状态变更会写入支付事件日志。
+
 ## APP 接口鉴权
 
 开发阶段默认关闭 APP 接口鉴权：
@@ -381,7 +384,7 @@ Windows 本地也可以直接运行完整回归脚本：
 .\scripts\test-full.ps1
 ```
 
-脚本会先编译，再按顺序运行 APP Secret 鉴权、签名鉴权、完整业务流程和主链路烟测，并使用 H2 内存库，不会连接 MySQL。若已经编译过，可以加 `-SkipCompile`：
+脚本会先编译，再按顺序运行 APP Secret 鉴权、签名鉴权、订单生命周期、完整业务流程和主链路烟测，并使用 H2 内存库，不会连接 MySQL。若已经编译过，可以加 `-SkipCompile`：
 
 ```powershell
 .\scripts\test-full.ps1 -SkipCompile
