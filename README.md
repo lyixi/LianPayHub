@@ -211,7 +211,7 @@ Content-Type: application/json
 }
 ```
 
-`payChannel` 可用：`ALIPAY`、`WECHAT`、`AGGREGATE`。
+`payChannel` 可用：`ALIPAY`（支付宝）、`WECHAT`（微信支付）、`AGGREGATE`（聚合支付）。创建订单不传 `payChannel` 时默认使用支付宝。
 
 当前 Provider 先支持通用 `form` / 简单 JSON 字段解析，字段兼容：
 
@@ -248,7 +248,7 @@ lianpayhub:
 
 当前验证码存储和发送限频使用本地内存，单机部署可直接使用；多实例生产部署建议把验证码、nonce 和限频窗口迁移到 Redis，并接入真实短信服务商发送短信。验证码在登录成功后会被消费，不能重复使用。
 
-短信发送已抽象为 `SmsSender`，默认 `sms-provider: local` 只记录脱敏发送日志，方便本地联调；接入阿里云、腾讯云或聚合短信时新增对应实现并切换 `sms-provider` 即可。
+短信发送已抽象为 `SmsSender`，默认 `sms-provider: aliyun`。真实阿里云 SDK 未接入前会走日志型占位发送，方便本地联调；接入阿里云、腾讯云或聚合短信时替换对应实现并切换 `sms-provider` 即可。
 
 ## APP 接口鉴权
 

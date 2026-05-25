@@ -10,7 +10,7 @@ lianpayhub:
     api-auth-mode: signature
     sms-code-required: true
     sms-debug-return-code: false
-    sms-provider: local
+    sms-provider: aliyun
   payment:
     dev-tools-enabled: false
     order-auto-close-enabled: true

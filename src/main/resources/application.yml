@@ -35,7 +35,7 @@ lianpayhub:
     sms-code-cooldown-seconds: 60
     sms-code-max-attempts: 5
     sms-debug-return-code: true
-    sms-provider: local
+    sms-provider: aliyun
     api-auth-enabled: false
     api-auth-mode: secret
     api-signature-time-window-seconds: 300

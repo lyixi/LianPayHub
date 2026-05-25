@@ -30,7 +30,79 @@ var titles = {
   tools: ["调试工具", "演示数据和常用入口"]
 };
 
+var displayLabels = {
+  ALIPAY: "支付宝",
+  WECHAT: "微信支付",
+  AGGREGATE: "聚合支付",
+  OTHER: "其他",
+  STANDARD: "标准 APP",
+  DEVICE_ONLY: "设备码 APP",
+  ADAPTER: "适配上报 APP",
+  MEMBERSHIP: "会员套餐",
+  FEATURE: "功能套餐",
+  USER: "用户",
+  DEVICE: "设备",
+  MOBILE: "手机号",
+  MOBILE_LOGIN: "手机号登录",
+  DEVICE_BIND: "设备绑定",
+  ENABLED: "启用",
+  DISABLED: "停用",
+  ACTIVE: "有效",
+  EXPIRED: "已过期",
+  CANCELLED: "已取消",
+  PENDING: "待处理",
+  PAID: "已支付",
+  FAILED: "失败",
+  SUCCESS: "成功",
+  PARTIAL_REFUNDED: "部分退款",
+  REFUNDED: "已退款",
+  BOUND: "已绑定",
+  UNBOUND: "未绑定",
+  VERIFIED: "已验签",
+  IGNORED: "已忽略",
+  RECEIVED: "已接收",
+  PROCESSED: "已处理",
+  ORDER_CREATED: "订单创建",
+  ORDER_CLOSED: "订单关闭",
+  PAYMENT_SUCCESS: "支付成功",
+  PAYMENT_FAILED: "支付失败",
+  REFUND_CREATED: "退款创建",
+  REFUND_SUCCESS: "退款成功",
+  REFUND_FAILED: "退款失败",
+  SYSTEM: "系统",
+  ADMIN: "管理员",
+  CHANNEL: "支付渠道"
+};
+
+var paymentProviderDefaults = {
+  ALIPAY: "alipay",
+  WECHAT: "wechat",
+  AGGREGATE: "aggregate",
+  OTHER: "other"
+};
+
 function $(id) { return document.getElementById(id); }
+
+function labelOf(value) {
+  return displayLabels[value] || value;
+}
+
+function optionOf(value) {
+  return { value: value, label: labelOf(value) };
+}
+
+function providerDefaultFor(channel) {
+  return paymentProviderDefaults[channel] || "";
+}
+
+function bindProviderDefault(channelId, providerId) {
+  var channel = $(channelId);
+  var provider = $(providerId);
+  if (!channel || !provider) return;
+  channel.addEventListener("change", function () {
+    provider.value = providerDefaultFor(channel.value);
+  });
+}
 
 function init() {
   if (!titles[state.view]) state.view = "dashboard";
@@ -65,7 +137,6 @@ function applyTheme() {
   if (metaTheme) metaTheme.setAttribute("content", state.theme === "dark" ? "#0e1116" : "#f5f7fb");
   var btn = $("themeToggleBtn");
   if (btn) {
-    btn.textContent = state.theme === "dark" ? "浅" : "深";
     btn.title = state.theme === "dark" ? "切换浅色" : "切换深色";
     btn.setAttribute("aria-pressed", state.theme === "dark" ? "true" : "false");
   }
@@ -162,7 +233,7 @@ function escapeHtml(value) {
 function formatValue(value) {
   if (value === null || value === undefined || value === "") return "-";
   if (typeof value === "boolean") return value ? "是" : "否";
-  return escapeHtml(value);
+  return escapeHtml(labelOf(value));
 }
 
 function formatMoney(cents) {
@@ -171,7 +242,7 @@ function formatMoney(cents) {
 }
 
 function badge(value) {
-  var text = escapeHtml(value);
+  var text = escapeHtml(labelOf(value));
   var cls = "badge";
   if (["ENABLED", "ACTIVE", "PAID", "SUCCESS"].indexOf(value) >= 0) cls += " ok";
   if (["PENDING", "PARTIAL_REFUNDED", "RECEIVED"].indexOf(value) >= 0) cls += " warn";
@@ -225,16 +296,21 @@ function panel(title, body, extraClass) {
   return '<div class="panel ' + (extraClass || "") + '"><div class="panel-title">' + title + '</div>' + body + '</div>';
 }
 
+function fieldClass(id, extraClass) {
+  var safeId = String(id || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+  return "field field-" + safeId + (extraClass ? " " + extraClass : "");
+}
+
 function input(id, label, value, type) {
-  return '<label>' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + escapeHtml(value || "") + '"></label>';
+  return '<label class="' + fieldClass(id) + '">' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + escapeHtml(value || "") + '"></label>';
 }
 
 function textarea(id, label, value) {
-  return '<label>' + label + '<textarea id="' + id + '">' + escapeHtml(value || "") + '</textarea></label>';
+  return '<label class="' + fieldClass(id, "textarea-field") + '">' + label + '<textarea id="' + id + '">' + escapeHtml(value || "") + '</textarea></label>';
 }
 
 function select(id, label, values, value) {
-  var html = '<label>' + label + '<select id="' + id + '">';
+  var html = '<label class="' + fieldClass(id) + '">' + label + '<select id="' + id + '">';
   html += values.map(function (item) {
     var selected = item.value === value ? " selected" : "";
     return '<option value="' + escapeHtml(item.value) + '"' + selected + '>' + escapeHtml(item.label) + '</option>';
@@ -422,14 +498,14 @@ function renderApps() {
       input("appId", "APP ID") +
       input("appName", "APP 名称") +
       select("appType", "类型", [
-        { value: "STANDARD", label: "STANDARD" },
-        { value: "DEVICE_ONLY", label: "DEVICE_ONLY" },
-        { value: "ADAPTER", label: "ADAPTER" }
+        optionOf("STANDARD"),
+        optionOf("DEVICE_ONLY"),
+        optionOf("ADAPTER")
       ], "STANDARD") +
       checkbox("needMobileLogin", "手机号登录", true) +
       checkbox("needDeviceVip", "设备会员", false) +
-      '<button type="button" onclick="createApp()">创建</button>' +
-      '<button class="secondary" type="button" onclick="exportCsv(\'/admin/exports/apps?limit=5000\', \'apps.csv\')">导出</button>' +
+      '<div class="form-actions"><button type="button" onclick="createApp()">创建</button>' +
+      '<button class="secondary" type="button" onclick="exportCsv(\'/admin/exports/apps?limit=5000\', \'apps.csv\')">导出</button></div>' +
       "</div>";
 
     $("apps").innerHTML =
@@ -541,17 +617,17 @@ function resetSecret(id) {
 function paymentChannelOptions(includeAll) {
   var values = includeAll ? [{ value: "", label: "全部渠道" }] : [];
   return values.concat([
-    { value: "ALIPAY", label: "ALIPAY" },
-    { value: "WECHAT", label: "WECHAT" },
-    { value: "AGGREGATE", label: "AGGREGATE" }
+    optionOf("ALIPAY"),
+    optionOf("WECHAT"),
+    optionOf("AGGREGATE")
   ]);
 }
 
 function paymentConfigStatusOptions(includeAll) {
   var values = includeAll ? [{ value: "", label: "全部状态" }] : [];
   return values.concat([
-    { value: "ENABLED", label: "ENABLED" },
-    { value: "DISABLED", label: "DISABLED" }
+    optionOf("ENABLED"),
+    optionOf("DISABLED")
   ]);
 }
 
@@ -577,16 +653,16 @@ function renderPaymentConfigs(page) {
     if (filters.status) qs.push("status=" + encodeURIComponent(filters.status));
     return api("/admin/payment-configs?" + qs.join("&")).then(function (data) {
       var rows = pageContent(data);
-      var createBody = '<div class="form-grid">' +
+      var createBody = '<div class="form-grid payment-config-form">' +
         select("payCfgCreateAppId", "APP", createAppOptions, filters.appId || (apps[0] && apps[0].appId) || "") +
-        select("payCfgCreateChannel", "支付渠道", paymentChannelOptions(false), "AGGREGATE") +
-        input("payCfgCreateProvider", "提供方编码", "aggregate") +
+        select("payCfgCreateChannel", "支付渠道", paymentChannelOptions(false), "ALIPAY") +
+        input("payCfgCreateProvider", "提供方编码", providerDefaultFor("ALIPAY")) +
         input("payCfgCreateMerchant", "商户号") +
         input("payCfgCreateChannelApp", "渠道 APP ID") +
         input("payCfgCreateNotify", "回调地址") +
         textarea("payCfgCreateConfig", "普通配置 JSON", "{}") +
         textarea("payCfgCreateCredential", "敏感凭据 JSON") +
-        '<button type="button" onclick="createPaymentConfig()">创建配置</button>' +
+        '<div class="form-actions"><button type="button" onclick="createPaymentConfig()">创建配置</button></div>' +
         '</div>';
       var filterBar = '<div class="toolbar">' +
         select("payCfgAppFilter", "APP", appOptions, filters.appId || "") +
@@ -603,7 +679,7 @@ function renderPaymentConfigs(page) {
         panel("配置列表", table([
           { title: "ID", key: "id" },
           { title: "APP", key: "appId" },
-          { title: "渠道", key: "payChannel" },
+          { title: "渠道", render: function (r) { return formatValue(r.payChannel); } },
           { title: "提供方", key: "providerCode" },
           { title: "商户号", key: "merchantId" },
           { title: "凭据", render: function (r) { return r.credentialConfigured ? "已配置" : "未配置"; } },
@@ -620,6 +696,7 @@ function renderPaymentConfigs(page) {
           }
         ], rows)) +
         renderPager("paymentConfigs", pageMeta(data), "renderPaymentConfigs");
+      bindProviderDefault("payCfgCreateChannel", "payCfgCreateProvider");
     });
   });
 }
@@ -772,8 +849,8 @@ function openPackageCreate() {
       }), queryFilters("packages").appId || apps[0].appId) +
       input("createPkgName", "套餐名", "月度会员") +
       select("createPkgType", "类型", [
-        { value: "MEMBERSHIP", label: "MEMBERSHIP" },
-        { value: "FEATURE", label: "FEATURE" }
+        optionOf("MEMBERSHIP"),
+        optionOf("FEATURE")
       ], "MEMBERSHIP") +
       input("createPkgPrice", "价格(分)", "990") +
       input("createPkgDays", "天数", "30") +
@@ -934,8 +1011,8 @@ function renderBindings(page) {
         select("bindingCreateAppId", "APP", createAppOptions, filters.appId || (apps[0] && apps[0].appId) || "") +
         input("bindingCreateUserId", "用户 ID") +
         select("bindingCreateType", "绑定类型", [
-          { value: "MOBILE_LOGIN", label: "MOBILE_LOGIN" },
-          { value: "DEVICE_BIND", label: "DEVICE_BIND" }
+          optionOf("MOBILE_LOGIN"),
+          optionOf("DEVICE_BIND")
         ], "MOBILE_LOGIN") +
         '<button type="button" onclick="createBinding()">创建绑定</button>' +
         '</div>';
@@ -944,8 +1021,8 @@ function renderBindings(page) {
         input("bindingUserFilter", "用户 ID", filters.userId || "") +
         select("bindingStatusFilter", "状态", [
           { value: "", label: "全部状态" },
-          { value: "ENABLED", label: "ENABLED" },
-          { value: "DISABLED", label: "DISABLED" }
+          optionOf("ENABLED"),
+          optionOf("DISABLED")
         ], filters.status || "") +
         '<button class="secondary" type="button" onclick="applyBindingFilter()">筛选</button>' +
         '<button class="secondary" type="button" onclick="exportBindings()">导出</button>' +
@@ -1184,8 +1261,8 @@ function openGrantMember() {
         return { value: a.appId, label: a.appId + " / " + a.appName };
       }), queryFilters("members").appId || apps[0].appId) +
       select("grantSubject", "主体", [
-        { value: "USER", label: "USER" },
-        { value: "DEVICE", label: "DEVICE" }
+        optionOf("USER"),
+        optionOf("DEVICE")
       ], "USER") +
       input("grantUserId", "用户 ID") +
       input("grantDeviceId", "设备 ID") +
@@ -1267,7 +1344,7 @@ function renderOrders(page) {
           { title: "设备", key: "deviceId" },
           { title: "金额(分)", key: "amountCents" },
           { title: "退款(分)", key: "refundedAmountCents" },
-          { title: "渠道", key: "payChannel" },
+          { title: "渠道", render: function (r) { return formatValue(r.payChannel); } },
           { title: "状态", render: function (r) { return badge(r.payStatus); } },
           {
             title: "操作",
@@ -1303,11 +1380,7 @@ function openOrderCreate() {
       input("createOrderUserId", "用户 ID") +
       input("createOrderDeviceId", "设备 ID") +
       input("createOrderPackageId", "套餐 ID") +
-      select("createOrderChannel", "支付渠道", [
-        { value: "ALIPAY", label: "ALIPAY" },
-        { value: "WECHAT", label: "WECHAT" },
-        { value: "AGGREGATE", label: "AGGREGATE" }
-      ], "AGGREGATE") +
+      select("createOrderChannel", "支付渠道", paymentChannelOptions(false), "ALIPAY") +
       '</div>',
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="saveOrderCreate()">创建</button>');
@@ -1511,7 +1584,7 @@ function renderCallbacks(page) {
           { title: "ID", key: "id" },
           { title: "APP", key: "appId" },
           { title: "订单 ID", key: "orderId" },
-          { title: "渠道", key: "payChannel" },
+          { title: "渠道", render: function (r) { return formatValue(r.payChannel); } },
           { title: "提供方", key: "payProvider" },
           { title: "交易号", key: "tradeNo" },
           { title: "验签", render: function (r) { return badge(r.verifyStatus); } },
@@ -2136,10 +2209,10 @@ function renderTools() {
     '<div style="height:12px"></div>' +
     panel("模拟支付回调", '<div class="form-grid">' +
       select("mockNotifyChannel", "渠道", [
-        { value: "ALIPAY", label: "ALIPAY" },
-        { value: "WECHAT", label: "WECHAT" },
-        { value: "AGGREGATE", label: "AGGREGATE" }
-      ], "AGGREGATE") +
+        optionOf("ALIPAY"),
+        optionOf("WECHAT"),
+        optionOf("AGGREGATE")
+      ], "ALIPAY") +
       input("mockNotifyOrderNo", "订单号") +
       input("mockNotifyTradeNo", "交易号", "MOCK-" + Date.now()) +
       '<button type="button" onclick="mockPaymentNotify()">提交回调</button>' +

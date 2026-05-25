@@ -58,7 +58,15 @@
             <option value="rose">玫红</option>
             <option value="violet">紫晶</option>
           </select>
-          <button id="themeToggleBtn" class="secondary icon-action" type="button" title="切换深浅色" aria-label="切换深浅色">◐</button>
+          <button id="themeToggleBtn" class="secondary icon-action" type="button" title="切换深浅色" aria-label="切换深浅色">
+            <svg class="theme-svg" viewBox="0 0 24 24" aria-hidden="true">
+              <g class="icon-sun">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+              </g>
+              <path class="icon-moon" d="M20.2 14.4A8.2 8.2 0 0 1 9.6 3.8a8.7 8.7 0 1 0 10.6 10.6Z"></path>
+            </svg>
+          </button>
           <button id="refreshBtn" class="secondary" type="button">刷新</button>
           <button id="logoutBtn" class="secondary" type="button">退出</button>
         </div>

@@ -213,6 +213,12 @@ select {
   cursor: pointer;
 }
 
+select option,
+select optgroup {
+  color: var(--text);
+  background: var(--panel-solid);
+}
+
 textarea {
   min-height: 84px;
   padding-top: 10px;
@@ -234,6 +240,10 @@ textarea:focus {
 }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 64px;
   height: 38px;
   border: 1px solid color-mix(in srgb, var(--primary) 76%, transparent);
@@ -245,6 +255,9 @@ button {
   cursor: pointer;
   font: inherit;
   font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
   transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease), border-color var(--duration) var(--ease), background var(--duration) var(--ease);
 }
 
@@ -292,6 +305,44 @@ button.icon-action {
   min-width: 38px;
   width: 38px;
   padding: 0;
+  flex: 0 0 38px;
+}
+
+.theme-svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.theme-svg circle,
+.theme-svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+:root[data-theme="dark"] .icon-sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+:root[data-theme="dark"] .icon-moon {
+  opacity: 0;
+  transform: rotate(-18deg) scale(.72);
+}
+
+:root[data-theme="light"] .icon-sun {
+  opacity: 0;
+  transform: rotate(18deg) scale(.72);
+}
+
+:root[data-theme="light"] .icon-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
 }
 
 button.icon-btn {
@@ -533,9 +584,43 @@ h1 {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   align-items: end;
+}
+
+.form-grid > label {
+  min-width: 0;
+  margin: 0;
+}
+
+.form-grid > button,
+.form-grid > .form-actions {
+  align-self: end;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.payment-config-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.payment-config-form .field-payCfgCreateChannelApp,
+.payment-config-form .field-payCfgCreateNotify,
+.payment-config-form .field-payCfgCreateConfig,
+.payment-config-form .field-payCfgCreateCredential {
+  grid-column: span 2;
+}
+
+.payment-config-form .form-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  padding-top: 2px;
 }
 
 .table-wrap {
@@ -890,6 +975,19 @@ a:hover {
 
   .top-actions {
     justify-content: flex-start;
+  }
+
+  .payment-config-form {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .payment-config-form .field-payCfgCreateChannelApp,
+  .payment-config-form .field-payCfgCreateNotify,
+  .payment-config-form .field-payCfgCreateConfig,
+  .payment-config-form .field-payCfgCreateCredential,
+  .payment-config-form .textarea-field,
+  .payment-config-form .form-actions {
+    grid-column: auto;
   }
 
   th,

@@ -18,11 +18,40 @@ public class LocalSmsSender implements SmsSender {
 
     @Override
     public void send(String appId, String mobile, String code, int expireMinutes) {
-        String provider = securityProperties.getSmsProvider();
-        if (provider != null && !"local".equalsIgnoreCase(provider.trim())) {
+        String provider = normalizeProvider(securityProperties.getSmsProvider());
+        if (!isLogOnlyProvider(provider)) {
             throw new IllegalStateException("短信 provider 尚未接入: " + provider);
         }
-        log.info("local sms code generated, appId={}, mobile={}, expireMinutes={}", appId, maskMobile(mobile), expireMinutes);
+        // 真实短信 SDK 接入前先统一走日志型发送器，避免本地和测试环境被外部服务卡住。
+        log.info("{} sms code generated, appId={}, mobile={}, expireMinutes={}",
+                displayProvider(provider), appId, maskMobile(mobile), expireMinutes);
+    }
+
+    private String normalizeProvider(String provider) {
+        if (provider == null || provider.trim().isEmpty()) {
+            return "aliyun";
+        }
+        return provider.trim().toLowerCase();
+    }
+
+    private boolean isLogOnlyProvider(String provider) {
+        return "local".equals(provider)
+                || "aliyun".equals(provider)
+                || "tencent".equals(provider)
+                || "aggregate".equals(provider);
+    }
+
+    private String displayProvider(String provider) {
+        if ("aliyun".equals(provider)) {
+            return "aliyun placeholder";
+        }
+        if ("tencent".equals(provider)) {
+            return "tencent placeholder";
+        }
+        if ("aggregate".equals(provider)) {
+            return "aggregate placeholder";
+        }
+        return "local";
     }
 
     private String maskMobile(String mobile) {

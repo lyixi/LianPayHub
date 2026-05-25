@@ -14,7 +14,7 @@ public class SecurityProperties {
     private Integer smsCodeCooldownSeconds = 60;
     private Integer smsCodeMaxAttempts = 5;
     private Boolean smsDebugReturnCode = true;
-    private String smsProvider = "local";
+    private String smsProvider = "aliyun";
     private Boolean apiAuthEnabled = false;
     private String apiAuthMode = "secret";
     private Integer apiSignatureTimeWindowSeconds = 300;

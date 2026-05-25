@@ -11,7 +11,6 @@ public class CreateOrderRequest {
     private Long deviceId;
     @NotNull
     private Long packageId;
-    @NotNull
     private PayChannel payChannel;
 
     public String appId() { return appId; }
