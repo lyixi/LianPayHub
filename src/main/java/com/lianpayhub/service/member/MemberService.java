@@ -63,7 +63,7 @@ public class MemberService {
     }
 
     private MemberStatusResult toStatus(Optional<MemberInfo> memberInfo) {
-        if (memberInfo.isEmpty()) {
+        if (!memberInfo.isPresent()) {
             return MemberStatusResult.inactive();
         }
         MemberInfo member = memberInfo.get();

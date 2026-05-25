@@ -358,6 +358,21 @@ mvn -q -Dtest=AdminApiSmokeTest test
 
 该烟测会使用 H2 内存库验证：默认管理员初始化、后台登录、管理员维护、创建 APP、手机号登录与绑定、支付配置脱敏与启停、创建套餐、设备注册、创建订单、支付回调、会员状态生效、退款重复确认保护。
 
+完整流程回归测试：
+
+```bash
+mvn -q -Dtest=FullWorkflowIntegrationTest test
+```
+
+该测试同样使用 H2 内存库，不连接 `application.yml` 中配置的 MySQL，因此不会影响本地或服务器现有数据，也不会推进现有表的自增索引。覆盖顺序包括：后台页面与鉴权、管理员维护、APP/支付配置/套餐维护、手机号跨 APP 统一用户、用户与绑定启停、设备注册/绑定/启动、会员赠送/取消、账号订单手动支付、设备会员订单回调与重复回调、退款成功/失败、适配上报、日志查询、报表查询和演示数据接口。
+
+如果机器内存较紧，可以先设置 Maven 内存参数再运行：
+
+```powershell
+$env:MAVEN_OPTS='-Xms16m -Xmx96m -XX:MaxMetaspaceSize=64m -XX:+UseSerialGC -XX:CompressedClassSpaceSize=16m'
+mvn -q -Dtest=FullWorkflowIntegrationTest test
+```
+
 ## 后续计划
 
 - 接入真实支付宝、微信或聚合支付 SDK 与验签配置
