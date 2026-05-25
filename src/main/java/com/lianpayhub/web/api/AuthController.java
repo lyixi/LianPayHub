@@ -4,6 +4,8 @@ import com.lianpayhub.common.api.ApiResponse;
 import com.lianpayhub.service.auth.AppAuthService;
 import com.lianpayhub.service.auth.AppLoginCommand;
 import com.lianpayhub.service.auth.AppLoginResult;
+import com.lianpayhub.service.auth.SendSmsCodeResult;
+import com.lianpayhub.service.auth.SmsCodeService;
 import javax.validation.Valid;
 import javax.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
@@ -13,15 +15,17 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AppAuthService appAuthService;
+    private final SmsCodeService smsCodeService;
 
-    public AuthController(AppAuthService appAuthService) {
+    public AuthController(AppAuthService appAuthService, SmsCodeService smsCodeService) {
         this.appAuthService = appAuthService;
+        this.smsCodeService = smsCodeService;
     }
 
     @PostMapping("/send-code")
-    public ApiResponse<Void> sendCode(@Valid @RequestBody SendCodeRequest request) {
-        // 当前阶段不接短信服务，先保留接口形态，方便 APP 侧流程联调。
-        return ApiResponse.ok();
+    public ApiResponse<SendSmsCodeResult> sendCode(@Valid @RequestBody SendCodeRequest request,
+                                                   HttpServletRequest httpRequest) {
+        return ApiResponse.ok(smsCodeService.sendCode(request.appId(), request.mobile(), clientIp(httpRequest)));
     }
 
     @PostMapping("/login")

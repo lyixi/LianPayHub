@@ -18,6 +18,8 @@ import com.lianpayhub.service.report.AdminOverviewResult;
 import com.lianpayhub.service.report.AdminOverviewService;
 import com.lianpayhub.service.report.AdminTrendService;
 import com.lianpayhub.service.report.DailyTrendItem;
+import com.lianpayhub.service.report.PaymentSummaryResult;
+import com.lianpayhub.service.report.PaymentSummaryService;
 import com.lianpayhub.service.member.GrantMemberCommand;
 import com.lianpayhub.service.member.MemberService;
 import com.lianpayhub.service.device.DeviceService;
@@ -40,6 +42,7 @@ public class AdminDataController {
     private final AdapterReportRepository adapterReportRepository;
     private final AdminOverviewService overviewService;
     private final AdminTrendService trendService;
+    private final PaymentSummaryService paymentSummaryService;
     private final MemberService memberService;
     private final DeviceService deviceService;
 
@@ -53,6 +56,7 @@ public class AdminDataController {
                                AdapterReportRepository adapterReportRepository,
                                AdminOverviewService overviewService,
                                AdminTrendService trendService,
+                               PaymentSummaryService paymentSummaryService,
                                MemberService memberService,
                                DeviceService deviceService) {
         this.userInfoRepository = userInfoRepository;
@@ -65,6 +69,7 @@ public class AdminDataController {
         this.adapterReportRepository = adapterReportRepository;
         this.overviewService = overviewService;
         this.trendService = trendService;
+        this.paymentSummaryService = paymentSummaryService;
         this.memberService = memberService;
         this.deviceService = deviceService;
     }
@@ -285,6 +290,11 @@ public class AdminDataController {
     @GetMapping("/reports/trend")
     public ApiResponse<java.util.List<DailyTrendItem>> trend(@RequestParam(defaultValue = "14") int days) {
         return ApiResponse.ok(trendService.dailyTrend(days));
+    }
+
+    @GetMapping("/reports/payment-summary")
+    public ApiResponse<PaymentSummaryResult> paymentSummary() {
+        return ApiResponse.ok(paymentSummaryService.summary());
     }
 
     private PageRequest pageRequest(int page, int size) {

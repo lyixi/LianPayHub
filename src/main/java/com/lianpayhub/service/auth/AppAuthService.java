@@ -28,30 +28,32 @@ public class AppAuthService {
     private final AppLoginLogRepository loginLogRepository;
     private final JwtService jwtService;
     private final SecurityProperties securityProperties;
+    private final SmsCodeService smsCodeService;
 
     public AppAuthService(AppService appService, UserInfoRepository userInfoRepository,
                           UserAppBindingRepository bindingRepository, AppLoginLogRepository loginLogRepository,
                           JwtService jwtService,
-                          SecurityProperties securityProperties) {
+                          SecurityProperties securityProperties,
+                          SmsCodeService smsCodeService) {
         this.appService = appService;
         this.userInfoRepository = userInfoRepository;
         this.bindingRepository = bindingRepository;
         this.loginLogRepository = loginLogRepository;
         this.jwtService = jwtService;
         this.securityProperties = securityProperties;
+        this.smsCodeService = smsCodeService;
     }
 
     @Transactional
     public AppLoginResult loginByMobile(AppLoginCommand command) {
         Long userId = null;
         try {
-            if (Boolean.TRUE.equals(securityProperties.getSmsCodeRequired())
-                    && (command.code() == null || command.code().trim().isEmpty())) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "验证码不能为空");
-            }
             AppInfo appInfo = appService.requireEnabledApp(command.appId());
             if (appInfo.getAppType() == AppType.DEVICE_ONLY || !appInfo.isNeedMobileLogin()) {
                 throw new BusinessException(ErrorCode.CONFLICT, "当前 APP 不支持手机号登录");
+            }
+            if (Boolean.TRUE.equals(securityProperties.getSmsCodeRequired())) {
+                smsCodeService.verifyAndConsume(command.appId(), command.mobile(), command.code());
             }
 
             UserInfo userInfo = userInfoRepository.findByMobile(command.mobile())

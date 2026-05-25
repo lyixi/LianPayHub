@@ -20,7 +20,7 @@
 - Spring Boot 2.7.x
 - Spring Data JPA
 - MySQL 5.7+
-- Redis（后续缓存/验证码可接入，当前核心链路不强依赖）
+- Redis（可选；当前验证码、nonce、限频使用本地内存，生产集群建议替换为 Redis）
 - Maven
 
 ## 目录结构
@@ -35,7 +35,7 @@
 - 支付渠道配置管理：按 APP 维护支付宝、微信、聚合支付商户参数和敏感凭据
 - 套餐管理基础接口
 - 设备注册与启动记录
-- 手机号账号登录与用户 APP 绑定
+- 手机号验证码发送、登录校验与用户 APP 绑定
 - 后台用户-APP 绑定查询、创建、启停
 - 设备会员/账号会员状态查询
 - 支付订单创建与支付适配层骨架
@@ -48,7 +48,9 @@
 - 后台管理员登录、JWT 鉴权、默认管理员初始化、管理员创建/启停/重置密码/修改自身密码
 - 静态管理后台页面：总览、APP、支付配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配、日志、管理员、工具
 - 后台用户、用户-APP 绑定、设备绑定/解绑、会员、订单、启动记录分页查询与基础维护
+- 后台 APP、支付配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配上报、日志、管理员 CSV 导出
 - 后台总览报表基础指标
+- 后台支付汇总报表：按 APP 和支付渠道统计订单、支付订单与收入
 - 后台操作日志、APP 登录日志、启动日志、支付事件日志查询
 
 ## 默认管理员
@@ -140,6 +142,7 @@ admin / admin123456
 - `GET /admin/adapter-reports/{id}`
 - `GET /admin/reports/overview`
 - `GET /admin/reports/trend?days=14`
+- `GET /admin/reports/payment-summary`
 - `GET /admin/admin-users`
 - `GET /admin/admin-users/{id}`
 
@@ -149,6 +152,8 @@ admin / admin123456
 - `GET /admin/logs/app-logins`
 - `GET /admin/logs/launches`
 - `GET /admin/logs/payment-events`
+- `GET /admin/exports/{resource}`
+- `GET /admin/exports/logs/{logType}`
 
 常用后台维护接口：
 
@@ -224,6 +229,27 @@ Content-Type: application/json
 
 订单默认 30 分钟过期，可通过 `lianpayhub.payment.order-expire-minutes` 调整。后台订单页可以手动关闭待支付订单；定时任务会按 `lianpayhub.payment.order-close-scan-fixed-delay-ms` 扫描并自动关闭过期待支付订单。关闭后的订单不会再接受支付回调、手动标记支付或退款申请，相关状态变更会写入支付事件日志。
 
+## 手机号验证码
+
+`POST /api/auth/send-code` 会校验 APP 是否启用且支持手机号登录，然后生成 6 位验证码。开发环境默认在响应中返回 `debugCode` 方便联调；生产配置应关闭：
+
+```yaml
+lianpayhub:
+  security:
+    sms-code-required: true
+    sms-debug-return-code: false
+```
+
+相关配置：
+
+- `sms-code-expire-minutes`：验证码有效期，默认 5 分钟
+- `sms-code-cooldown-seconds`：同一 APP + 手机号发送冷却，默认 60 秒
+- `sms-code-max-attempts`：错误尝试上限，默认 5 次，超过后需重新获取
+
+当前验证码存储和发送限频使用本地内存，单机部署可直接使用；多实例生产部署建议把验证码、nonce 和限频窗口迁移到 Redis，并接入真实短信服务商发送短信。验证码在登录成功后会被消费，不能重复使用。
+
+短信发送已抽象为 `SmsSender`，默认 `sms-provider: local` 只记录脱敏发送日志，方便本地联调；接入阿里云、腾讯云或聚合短信时新增对应实现并切换 `sms-provider` 即可。
+
 ## APP 接口鉴权
 
 开发阶段默认关闭 APP 接口鉴权：
@@ -291,7 +317,7 @@ Authorization: Bearer <user-token>
 
 ## 运行方式
 
-1. 先准备 MySQL 和 Redis 环境
+1. 先准备 MySQL 环境；生产集群建议额外准备 Redis
 2. 修改 `src/main/resources/application.yml` 中的数据库配置
 3. 执行：
 
@@ -392,7 +418,7 @@ Windows 本地也可以直接运行完整回归脚本：
 .\scripts\test-full.ps1
 ```
 
-脚本会先编译，再按顺序运行 APP Secret 鉴权、签名鉴权、订单生命周期、完整业务流程和主链路烟测，并使用 H2 内存库，不会连接 MySQL。若已经编译过，可以加 `-SkipCompile`：
+脚本会先编译，再按顺序运行 APP Secret 鉴权、签名鉴权、用户 JWT、短信验证码、订单生命周期、后台导出、完整业务流程和主链路烟测，并使用 H2 内存库，不会连接 MySQL。若已经编译过，可以加 `-SkipCompile`：
 
 ```powershell
 .\scripts\test-full.ps1 -SkipCompile
@@ -402,7 +428,7 @@ Windows 本地也可以直接运行完整回归脚本：
 
 - 接入真实支付宝、微信或聚合支付 SDK 与验签配置
 - 补充更细的后台角色/权限与 APP 级数据范围
-- 增加导出、更多报表和定时汇总任务
+- 增加更多报表和定时汇总任务
 
 ## 文档
 

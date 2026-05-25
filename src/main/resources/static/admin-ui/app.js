@@ -75,6 +75,38 @@ function api(path, options) {
   });
 }
 
+function queryString(params) {
+  var qs = [];
+  var key;
+  for (key in params || {}) {
+    if (params[key] !== null && params[key] !== undefined && params[key] !== "") {
+      qs.push(encodeURIComponent(key) + "=" + encodeURIComponent(params[key]));
+    }
+  }
+  return qs.length ? "?" + qs.join("&") : "";
+}
+
+function exportCsv(path, filename) {
+  var headers = {};
+  if (state.token) headers["Authorization"] = "Bearer " + state.token;
+  fetch(path, { headers: headers }).then(function (res) {
+    if (!res.ok) {
+      return res.text().then(function (text) { throw new Error(text || ("HTTP " + res.status)); });
+    }
+    return res.blob();
+  }).then(function (blob) {
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    toast("导出已开始");
+  }).catch(function (err) { toast(err.message); });
+}
+
 function toast(message) {
   var el = $("toast");
   el.textContent = message;
@@ -276,8 +308,12 @@ function closeModal() {
 }
 
 function renderDashboard() {
-  return Promise.all([api("/admin/reports/overview"), api("/admin/reports/trend?days=14")]).then(function (res) {
-    var overview = res[0], trend = res[1];
+  return Promise.all([
+    api("/admin/reports/overview"),
+    api("/admin/reports/trend?days=14"),
+    api("/admin/reports/payment-summary")
+  ]).then(function (res) {
+    var overview = res[0], trend = res[1], summary = res[2] || {};
     $("dashboard").innerHTML =
       '<div class="grid metrics">' +
       metric("APP", overview.appCount) +
@@ -296,7 +332,21 @@ function renderDashboard() {
         { title: "支付金额(分)", key: "paidAmountCents" },
         { title: "登录", key: "loginCount" },
         { title: "启动", key: "launchCount" }
-      ], trend));
+      ], trend)) +
+      '<div style="height:12px"></div>' +
+      panel("APP 收入排行", table([
+        { title: "APP", key: "dimension" },
+        { title: "订单", key: "orderCount" },
+        { title: "支付订单", key: "paidOrderCount" },
+        { title: "支付金额(元)", render: function (r) { return formatMoney(r.paidAmountCents); } }
+      ], summary.byApp || [])) +
+      '<div style="height:12px"></div>' +
+      panel("支付渠道分布", table([
+        { title: "渠道", key: "dimension" },
+        { title: "订单", key: "orderCount" },
+        { title: "支付订单", key: "paidOrderCount" },
+        { title: "支付金额(元)", render: function (r) { return formatMoney(r.paidAmountCents); } }
+      ], summary.byPayChannel || []));
   });
 }
 
@@ -323,6 +373,7 @@ function renderApps() {
       checkbox("needMobileLogin", "手机号登录", true) +
       checkbox("needDeviceVip", "设备会员", false) +
       '<button type="button" onclick="createApp()">创建</button>' +
+      '<button class="secondary" type="button" onclick="exportCsv(\'/admin/exports/apps?limit=5000\', \'apps.csv\')">导出</button>' +
       "</div>";
 
     $("apps").innerHTML =
@@ -486,6 +537,7 @@ function renderPaymentConfigs(page) {
         select("payCfgChannelFilter", "支付渠道", paymentChannelOptions(true), filters.payChannel || "") +
         select("payCfgStatusFilter", "状态", paymentConfigStatusOptions(true), filters.status || "") +
         '<button class="secondary" type="button" onclick="applyPaymentConfigFilter()">筛选</button>' +
+        '<button class="secondary" type="button" onclick="exportPaymentConfigs()">导出</button>' +
         '</div>';
       $("paymentConfigs").innerHTML =
         panel("创建支付配置", createBody) +
@@ -617,6 +669,7 @@ function renderPackages() {
         }), current) +
         '<button class="secondary" type="button" onclick="applyPackageFilter()">筛选</button>' +
         '<button type="button" onclick="openPackageCreate()">创建套餐</button>' +
+        '<button class="secondary" type="button" onclick="exportPackages()">导出</button>' +
         "</div>";
 
       $("packages").innerHTML = panel("筛选与操作", filterBar) + '<div style="height:12px"></div>' +
@@ -746,6 +799,7 @@ function renderUsers(page) {
     var filterBar = '<div class="toolbar">' +
       input("userMobileFilter", "手机号", filters.mobile || "") +
       '<button class="secondary" type="button" onclick="applyUserFilter()">筛选</button>' +
+      '<button class="secondary" type="button" onclick="exportUsers()">导出</button>' +
       "</div>";
     $("users").innerHTML =
       panel("筛选", filterBar) + '<div style="height:12px"></div>' +
@@ -838,6 +892,7 @@ function renderBindings(page) {
           { value: "DISABLED", label: "DISABLED" }
         ], filters.status || "") +
         '<button class="secondary" type="button" onclick="applyBindingFilter()">筛选</button>' +
+        '<button class="secondary" type="button" onclick="exportBindings()">导出</button>' +
         '</div>';
       $("bindings").innerHTML =
         panel("创建绑定", createBody) +
@@ -937,6 +992,7 @@ function renderDevices(page) {
         input("deviceUserFilter", "用户 ID", filters.userId || "") +
         input("deviceCodeFilter", "设备码", filters.deviceCode || "") +
         '<button class="secondary" type="button" onclick="applyDeviceFilter()">筛选</button>' +
+        '<button class="secondary" type="button" onclick="exportDevices()">导出</button>' +
         "</div>";
       $("devices").innerHTML = panel("筛选", filterBar) + '<div style="height:12px"></div>' +
         panel("设备列表", table([
@@ -1033,6 +1089,7 @@ function renderMembers(page) {
         }), currentApp) +
         '<button class="secondary" type="button" onclick="applyMemberFilter()">筛选</button>' +
         '<button type="button" onclick="openGrantMember()">赠送会员</button>' +
+        '<button class="secondary" type="button" onclick="exportMembers()">导出</button>' +
         "</div>";
       $("members").innerHTML = panel("筛选与操作", filterBar) + '<div style="height:12px"></div>' +
         panel("会员列表", table([
@@ -1143,6 +1200,7 @@ function renderOrders(page) {
         }), currentApp) +
         '<button class="secondary" type="button" onclick="applyOrderFilter()">筛选</button>' +
         '<button type="button" onclick="openOrderCreate()">创建订单</button>' +
+        '<button class="secondary" type="button" onclick="exportOrders()">导出</button>' +
         "</div>";
       $("orders").innerHTML = panel("筛选", filterBar) + '<div style="height:12px"></div>' +
         panel("订单列表", table([
@@ -1279,6 +1337,7 @@ function renderRefunds(page) {
         }), currentApp) +
         '<button class="secondary" type="button" onclick="applyRefundFilter()">筛选</button>' +
         '<button type="button" onclick="openRefundCreate()">申请退款</button>' +
+        '<button class="secondary" type="button" onclick="exportRefunds()">导出</button>' +
         "</div>";
       $("refunds").innerHTML = panel("筛选与操作", filterBar) + '<div style="height:12px"></div>' +
         panel("退款列表", table([
@@ -1389,6 +1448,7 @@ function renderCallbacks(page) {
         select("callbackAppFilter", "APP", appOptions, currentApp) +
         input("callbackOrderFilter", "订单 ID", orderId) +
         '<button class="secondary" type="button" onclick="applyCallbackFilter()">筛选</button>' +
+        '<button class="secondary" type="button" onclick="exportCallbacks()">导出</button>' +
         "</div>";
       $("callbacks").innerHTML = panel("筛选", filterBar) + '<div style="height:12px"></div>' +
         panel("回调列表", table([
@@ -1465,6 +1525,7 @@ function renderLaunches(page) {
         input("launchDeviceFilter", "设备 ID", filters.deviceId || "") +
         input("launchUserFilter", "用户 ID", filters.userId || "") +
         '<button class="secondary" type="button" onclick="applyLaunchFilter()">筛选</button>' +
+        '<button class="secondary" type="button" onclick="exportLaunches()">导出</button>' +
         "</div>";
       $("launches").innerHTML = panel("筛选", filterBar) + '<div style="height:12px"></div>' +
         panel("启动记录", table([
@@ -1533,6 +1594,7 @@ function renderAdapterReports(page) {
         select("adapterAppFilter", "APP", appOptions, currentApp) +
         input("adapterSourceFilter", "来源 ID", filters.sourceId || "") +
         '<button class="secondary" type="button" onclick="applyAdapterFilter()">筛选</button>' +
+        '<button class="secondary" type="button" onclick="exportAdapterReports()">导出</button>' +
         "</div>";
       $("adapter").innerHTML = panel("筛选", filterBar) + '<div style="height:12px"></div>' +
         panel("适配上报", table([
@@ -1620,6 +1682,7 @@ function renderLogs(page) {
       input("logMobileFilter", "手机号", mobile) +
       input("logAdminFilter", "管理员 ID", adminId) +
       '<button class="secondary" type="button" onclick="applyLogFilter()">筛选</button>' +
+      '<button class="secondary" type="button" onclick="exportLogs()">导出</button>' +
       "</div>";
     $("logs").innerHTML = panel("筛选", bar) + '<div style="height:12px"></div>' +
       panel("日志列表", '<div id="logTable"></div>' + '<div id="logPager"></div>');
@@ -1662,7 +1725,8 @@ function loadLogData(page) {
         { title: "用户名", key: "username" },
         { title: "操作", key: "operationType" },
         { title: "URI", key: "requestUri" },
-        { title: "结果", render: function (r) { return badge(r.resultStatus); } }
+        { title: "结果", render: function (r) { return badge(r.resultStatus); } },
+        { title: "操作", render: function (r) { return logDetailButton("admin-operations", r.id); } }
       ],
       "app-logins": [
         { title: "时间", key: "createdAt" },
@@ -1677,8 +1741,8 @@ function loadLogData(page) {
         { title: "APP", key: "appId" },
         { title: "设备", key: "deviceId" },
         { title: "用户", key: "userId" },
-        { title: "类型", key: "launchType" },
-        { title: "结果", render: function (r) { return badge(r.resultStatus); } },
+        { title: "事件", key: "eventType" },
+        { title: "版本", key: "version" },
         { title: "操作", render: function (r) { return logDetailButton("launches", r.id); } }
       ],
       "payment-events": [
@@ -1688,7 +1752,6 @@ function loadLogData(page) {
         { title: "事件", key: "eventType" },
         { title: "操作方", key: "operatorType" },
         { title: "金额(分)", key: "amountCents" },
-        { title: "结果", render: function (r) { return badge(r.resultStatus); } },
         { title: "操作", render: function (r) { return logDetailButton("payment-events", r.id); } }
       ]
     };
@@ -1729,9 +1792,9 @@ function openLogDetail(type, id) {
       details["用户名"] = item.username;
       details["操作"] = item.operationType;
       details["URI"] = item.requestUri;
-      details["方法"] = item.httpMethod;
+      details["方法"] = item.requestMethod;
       details["结果"] = item.resultStatus;
-      details["参数"] = item.requestData;
+      details["参数"] = item.requestBody;
       details["错误"] = item.errorMessage;
     } else if (type === "app-logins") {
       details["手机号"] = item.mobile;
@@ -1767,6 +1830,115 @@ function openLogDetail(type, id) {
   }).catch(function (err) { toast(err.message); });
 }
 
+function exportPaymentConfigs() {
+  var f = queryFilters("paymentConfigs");
+  exportCsv("/admin/exports/payment-configs" + queryString({
+    appId: f.appId,
+    payChannel: f.payChannel,
+    status: f.status,
+    limit: 5000
+  }), "payment-configs.csv");
+}
+
+function exportPackages() {
+  var f = queryFilters("packages");
+  exportCsv("/admin/exports/packages" + queryString({ appId: f.appId, limit: 5000 }), "packages.csv");
+}
+
+function exportUsers() {
+  var f = queryFilters("users");
+  exportCsv("/admin/exports/users" + queryString({ mobile: f.mobile, limit: 5000 }), "users.csv");
+}
+
+function exportBindings() {
+  var f = queryFilters("bindings");
+  exportCsv("/admin/exports/user-bindings" + queryString({
+    appId: f.appId,
+    userId: f.userId,
+    status: f.status,
+    limit: 5000
+  }), "user-bindings.csv");
+}
+
+function exportDevices() {
+  var f = queryFilters("devices");
+  exportCsv("/admin/exports/devices" + queryString({
+    appId: f.appId,
+    userId: f.userId,
+    deviceCode: f.deviceCode,
+    limit: 5000
+  }), "devices.csv");
+}
+
+function exportMembers() {
+  var f = queryFilters("members");
+  exportCsv("/admin/exports/members" + queryString({ appId: f.appId, limit: 5000 }), "members.csv");
+}
+
+function exportOrders() {
+  var f = queryFilters("orders");
+  exportCsv("/admin/exports/orders" + queryString({ appId: f.appId, limit: 5000 }), "orders.csv");
+}
+
+function exportRefunds() {
+  var f = queryFilters("refunds");
+  exportCsv("/admin/exports/payment-refunds" + queryString({ appId: f.appId, limit: 5000 }), "payment-refunds.csv");
+}
+
+function exportCallbacks() {
+  var f = queryFilters("callbacks");
+  exportCsv("/admin/exports/payment-callbacks" + queryString({
+    appId: f.appId,
+    orderId: f.orderId,
+    limit: 5000
+  }), "payment-callbacks.csv");
+}
+
+function exportLaunches() {
+  var f = queryFilters("launches");
+  exportCsv("/admin/exports/launch-records" + queryString({
+    appId: f.appId,
+    deviceId: f.deviceId,
+    userId: f.userId,
+    limit: 5000
+  }), "launch-records.csv");
+}
+
+function exportAdapterReports() {
+  var f = queryFilters("adapter");
+  exportCsv("/admin/exports/adapter-reports" + queryString({
+    appId: f.appId,
+    sourceId: f.sourceId,
+    limit: 5000
+  }), "adapter-reports.csv");
+}
+
+function exportLogs() {
+  var f = queryFilters("logs");
+  var pathMap = {
+    "admin-operations": "/admin/exports/logs/admin-operations",
+    "app-logins": "/admin/exports/logs/app-logins",
+    "launches": "/admin/exports/logs/launches",
+    "payment-events": "/admin/exports/logs/payment-events"
+  };
+  exportCsv(pathMap[state.logTab] + queryString({
+    appId: f.appId,
+    orderId: f.orderId,
+    userId: f.userId,
+    mobile: f.mobile,
+    adminId: f.adminId,
+    limit: 5000
+  }), state.logTab + ".csv");
+}
+
+function exportAdmins() {
+  var f = queryFilters("admins");
+  exportCsv("/admin/exports/admin-users" + queryString({
+    username: f.username,
+    limit: 5000
+  }), "admin-users.csv");
+}
+
 function renderAdmins(page) {
   if (typeof page === "number") setPage("admins", page);
   page = currentPage("admins");
@@ -1790,6 +1962,7 @@ function renderAdmins(page) {
     var filterBar = '<div class="toolbar">' +
       input("adminUsernameFilter", "用户名", filters.username || "") +
       '<button class="secondary" type="button" onclick="applyAdminFilter()">筛选</button>' +
+      '<button class="secondary" type="button" onclick="exportAdmins()">导出</button>' +
       "</div>";
     $("admins").innerHTML =
       panel("修改当前密码", passwordBody) +

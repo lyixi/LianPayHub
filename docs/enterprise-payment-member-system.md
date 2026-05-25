@@ -22,7 +22,7 @@
 - 支付适配层：封装支付宝、微信、聚合支付等不同渠道的下单、验签、回调解析；
 - APP 适配层：对接特定 APP 的业务侧数据上报与状态映射；
 - 数据库：MySQL 持久化核心业务数据；
-- 缓存：开发阶段可用本地内存，生产集群建议接 Redis 存储验证码、nonce、限频和热点查询；
+- 缓存：当前验证码、nonce、限频可用本地内存，生产集群建议接 Redis 存储验证码、nonce、限频和热点查询；
 - 异步消息：RabbitMQ/RocketMQ（可选）用于订单回调、报表计算、告警任务。
 
 架构图（建议实现）：
@@ -425,6 +425,9 @@
 - `GET /admin/logs/payment-events`
 - `GET /admin/reports/overview`
 - `GET /admin/reports/trend`
+- `GET /admin/reports/payment-summary`
+- `GET /admin/exports/{resource}`：导出 APP、支付配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动记录、适配上报、管理员等 CSV；
+- `GET /admin/exports/logs/{logType}`：导出后台操作、APP 登录、启动、支付事件等日志 CSV；
 - `GET /admin/admin-users`
 - `GET /admin/admin-users/{id}`
 - `POST /admin/admin-users`
@@ -459,6 +462,9 @@
 2. `POST /api/auth/login`：校验验证码，生成 JWT，更新/创建统一用户账号；
 3. 登录成功后，记录 `user_app_binding`，表明该用户已绑定到当前 APP；
 4. 返回登录 Token 供后续接口使用。
+5. 验证码默认 5 分钟有效，同一 APP + 手机号默认 60 秒内不能重复发送；验证码错误次数超过上限后需重新获取，登录成功后验证码会被消费。
+6. 开发环境可通过 `sms-debug-return-code=true` 返回调试验证码；生产环境必须关闭该配置，并接入真实短信服务商。
+7. 短信发送通过 `SmsSender` 抽象，默认 `local` 实现只写脱敏日志；后续可按阿里云、腾讯云或聚合短信服务商增加实现。
 
 ### 6.2 设备码 VIP 判定
 
@@ -545,7 +551,7 @@
 ### 8.2 数据库与缓存
 
 - Main DB：MySQL 5.7+；
-- 缓存：Redis 可选，当前验证码、nonce、限频可以先用本地内存实现，生产集群再替换为 Redis；
+- 缓存：Redis 可选，当前验证码、nonce、限频可以用本地内存实现，生产多实例部署建议替换为 Redis；
 - 数据访问：Spring Data JPA + MyBatis（可选混用）；
 - 事务：Spring 事务管理；
 - 分库/分表：初期单库即可，未来可按 app_id 做逻辑分库。
@@ -554,7 +560,7 @@
 
 - 管理后台：当前提供静态 HTML/CSS/JS 页面先跑通运营流程，后续可升级为 Vue 3 + Ant Design Vue 或 React + Ant Design；
 - 可视化：ECharts；
-- 数据表格：高级筛选、分页、导出；
+- 数据表格：高级筛选、分页、CSV 导出；
 - 权限：登录账户、角色管理，后台界面权限控制。
 
 ### 8.4 运行监控
@@ -567,6 +573,7 @@
 
 - 轻量烟测：`AdminApiSmokeTest` 覆盖后台登录、APP、支付配置、套餐、订单、回调、会员和退款主链路；
 - 完整流程测试：`FullWorkflowIntegrationTest` 按业务顺序覆盖后台页面与鉴权、管理员维护、APP/套餐/支付配置维护、手机号跨 APP 统一用户、设备启动、会员、订单、退款、适配上报、日志、报表和演示数据；
+- 导出测试：`AdminExportIntegrationTest` 覆盖后台导出鉴权、主要业务列表 CSV、日志 CSV 和敏感支付凭据不外泄；
 - 测试数据库：集成测试强制使用 H2 内存库和 `ddl-auto=create-drop`，不会连接 MySQL，不会污染现有业务数据或推进现有自增索引；
 - 外部支付：支付宝、微信、聚合支付实测需要真实商户和回调环境，自动化测试只验证平台内部订单、回调解析、幂等、会员生效和退款状态流转。
 
@@ -608,6 +615,7 @@
 ### 10.2 安全与隔离
 
 - `appId` 与 `appSecret` 绑定请求，服务端只保存 `app_secret_hash`，明文 secret 仅创建或重置时返回；
+- 手机号验证码只保存短期状态，支持有效期、发送冷却、错误次数上限和成功消费；生产环境不返回调试验证码；
 - `appSecret` 支持重置和版本号，客户端请求携带 `appId`、时间戳、nonce、签名，服务端校验后处理；
 - 1.0 阶段支持 `X-App-Id` + `X-App-Secret` 简化鉴权，也支持时间戳、nonce、签名模式，减少重放风险；
 - 签名模式使用 `SHA-256(appSecret 明文)` 的十六进制结果作为 HMAC-SHA256 key，服务端只保存该 hash，不保存明文 secret；

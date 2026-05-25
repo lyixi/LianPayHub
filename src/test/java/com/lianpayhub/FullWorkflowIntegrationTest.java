@@ -326,6 +326,9 @@ public class FullWorkflowIntegrationTest {
         getOk("/admin/reports/overview", token);
         JsonNode trend = getOk("/admin/reports/trend", token, "days", "7");
         assertTrue(trend.path("data").isArray());
+        JsonNode paymentSummary = getOk("/admin/reports/payment-summary", token);
+        assertEquals(DEVICE_APP, text(findArrayItem(paymentSummary.path("data").path("byApp"), "dimension", DEVICE_APP), "/dimension"));
+        assertEquals("AGGREGATE", text(findArrayItem(paymentSummary.path("data").path("byPayChannel"), "dimension", "AGGREGATE"), "/dimension"));
 
         getOk("/admin/logs/app-logins", token, "appId", STANDARD_APP, "mobile", MOBILE, "size", "20");
         JsonNode operationLogs = getOk("/admin/logs/admin-operations", token,

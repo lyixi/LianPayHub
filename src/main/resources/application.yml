@@ -31,6 +31,11 @@ lianpayhub:
     jwt-secret: change-me-to-a-long-random-secret-for-production
     jwt-expire-minutes: 720
     sms-code-required: false
+    sms-code-expire-minutes: 5
+    sms-code-cooldown-seconds: 60
+    sms-code-max-attempts: 5
+    sms-debug-return-code: true
+    sms-provider: local
     api-auth-enabled: false
     api-auth-mode: secret
     api-signature-time-window-seconds: 300
