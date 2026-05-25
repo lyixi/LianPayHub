@@ -5,6 +5,8 @@ import com.lianpayhub.common.error.BusinessException;
 import com.lianpayhub.common.error.ErrorCode;
 import com.lianpayhub.config.PaymentProperties;
 import com.lianpayhub.domain.payment.PayChannel;
+import com.lianpayhub.security.AppUserPrincipal;
+import com.lianpayhub.service.security.AppUserAccessService;
 import com.lianpayhub.service.rate.RateLimitService;
 import com.lianpayhub.service.payment.CreateOrderCommand;
 import com.lianpayhub.service.payment.CreateOrderResult;
@@ -12,6 +14,7 @@ import com.lianpayhub.service.payment.PaymentNotifyResult;
 import com.lianpayhub.service.payment.PaymentService;
 import javax.validation.Valid;
 import java.time.Duration;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,19 +24,23 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final RateLimitService rateLimitService;
     private final PaymentProperties paymentProperties;
+    private final AppUserAccessService appUserAccessService;
 
     public PaymentController(PaymentService paymentService, RateLimitService rateLimitService,
-                             PaymentProperties paymentProperties) {
+                             PaymentProperties paymentProperties, AppUserAccessService appUserAccessService) {
         this.paymentService = paymentService;
         this.rateLimitService = rateLimitService;
         this.paymentProperties = paymentProperties;
+        this.appUserAccessService = appUserAccessService;
     }
 
     @PostMapping("/create-order")
-    public ApiResponse<CreateOrderResult> createOrder(@Valid @RequestBody CreateOrderRequest request) {
+    public ApiResponse<CreateOrderResult> createOrder(@Valid @RequestBody CreateOrderRequest request,
+                                                      @AuthenticationPrincipal AppUserPrincipal principal) {
         String subject = request.deviceId() == null ? "user:" + request.userId() : "device:" + request.deviceId();
         rateLimitService.requireWithinLimit("payment:create:" + request.appId() + ":" + subject,
                 20, Duration.ofMinutes(1));
+        appUserAccessService.requireUserAccessWhenNeeded(request.appId(), request.userId(), principal);
         return ApiResponse.ok(paymentService.createOrder(new CreateOrderCommand(
                 request.appId(),
                 request.userId(),

@@ -281,6 +281,14 @@ appId + "\n" + timestamp + "\n" + nonce + "\n" + HTTP_METHOD + "\n" + requestPat
 
 支付回调 `/api/payment/notify/{payChannel}` 不走 APP Secret/签名鉴权，后续接真实支付宝、微信或聚合支付时应在对应 `PaymentProvider` 中做官方验签。设备码会员 APP（`DEVICE_ONLY`）的设备注册、启动、会员状态查询和创建订单不强制 APP Secret/签名，但仍有接口限频；标准 APP 仍需要按上述方式鉴权。
 
+开启 `api-auth-enabled` 后，标准 APP 的账号会员查询和账号订单创建还需要携带 `/api/auth/login` 返回的用户 JWT：
+
+```http
+Authorization: Bearer <user-token>
+```
+
+服务端会校验用户 token 中的 `appId`、`userId` 与请求参数一致，且用户和绑定关系处于启用状态。设备码会员 APP 仍按 `deviceId/deviceCode` 识别会员，不要求用户 JWT。
+
 ## 运行方式
 
 1. 先准备 MySQL 和 Redis 环境

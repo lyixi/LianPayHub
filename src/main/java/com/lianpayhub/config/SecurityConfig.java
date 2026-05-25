@@ -2,6 +2,7 @@ package com.lianpayhub.config;
 
 import com.lianpayhub.security.AdminJwtAuthenticationFilter;
 import com.lianpayhub.security.AdminOperationLogFilter;
+import com.lianpayhub.security.AppUserJwtAuthenticationFilter;
 import com.lianpayhub.security.ApiAppAuthenticationFilter;
 import com.lianpayhub.security.JsonAccessDeniedHandler;
 import com.lianpayhub.security.JsonAuthenticationEntryPoint;
@@ -22,17 +23,20 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final AdminJwtAuthenticationFilter adminJwtAuthenticationFilter;
+    private final AppUserJwtAuthenticationFilter appUserJwtAuthenticationFilter;
     private final AdminOperationLogFilter adminOperationLogFilter;
     private final ApiAppAuthenticationFilter apiAppAuthenticationFilter;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
     private final JsonAccessDeniedHandler accessDeniedHandler;
 
     public SecurityConfig(AdminJwtAuthenticationFilter adminJwtAuthenticationFilter,
+                          AppUserJwtAuthenticationFilter appUserJwtAuthenticationFilter,
                           AdminOperationLogFilter adminOperationLogFilter,
                           ApiAppAuthenticationFilter apiAppAuthenticationFilter,
                           JsonAuthenticationEntryPoint authenticationEntryPoint,
                           JsonAccessDeniedHandler accessDeniedHandler) {
         this.adminJwtAuthenticationFilter = adminJwtAuthenticationFilter;
+        this.appUserJwtAuthenticationFilter = appUserJwtAuthenticationFilter;
         this.adminOperationLogFilter = adminOperationLogFilter;
         this.apiAppAuthenticationFilter = apiAppAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
@@ -63,7 +67,8 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler)
                 .and()
                 .addFilterBefore(adminJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(apiAppAuthenticationFilter, AdminJwtAuthenticationFilter.class)
+                .addFilterAfter(appUserJwtAuthenticationFilter, AdminJwtAuthenticationFilter.class)
+                .addFilterAfter(apiAppAuthenticationFilter, AppUserJwtAuthenticationFilter.class)
                 .addFilterAfter(adminOperationLogFilter, AdminJwtAuthenticationFilter.class);
         return http.build();
     }
