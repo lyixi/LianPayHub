@@ -11,4 +11,5 @@ public interface LaunchRecordRepository extends JpaRepository<LaunchRecord, Long
     Page<LaunchRecord> findByAppIdAndDeviceId(String appId, Long deviceId, Pageable pageable);
     Page<LaunchRecord> findByAppIdAndUserId(String appId, Long userId, Pageable pageable);
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    long countByAppIdAndCreatedAtBetween(String appId, LocalDateTime start, LocalDateTime end);
 }

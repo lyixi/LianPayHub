@@ -5,7 +5,7 @@
 目标：构建一个企业级统一支付与会员管理后端框架，支持多个 APP 的统一管理、支付套餐管理、会员状态管理、订单与回调、数据展示与报表，以及可扩展的 APP 适配层。
 
 本项目应提供：
-- 后台管理端：APP、套餐、用户、会员、订单、启动记录、报表；
+- 后台管理端：APP、平台配置、套餐、用户、会员、订单、启动记录、报表；
 - APP 统一接口：登录认证、设备码 VIP 判定、会员查询、支付发起；
 - 适配层支持：对于不使用统一登录/支付服务的 APP，也能接入运行数据与状态监控；
 - 支付渠道：支持支付宝、微信、聚合支付，通过统一支付适配层扩展；
@@ -17,7 +17,7 @@
 
 ### 2.1 总体架构
 
-- 管理后台：支持运营人员管理 APP、套餐、订单、会员、报表；
+- 管理后台：支持运营人员管理 APP、支付/短信/邮件平台配置、套餐、订单、会员、报表；
 - 统一后端服务：处理认证、会员、支付、设备、日志、报表；
 - 支付适配层：封装支付宝、微信、聚合支付等不同渠道的下单、验签、回调解析；
 - APP 适配层：对接特定 APP 的业务侧数据上报与状态映射；
@@ -219,6 +219,23 @@
 3. 配置停用：返回业务冲突，禁止继续创建订单；
 4. 敏感凭据仅保存在服务端，后续接入支付宝、微信或聚合支付 SDK 时由 Provider 内部读取使用。
 
+### 4.6.3 `notification_channel_config`
+
+- id
+- channel_type (`SMS`, `EMAIL`)
+- provider_code (`aliyun`, `tencent`, `aggregate`, `smtp`, `aliyun-dm`, `tencent-ses`, `local` 等)
+- display_name
+- sender_name
+- sender_address
+- endpoint
+- config_json
+- credential_json
+- status (`ENABLED`, `DISABLED`)
+- created_at
+- updated_at
+
+- note: 短信和邮件通道统一建模，`credential_json` 用于 AccessKey、Secret、SMTP 授权码等敏感凭据，接口响应不回显，后台操作日志会脱敏。短信验证码发送会优先使用启用的短信通道；阿里云短信和腾讯云短信已接官方 Java SDK，HTTP 聚合短信可按 endpoint 发送通用 JSON 请求。邮件通道当前支持 SMTP 真实发送，云邮件 provider 先保留为可配置扩展点，后续替换 SDK 发送实现即可。
+
 ### 4.7 `member_info`
 
 - id
@@ -388,6 +405,13 @@
 - `POST /admin/payment-configs`
 - `PUT /admin/payment-configs/{id}`
 - `PATCH /admin/payment-configs/{id}/status`
+- `GET /admin/notification-configs`
+- `GET /admin/notification-configs/{id}`
+- `POST /admin/notification-configs`
+- `PUT /admin/notification-configs/{id}`
+- `PATCH /admin/notification-configs/{id}/status`
+- `POST /admin/notification-configs/sms/send`
+- `POST /admin/notification-configs/email/send`
 - `POST /admin/packages`
 - `GET /admin/packages`
 - `PUT /admin/packages/{id}`
@@ -426,7 +450,8 @@
 - `GET /admin/reports/overview`
 - `GET /admin/reports/trend`
 - `GET /admin/reports/payment-summary`
-- `GET /admin/exports/{resource}`：导出 APP、支付配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动记录、适配上报、管理员等 CSV；
+- `GET /admin/reports/analytics`：按日/月/年、全部或指定 APP，统计订单数、支付订单、支付金额、启动、登录、退款、适配上报、新增用户和新增设备；
+- `GET /admin/exports/{resource}`：导出 APP、支付配置、通知配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动记录、适配上报、管理员等 CSV；
 - `GET /admin/exports/logs/{logType}`：导出后台操作、APP 登录、启动、支付事件等日志 CSV；
 - `GET /admin/admin-users`
 - `GET /admin/admin-users/{id}`
@@ -464,7 +489,11 @@
 4. 返回登录 Token 供后续接口使用。
 5. 验证码默认 5 分钟有效，同一 APP + 手机号默认 60 秒内不能重复发送；验证码错误次数超过上限后需重新获取，登录成功后验证码会被消费。
 6. 开发环境可通过 `sms-debug-return-code=true` 返回调试验证码；生产环境必须关闭该配置，并接入真实短信服务商。
-7. 短信发送通过 `SmsSender` 抽象，默认使用阿里云短信配置；真实 SDK 接入前由日志型占位发送器写脱敏日志，后续可按阿里云、腾讯云或聚合短信服务商替换实现。
+7. 短信发送通过通知通道配置统一承载，后台 `平台配置 -> 短信配置` 可维护阿里云、腾讯云、HTTP 聚合短信和本地日志 provider，并可主动发起测试短信。阿里云、腾讯云使用官方 Java SDK 真实提交；聚合短信使用通用 HTTP JSON 适配；`local` 仅用于本地日志调试。
+
+### 6.1.1 邮件发送
+
+后台 `平台配置 -> 邮件配置` 可维护 SMTP、阿里云邮件推送、腾讯云 SES 等邮件 provider，并通过 `/admin/notification-configs/email/send` 主动发送邮件。当前 SMTP 可真实投递，配置由 `config_json` 中的 `host`、`port`、`ssl`、`smtpAuth` 等字段和 `credential_json` 中的 `username`、`password` 组合而成；云邮件 SDK 暂时走日志型占位发送。
 
 ### 6.2 设备码 VIP 判定
 
@@ -558,7 +587,7 @@
 
 ### 8.3 前端与展示
 
-- 管理后台：当前提供静态 HTML/CSS/JS 页面先跑通运营流程，采用轻量 Material 操作台布局，支持深色/浅色模式、主题色切换、加载反馈和响应式表格；后续可升级为 Vue 3 + Ant Design Vue 或 React + Ant Design；
+- 管理后台：当前提供静态 HTML/CSS/JS 页面先跑通运营流程，采用轻量 Material 操作台布局，支持深色/浅色模式、主题色切换、加载反馈、多维统计图和响应式表格；平台配置聚合支付/短信/邮件 tab，交易管理聚合套餐/订单/退款 tab，减少侧边栏层级；后续可升级为 Vue 3 + Ant Design Vue 或 React + Ant Design；
 - 可视化：ECharts；
 - 数据表格：高级筛选、分页、CSV 导出；
 - 权限：登录账户、角色管理，后台界面权限控制。
@@ -572,10 +601,10 @@
 ### 8.5 自动化回归测试
 
 - 轻量烟测：`AdminApiSmokeTest` 覆盖后台登录、APP、支付配置、套餐、订单、回调、会员和退款主链路；
-- 完整流程测试：`FullWorkflowIntegrationTest` 按业务顺序覆盖后台页面与鉴权、管理员维护、APP/套餐/支付配置维护、手机号跨 APP 统一用户、设备启动、会员、订单、退款、适配上报、日志、报表和演示数据；
+- 完整流程测试：`FullWorkflowIntegrationTest` 按业务顺序覆盖后台页面与鉴权、管理员维护、APP/套餐/支付配置/通知配置维护、测试短信、主动邮件发送、手机号跨 APP 统一用户、设备启动、会员、订单、退款、适配上报、日志、多维报表和演示数据；
 - 导出测试：`AdminExportIntegrationTest` 覆盖后台导出鉴权、主要业务列表 CSV、日志 CSV 和敏感支付凭据不外泄；
 - 测试数据库：集成测试强制使用 H2 内存库和 `ddl-auto=create-drop`，不会连接 MySQL，不会污染现有业务数据或推进现有自增索引；
-- 外部支付：支付宝、微信、聚合支付实测需要真实商户和回调环境，自动化测试只验证平台内部订单、回调解析、幂等、会员生效和退款状态流转。
+- 外部支付和外部通知：支付宝、微信、聚合支付实测需要真实商户和回调环境；阿里云/腾讯云短信和云邮件实测需要真实密钥、签名和模板。自动化测试只验证平台内部订单、回调解析、幂等、会员生效、退款状态流转、通知配置脱敏和发送入口，避免向真实手机号发短信。
 
 ---
 

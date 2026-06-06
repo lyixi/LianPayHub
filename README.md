@@ -33,6 +33,7 @@
 
 - APP 管理基础接口
 - 支付渠道配置管理：按 APP 维护支付宝、微信、聚合支付商户参数和敏感凭据
+- 通知通道配置管理：维护阿里云/腾讯云/HTTP 聚合短信、SMTP/云邮件等短信与邮件通道，支持后台测试短信和主动发送邮件
 - 套餐管理基础接口
 - 设备注册与启动记录
 - 手机号验证码发送、登录校验与用户 APP 绑定
@@ -46,11 +47,12 @@
 - 适配型 APP 数据上报
 - 统一 API 返回与异常处理
 - 后台管理员登录、JWT 鉴权、默认管理员初始化、管理员创建/启停/重置密码/修改自身密码
-- 静态管理后台页面：总览、APP、支付配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配、日志、管理员、工具
+- 静态管理后台页面：总览、APP、平台配置（支付/短信/邮件）、交易管理（套餐/订单/退款）、用户、绑定、设备、会员、回调、启动、适配、日志、管理员、工具
 - 后台用户、用户-APP 绑定、设备绑定/解绑、会员、订单、启动记录分页查询与基础维护
-- 后台 APP、支付配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配上报、日志、管理员 CSV 导出
+- 后台 APP、支付配置、通知配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配上报、日志、管理员 CSV 导出
 - 后台总览报表基础指标
 - 后台支付汇总报表：按 APP 和支付渠道统计订单、支付订单与收入
+- 后台多维统计报表：支持按日/月/年、全部或指定 APP、订单数、启动数、登录数、支付/退款金额等指标生成趋势图
 - 后台操作日志、APP 登录日志、启动日志、支付事件日志查询
 
 ## 默认管理员
@@ -95,7 +97,7 @@ Authorization: Bearer <token>
 启动服务后访问：
 
 ```text
-http://localhost:8080/swagger-ui/index.html
+http://localhost:8888/swagger-ui/index.html
 ```
 
 后台接口调试步骤：
@@ -112,7 +114,7 @@ http://localhost:8080/swagger-ui/index.html
 启动服务后访问：
 
 ```text
-http://localhost:8080/console/
+http://localhost:8888/console/
 ```
 
 默认登录：
@@ -121,13 +123,15 @@ http://localhost:8080/console/
 admin / admin123456
 ```
 
-当前页面已包含总览、APP、支付配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配、日志、管理员和调试工具。页面直接调用现有后端 API，适合先看效果和做本地运营联调。控制台采用轻量 Material 操作台布局，带深色/浅色模式、主题色切换和加载反馈，主题偏好会保存在浏览器本地。
+当前页面已包含总览、统计图、APP、平台配置、交易管理、用户、绑定、设备、会员、回调、启动、适配、日志、管理员和调试工具。平台配置内含支付、短信、邮件三个 tab；交易管理内含套餐、订单、退款三个 tab，避免侧边栏过长。页面直接调用现有后端 API，适合先看效果和做本地运营联调。控制台采用轻量 Material 操作台布局，带深色/浅色模式、主题色切换和加载反馈，主题偏好会保存在浏览器本地。
 
 常用后台查询接口：
 
 - `GET /admin/users`
 - `GET /admin/payment-configs`
 - `GET /admin/payment-configs/{id}`
+- `GET /admin/notification-configs`
+- `GET /admin/notification-configs/{id}`
 - `GET /admin/user-bindings`
 - `GET /admin/user-bindings/{id}`
 - `GET /admin/devices`
@@ -143,6 +147,7 @@ admin / admin123456
 - `GET /admin/reports/overview`
 - `GET /admin/reports/trend?days=14`
 - `GET /admin/reports/payment-summary`
+- `GET /admin/reports/analytics?granularity=DAY&metric=PAID_AMOUNT&periods=30`
 - `GET /admin/admin-users`
 - `GET /admin/admin-users/{id}`
 
@@ -163,6 +168,11 @@ admin / admin123456
 - `POST /admin/payment-configs`
 - `PUT /admin/payment-configs/{id}`
 - `PATCH /admin/payment-configs/{id}/status`
+- `POST /admin/notification-configs`
+- `PUT /admin/notification-configs/{id}`
+- `PATCH /admin/notification-configs/{id}/status`
+- `POST /admin/notification-configs/sms/send`
+- `POST /admin/notification-configs/email/send`
 - `PUT /admin/packages/{id}`
 - `PATCH /admin/packages/{id}/status`
 - `POST /admin/orders/{id}/mark-paid`
@@ -219,7 +229,7 @@ Content-Type: application/json
 - 渠道交易号：`tradeNo`、`trade_no`、`transaction_id`
 - 成功状态：`verified=true`、`success=true`、`paid=true`、`status=SUCCESS`、`trade_status=TRADE_SUCCESS`
 
-真实接支付宝、微信或聚合支付时，先在后台 `支付配置` 为 APP 维护商户号、渠道 APP ID、回调地址、普通配置和敏感凭据；再替换对应 `PaymentProvider.parseCallback` 内部的官方验签和字段解析逻辑。`PaymentService` 的订单入账、会员开通、回调日志、幂等处理可以复用。
+真实接支付宝、微信或聚合支付时，先在后台 `平台配置 -> 支付配置` 为 APP 维护商户号、渠道 APP ID、回调地址、普通配置和敏感凭据；再替换对应 `PaymentProvider.parseCallback` 内部的官方验签和字段解析逻辑。`PaymentService` 的订单入账、会员开通、回调日志、幂等处理可以复用。
 
 支付配置是可选的：未配置时仍使用骨架 Provider 方便本地联调；如果某个 APP 的某个渠道配置存在但被停用，创建订单会返回业务冲突。
 
@@ -248,7 +258,17 @@ lianpayhub:
 
 当前验证码存储和发送限频使用本地内存，单机部署可直接使用；多实例生产部署建议把验证码、nonce 和限频窗口迁移到 Redis，并接入真实短信服务商发送短信。验证码在登录成功后会被消费，不能重复使用。
 
-短信发送已抽象为 `SmsSender`，默认 `sms-provider: aliyun`。真实阿里云 SDK 未接入前会走日志型占位发送，方便本地联调；接入阿里云、腾讯云或聚合短信时替换对应实现并切换 `sms-provider` 即可。
+短信发送已抽象为通知通道，默认 `sms-provider: aliyun`。后台 `平台配置 -> 短信配置` 可以维护阿里云、腾讯云、HTTP 聚合短信或本地日志通道，并支持测试发送。阿里云短信和腾讯云短信已接入官方 Java SDK，填好密钥、签名、模板 ID 后即可真实提交发送；`local` 仅用于本地日志调试。
+
+常用短信配置字段：
+
+- 阿里云 `aliyun`：`credentialJson` 填 `accessKeyId/accessKeySecret`，`configJson` 填 `templateCode`，签名可填 `senderName` 或 `configJson.signName`。
+- 腾讯云 `tencent`：`credentialJson` 填 `secretId/secretKey`，`configJson` 填 `sdkAppId/templateId/region/templateParamKeys`，签名可填 `senderName` 或 `configJson.signName`。
+- HTTP 聚合 `aggregate`：`endpoint` 填平台接口地址，`credentialJson` 可填 `apiKey` 或 `token`，`configJson.headers/extraBody` 可补充平台需要的固定头和固定参数。
+
+## 邮件发送
+
+后台 `平台配置 -> 邮件配置` 可以维护 SMTP、阿里云邮件推送、腾讯云 SES 等邮件通道。当前 SMTP 已支持真实发送：普通配置示例为 `{"host":"smtp.example.com","port":465,"ssl":true,"smtpAuth":true}`，敏感凭据示例为 `{"username":"noreply@example.com","password":"授权码"}`；非 SMTP 云邮件 provider 暂时走日志型占位发送，后续接官方 SDK 时复用同一套配置、脱敏和后台操作日志。
 
 ## APP 接口鉴权
 
@@ -403,7 +423,7 @@ mvn -q -Dtest=AdminApiSmokeTest test
 mvn -q -Dtest=FullWorkflowIntegrationTest test
 ```
 
-该测试同样使用 H2 内存库，不连接 `application.yml` 中配置的 MySQL，因此不会影响本地或服务器现有数据，也不会推进现有表的自增索引。覆盖顺序包括：后台页面与鉴权、管理员维护、APP/支付配置/套餐维护、手机号跨 APP 统一用户、用户与绑定启停、设备注册/绑定/启动、会员赠送/取消、账号订单手动支付、设备会员订单回调与重复回调、退款成功/失败、适配上报、日志查询、报表查询和演示数据接口。
+该测试同样使用 H2 内存库，不连接 `application.yml` 中配置的 MySQL，因此不会影响本地或服务器现有数据，也不会推进现有表的自增索引。覆盖顺序包括：后台页面与鉴权、管理员维护、APP/支付配置/通知配置/套餐维护、测试短信与主动邮件发送、手机号跨 APP 统一用户、用户与绑定启停、设备注册/绑定/启动、会员赠送/取消、账号订单手动支付、设备会员订单回调与重复回调、退款成功/失败、适配上报、日志查询、多维报表查询和演示数据接口。
 
 如果机器内存较紧，可以先设置 Maven 内存参数再运行：
 
@@ -427,6 +447,7 @@ Windows 本地也可以直接运行完整回归脚本：
 ## 后续计划
 
 - 接入真实支付宝、微信或聚合支付 SDK 与验签配置
+- 补充更多短信平台适配、云邮件 SDK 和真实支付 SDK
 - 补充更细的后台角色/权限与 APP 级数据范围
 - 增加更多报表和定时汇总任务
 

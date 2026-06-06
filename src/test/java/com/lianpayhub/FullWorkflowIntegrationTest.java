@@ -15,12 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.mock.web.MockMultipartFile;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:lianpayhub-full-flow-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_ON_EXIT=FALSE",
@@ -43,7 +46,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "lianpayhub.security.api-auth-enabled=false",
         "lianpayhub.admin.default-username=admin",
         "lianpayhub.admin.default-password=admin123456",
-        "lianpayhub.payment.dev-tools-enabled=true"
+        "lianpayhub.payment.dev-tools-enabled=true",
+        "lianpayhub.storage.local-path=./target/test-storage",
+        "lianpayhub.storage.local-base-url=http://localhost:8888/files"
 })
 @AutoConfigureMockMvc
 public class FullWorkflowIntegrationTest {
@@ -77,6 +82,8 @@ public class FullWorkflowIntegrationTest {
 
         JsonNode unauthenticated = requestJson(get("/admin/auth/me"), null, null, 401);
         assertCode(unauthenticated, 401);
+        JsonNode expiredAdminToken = requestJson(get("/admin/auth/me"), "expired-or-invalid-token", null, 401);
+        assertCode(expiredAdminToken, 401);
 
         JsonNode login = postOk("/admin/auth/login", null,
                 "{\"username\":\"admin\",\"password\":\"admin123456\"}");
@@ -180,12 +187,52 @@ public class FullWorkflowIntegrationTest {
                 409);
         patchOk("/admin/payment-configs/" + paymentConfigId + "/status", token, "{\"status\":\"ENABLED\"}");
 
+        JsonNode smsConfig = postOk("/admin/notification-configs", token,
+                "{\"channelType\":\"SMS\",\"providerCode\":\"local\",\"displayName\":\"Flow Local SMS\","
+                        + "\"senderName\":\"LianPayHub\",\"senderAddress\":\"LianPayHub\","
+                        + "\"configJson\":\"{}\","
+                        + "\"credentialJson\":\"\"}");
+        Long smsConfigId = longValue(smsConfig, "/data/id");
+        assertFalse(smsConfig.path("data").path("credentialConfigured").asBoolean());
+        assertFalse(smsConfig.path("data").has("credentialJson"));
+        getOk("/admin/notification-configs", token, "channelType", "SMS", "providerCode", "local", "size", "20");
+        JsonNode updatedSmsConfig = putOk("/admin/notification-configs/" + smsConfigId, token,
+                "{\"providerCode\":\"local\",\"displayName\":\"Flow Local SMS Updated\","
+                        + "\"senderName\":\"LianPayHub\",\"senderAddress\":\"LianPayHub\","
+                        + "\"configJson\":\"{}\","
+                        + "\"credentialJson\":\"\"}");
+        assertEquals("Flow Local SMS Updated", text(updatedSmsConfig, "/data/displayName"));
+        postOk("/admin/notification-configs/sms/send", token,
+                "{\"configId\":" + smsConfigId + ",\"appId\":\"" + STANDARD_APP
+                        + "\",\"mobile\":\"13800008888\",\"content\":\"flow sms test\"}");
+        patchOk("/admin/notification-configs/" + smsConfigId + "/status", token, "{\"status\":\"DISABLED\"}");
+        postCode("/admin/notification-configs/sms/send", token,
+                "{\"configId\":" + smsConfigId + ",\"mobile\":\"13800008888\",\"content\":\"disabled sms\"}",
+                409);
+        patchOk("/admin/notification-configs/" + smsConfigId + "/status", token, "{\"status\":\"ENABLED\"}");
+
+        JsonNode emailConfig = postOk("/admin/notification-configs", token,
+                "{\"channelType\":\"EMAIL\",\"providerCode\":\"local\",\"displayName\":\"Flow Local Mail\","
+                        + "\"senderName\":\"LianPayHub\",\"senderAddress\":\"noreply@example.com\","
+                        + "\"configJson\":\"{}\","
+                        + "\"credentialJson\":\"{\\\"password\\\":\\\"flow-mail-secret\\\"}\"}");
+        Long emailConfigId = longValue(emailConfig, "/data/id");
+        assertFalse(emailConfig.path("data").has("credentialJson"));
+        postOk("/admin/notification-configs/email/send", token,
+                "{\"configId\":" + emailConfigId + ",\"to\":\"flow@example.com\","
+                        + "\"subject\":\"Flow Mail\",\"content\":\"flow mail test\",\"html\":false}");
+        mockMvc.perform(get("/admin/exports/notification-configs")
+                        .header("Authorization", "Bearer " + token)
+                        .param("channelType", "SMS"))
+                .andExpect(status().isOk());
+
         postOk("/api/auth/send-code", null,
                 "{\"appId\":\"" + STANDARD_APP + "\",\"mobile\":\"" + MOBILE + "\"}");
         JsonNode appLogin = postOk("/api/auth/login", null,
                 "{\"appId\":\"" + STANDARD_APP + "\",\"mobile\":\"" + MOBILE + "\",\"code\":\"000000\"}");
         Long userId = longValue(appLogin, "/data/userId");
-        assertTrue(text(appLogin, "/data/token").length() > 10);
+        String appUserToken = text(appLogin, "/data/token");
+        assertTrue(appUserToken.length() > 10);
 
         JsonNode secondAppLogin = postOk("/api/auth/login", null,
                 "{\"appId\":\"" + SECOND_APP + "\",\"mobile\":\"" + MOBILE + "\"}");
@@ -326,9 +373,95 @@ public class FullWorkflowIntegrationTest {
         getOk("/admin/reports/overview", token);
         JsonNode trend = getOk("/admin/reports/trend", token, "days", "7");
         assertTrue(trend.path("data").isArray());
+        JsonNode paidAmountAnalytics = getOk("/admin/reports/analytics", token,
+                "granularity", "DAY", "metric", "PAID_AMOUNT", "appId", DEVICE_APP, "periods", "7");
+        assertEquals("PAID_AMOUNT", text(paidAmountAnalytics, "/data/metric"));
+        assertEquals(DEVICE_APP, text(paidAmountAnalytics, "/data/appId"));
+        assertTrue(paidAmountAnalytics.path("data").path("points").isArray());
+        JsonNode monthlyLaunchAnalytics = getOk("/admin/reports/analytics", token,
+                "granularity", "MONTH", "metric", "LAUNCH_COUNT", "periods", "3");
+        assertEquals("MONTH", text(monthlyLaunchAnalytics, "/data/granularity"));
+        assertTrue(monthlyLaunchAnalytics.path("data").path("points").size() <= 3);
         JsonNode paymentSummary = getOk("/admin/reports/payment-summary", token);
         assertEquals(DEVICE_APP, text(findArrayItem(paymentSummary.path("data").path("byApp"), "dimension", DEVICE_APP), "/dimension"));
         assertEquals("AGGREGATE", text(findArrayItem(paymentSummary.path("data").path("byPayChannel"), "dimension", "AGGREGATE"), "/dimension"));
+
+        // === 云同步文件系统 ===
+
+        // 未认证访问返回 401
+        requestJson(get("/api/sync/list"), null, null, 401);
+
+        // 上传 JSON 配置文件
+        JsonNode uploadConfig = syncUpload(appUserToken, "/settings/config.json", "config.json",
+                "application/json", "{\"theme\":\"dark\"}".getBytes());
+        assertCode(uploadConfig, 0);
+        Long configFileId = longValue(uploadConfig, "/data/id");
+        assertEquals("/settings/config.json", text(uploadConfig, "/data/virtualPath"));
+        assertEquals("CONFIG", text(uploadConfig, "/data/fileCategory"));
+        assertEquals(1L, longValue(uploadConfig, "/data/version").longValue());
+
+        // 同路径覆盖写入，version 自增，id 不变
+        JsonNode overwrittenConfig = syncUpload(appUserToken, "/settings/config.json", "config.json",
+                "application/json", "{\"theme\":\"light\"}".getBytes());
+        assertCode(overwrittenConfig, 0);
+        assertEquals(configFileId.longValue(), longValue(overwrittenConfig, "/data/id").longValue());
+        assertEquals(2L, longValue(overwrittenConfig, "/data/version").longValue());
+
+        // 上传有效图片（最小 1×1 PNG）
+        JsonNode uploadPng = syncUpload(appUserToken, "/images/icon.png", "icon.png",
+                "image/png", generateMinimalPng());
+        assertCode(uploadPng, 0);
+        Long pngFileId = longValue(uploadPng, "/data/id");
+        assertEquals("IMAGE", text(uploadPng, "/data/fileCategory"));
+
+        // 拒绝不支持的文件类型（.exe）
+        JsonNode rejectedExe = syncUpload(appUserToken, "/bad/virus.exe", "virus.exe",
+                "application/octet-stream", new byte[]{0x4D, 0x5A, 0x00, 0x00});
+        assertCode(rejectedExe, 400);
+
+        // 拒绝 Magic Bytes 不匹配（文本内容假冒 .png 扩展名）
+        JsonNode fakePng = syncUpload(appUserToken, "/bad/fake.png", "fake.png",
+                "image/png", "not-a-real-image-content".getBytes());
+        assertCode(fakePng, 400);
+
+        // 列出目录（/settings 下应有 config.json）
+        JsonNode settingsList = getOk("/api/sync/list", appUserToken, "path", "/settings");
+        assertTrue(settingsList.path("data").isArray());
+        assertEquals(1, settingsList.path("data").size());
+        assertEquals("/settings/config.json", settingsList.path("data").get(0).path("virtualPath").asText());
+
+        // 获取限时下载 URL
+        JsonNode downloadResult = getOk("/api/sync/" + configFileId + "/url", appUserToken);
+        assertTrue(text(downloadResult, "/data/url").length() > 0);
+        assertEquals(900L, longValue(downloadResult, "/data/expiresInSeconds").longValue());
+
+        // 全量同步（since=0），应包含 config.json 和 icon.png
+        JsonNode allChanges = getOk("/api/sync/changes", appUserToken, "since", "0");
+        assertTrue(allChanges.path("data").path("changes").isArray());
+        assertTrue(allChanges.path("data").path("changes").size() >= 2);
+        assertTrue(allChanges.path("data").path("syncTimestamp").asLong() > 0);
+
+        // 删除配置文件（软删除）
+        JsonNode deleteResp = requestJson(delete("/api/sync/" + configFileId), appUserToken, null, 200);
+        assertCode(deleteResp, 0);
+
+        // 全量同步：deleted 的文件 deleted 字段应为 true
+        JsonNode afterDeleteChanges = getOk("/api/sync/changes", appUserToken, "since", "0");
+        boolean foundDeleted = false;
+        for (JsonNode change : afterDeleteChanges.path("data").path("changes")) {
+            if (configFileId.longValue() == change.path("id").asLong()) {
+                assertTrue(change.path("deleted").asBoolean(),
+                        "config.json 应标记为 deleted");
+                foundDeleted = true;
+            }
+        }
+        assertTrue(foundDeleted, "已删除的文件应出现在 changes 列表中");
+
+        // 已删除文件不再出现在目录列表中
+        JsonNode settingsListAfterDelete = getOk("/api/sync/list", appUserToken, "path", "/settings");
+        assertEquals(0, settingsListAfterDelete.path("data").size());
+
+        // === 云同步文件系统结束 ===
 
         getOk("/admin/logs/app-logins", token, "appId", STANDARD_APP, "mobile", MOBILE, "size", "20");
         JsonNode operationLogs = getOk("/admin/logs/admin-operations", token,
@@ -338,6 +471,7 @@ public class FullWorkflowIntegrationTest {
         assertFalse(operationLogBody.contains("operatorReset123"));
         assertFalse(operationLogBody.contains("adminFlow123456"));
         assertFalse(operationLogBody.contains("flow-secret-key"));
+        assertFalse(operationLogBody.contains("flow-mail-secret"));
         assertNotEquals(0, operationLogs.path("data").path("content").size());
     }
 
@@ -465,5 +599,28 @@ public class FullWorkflowIntegrationTest {
             }
         }
         throw new AssertionError("Item not found: " + field + "=" + value);
+    }
+
+    /** 上传文件到 /api/sync/upload，返回 ApiResponse JSON（HTTP 始终 200，错误体现在 code 字段）。 */
+    private JsonNode syncUpload(String token, String path, String filename,
+                                String contentType, byte[] content) throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", filename, contentType, content);
+        MvcResult result = mockMvc.perform(
+                        multipart("/api/sync/upload")
+                                .file(file)
+                                .param("path", path)
+                                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    /** 生成最小有效 1×1 PNG（用于测试图片上传校验通过路径）。 */
+    private byte[] generateMinimalPng() throws Exception {
+        java.awt.image.BufferedImage img =
+                new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(img, "png", baos);
+        return baos.toByteArray();
     }
 }

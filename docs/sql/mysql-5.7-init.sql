@@ -35,6 +35,51 @@ CREATE TABLE IF NOT EXISTS payment_channel_config (
   KEY idx_payment_channel_config_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS notification_channel_config (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  channel_type VARCHAR(32) NOT NULL,
+  provider_code VARCHAR(64) NOT NULL,
+  display_name VARCHAR(128) NOT NULL,
+  sender_name VARCHAR(128) NULL,
+  sender_address VARCHAR(256) NULL,
+  endpoint VARCHAR(512) NULL,
+  template_code VARCHAR(128) NULL,
+  access_key_id VARCHAR(256) NULL,
+  access_key_secret VARCHAR(512) NULL,
+  secret_id VARCHAR(256) NULL,
+  secret_key VARCHAR(512) NULL,
+  sdk_app_id VARCHAR(128) NULL,
+  region VARCHAR(128) NULL,
+  config_json LONGTEXT NULL,
+  credential_json LONGTEXT NULL,
+  status VARCHAR(32) NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_notification_channel_provider (channel_type, provider_code),
+  KEY idx_notification_channel_status (channel_type, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sms_send_log (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  config_id BIGINT NULL,
+  channel_type VARCHAR(32) NOT NULL,
+  provider_code VARCHAR(64) NULL,
+  app_id VARCHAR(64) NULL,
+  mobile VARCHAR(32) NOT NULL,
+  template_code VARCHAR(128) NULL,
+  params_json LONGTEXT NULL,
+  message_id VARCHAR(128) NULL,
+  success BIT NOT NULL,
+  result_message VARCHAR(512) NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_sms_send_log_type_time (channel_type, created_at),
+  KEY idx_sms_send_log_config_time (config_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 CREATE TABLE IF NOT EXISTS admin_user (
   id BIGINT NOT NULL AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -276,4 +321,38 @@ CREATE TABLE IF NOT EXISTS adapter_report (
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
   KEY idx_adapter_report_app_source (app_id, source_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+-- 云同步文件系统
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_file (
+  id            BIGINT NOT NULL AUTO_INCREMENT,
+  user_id       BIGINT NOT NULL,
+  app_id        VARCHAR(64) NOT NULL,
+  virtual_path  VARCHAR(1024) NOT NULL COMMENT '用户视角路径，如 /settings/config.json',
+  file_name     VARCHAR(256) NOT NULL,
+  storage_key   VARCHAR(512) NOT NULL COMMENT '存储后端 key，格式：sync/{appId}/{userId}/{UUID}.{ext}',
+  content_type  VARCHAR(128) NULL,
+  size_bytes    BIGINT NOT NULL DEFAULT 0,
+  checksum      VARCHAR(64) NULL COMMENT 'SHA-256',
+  file_category VARCHAR(16) NOT NULL COMMENT 'CONFIG / IMAGE',
+  version       BIGINT NOT NULL DEFAULT 1,
+  deleted_at    DATETIME NULL COMMENT '软删除时间，NULL 表示未删除',
+  created_at    DATETIME NOT NULL,
+  updated_at    DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_user_file_owner (user_id, app_id),
+  KEY idx_user_file_path (user_id, app_id, virtual_path(256)),
+  KEY idx_user_file_updated (user_id, app_id, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS user_storage_quota (
+  user_id     BIGINT NOT NULL,
+  app_id      VARCHAR(64) NOT NULL,
+  used_bytes  BIGINT NOT NULL DEFAULT 0,
+  quota_bytes BIGINT NOT NULL DEFAULT 52428800 COMMENT '默认 50 MB',
+  file_count  INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, app_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -14,6 +14,10 @@ import com.lianpayhub.domain.adapter.AdapterReport;
 import com.lianpayhub.common.error.BusinessException;
 import com.lianpayhub.common.error.ErrorCode;
 import com.lianpayhub.repository.*;
+import com.lianpayhub.service.report.AnalyticsGranularity;
+import com.lianpayhub.service.report.AnalyticsMetric;
+import com.lianpayhub.service.report.AnalyticsReportService;
+import com.lianpayhub.service.report.AnalyticsResult;
 import com.lianpayhub.service.report.AdminOverviewResult;
 import com.lianpayhub.service.report.AdminOverviewService;
 import com.lianpayhub.service.report.AdminTrendService;
@@ -43,6 +47,7 @@ public class AdminDataController {
     private final AdminOverviewService overviewService;
     private final AdminTrendService trendService;
     private final PaymentSummaryService paymentSummaryService;
+    private final AnalyticsReportService analyticsReportService;
     private final MemberService memberService;
     private final DeviceService deviceService;
 
@@ -57,6 +62,7 @@ public class AdminDataController {
                                AdminOverviewService overviewService,
                                AdminTrendService trendService,
                                PaymentSummaryService paymentSummaryService,
+                               AnalyticsReportService analyticsReportService,
                                MemberService memberService,
                                DeviceService deviceService) {
         this.userInfoRepository = userInfoRepository;
@@ -70,6 +76,7 @@ public class AdminDataController {
         this.overviewService = overviewService;
         this.trendService = trendService;
         this.paymentSummaryService = paymentSummaryService;
+        this.analyticsReportService = analyticsReportService;
         this.memberService = memberService;
         this.deviceService = deviceService;
     }
@@ -295,6 +302,14 @@ public class AdminDataController {
     @GetMapping("/reports/payment-summary")
     public ApiResponse<PaymentSummaryResult> paymentSummary() {
         return ApiResponse.ok(paymentSummaryService.summary());
+    }
+
+    @GetMapping("/reports/analytics")
+    public ApiResponse<AnalyticsResult> analytics(@RequestParam(defaultValue = "DAY") AnalyticsGranularity granularity,
+                                                  @RequestParam(defaultValue = "ORDER_COUNT") AnalyticsMetric metric,
+                                                  @RequestParam(required = false) String appId,
+                                                  @RequestParam(defaultValue = "30") int periods) {
+        return ApiResponse.ok(analyticsReportService.analytics(granularity, metric, appId, periods));
     }
 
     private PageRequest pageRequest(int page, int size) {

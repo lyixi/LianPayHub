@@ -20,10 +20,15 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     Long sumAmountCentsByPayStatus(PayStatus payStatus);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    long countByAppIdAndCreatedAtBetween(String appId, LocalDateTime start, LocalDateTime end);
     long countByPayStatusAndPaidAtBetween(PayStatus payStatus, LocalDateTime start, LocalDateTime end);
+    long countByAppIdAndPayStatusAndPaidAtBetween(String appId, PayStatus payStatus, LocalDateTime start, LocalDateTime end);
 
     @Query("select coalesce(sum(o.amountCents), 0) from PaymentOrder o where o.payStatus = ?1 and o.paidAt >= ?2 and o.paidAt < ?3")
     Long sumAmountCentsByPayStatusAndPaidAtBetween(PayStatus payStatus, LocalDateTime start, LocalDateTime end);
+
+    @Query("select coalesce(sum(o.amountCents), 0) from PaymentOrder o where o.appId = ?1 and o.payStatus = ?2 and o.paidAt >= ?3 and o.paidAt < ?4")
+    Long sumAmountCentsByAppIdAndPayStatusAndPaidAtBetween(String appId, PayStatus payStatus, LocalDateTime start, LocalDateTime end);
 
     @Query("select o.appId, count(o), " +
             "sum(case when o.payStatus = ?1 then 1 else 0 end), " +

@@ -6,6 +6,8 @@ var state = {
   view: localStorage.getItem("lph_view") || "dashboard",
   pageByView: {},
   filtersByView: {},
+  channelsTab: localStorage.getItem("lph_channels_tab") || "payment",
+  commerceTab: localStorage.getItem("lph_commerce_tab") || "packages",
   logTab: "admin-operations",
   theme: localStorage.getItem("lph_theme") || "dark",
   accent: localStorage.getItem("lph_accent") || "teal"
@@ -14,14 +16,12 @@ var state = {
 var titles = {
   dashboard: ["总览", "运营数据与接口状态"],
   apps: ["APP 管理", "创建、编辑、启停与密钥重置"],
-  paymentConfigs: ["支付配置", "维护各 APP 的支付渠道和商户参数"],
-  packages: ["套餐管理", "维护会员套餐和上下架状态"],
+  channels: ["平台配置", "支付、短信与邮件平台配置"],
+  commerce: ["交易管理", "套餐、订单与退款集中处理"],
   users: ["用户管理", "统一账号和状态管理"],
   bindings: ["绑定管理", "用户与 APP 的绑定关系"],
   devices: ["设备管理", "设备码、绑定和最近启动记录"],
   members: ["会员管理", "查询、赠送和取消会员"],
-  orders: ["订单管理", "订单详情、标记支付与退款入口"],
-  refunds: ["退款管理", "申请退款和手动确认"],
   callbacks: ["回调日志", "支付渠道回调验签与处理记录"],
   launches: ["启动记录", "APP 启动、登录与支付事件记录"],
   adapter: ["适配上报", "第三方 APP 运行状态与事件上报"],
@@ -71,7 +71,37 @@ var displayLabels = {
   REFUND_FAILED: "退款失败",
   SYSTEM: "系统",
   ADMIN: "管理员",
-  CHANNEL: "支付渠道"
+  CHANNEL: "支付渠道",
+  SMS: "短信",
+  EMAIL: "邮件",
+  "aliyun": "阿里云",
+  "tencent": "腾讯云",
+  "aggregate": "HTTP 聚合平台",
+  "local": "本地日志",
+  "smtp": "SMTP 邮箱",
+  "aliyun-dm": "阿里云邮件推送",
+  "tencent-ses": "腾讯云 SES",
+  "sendcloud": "SendCloud",
+  "mailgun": "Mailgun"
+};
+
+var analyticsMetricLabels = {
+  ORDER_COUNT: "订单数",
+  PAID_ORDER_COUNT: "支付订单数",
+  PAID_AMOUNT: "支付金额",
+  LAUNCH_COUNT: "启动数",
+  LOGIN_COUNT: "登录数",
+  REFUND_COUNT: "退款数",
+  REFUND_AMOUNT: "退款金额",
+  ADAPTER_REPORT_COUNT: "适配上报",
+  NEW_USER_COUNT: "新增用户",
+  NEW_DEVICE_COUNT: "新增设备"
+};
+
+var analyticsGranularityLabels = {
+  DAY: "按日",
+  MONTH: "按月",
+  YEAR: "按年"
 };
 
 var paymentProviderDefaults = {
@@ -79,6 +109,105 @@ var paymentProviderDefaults = {
   WECHAT: "wechat",
   AGGREGATE: "aggregate",
   OTHER: "other"
+};
+
+var notificationDefaults = {
+  SMS: {
+    aliyun: {
+      displayName: "阿里云短信",
+      senderName: "联付中枢",
+      senderAddress: "联付中枢",
+      endpoint: "dysmsapi.aliyuncs.com",
+      templateCode: "SMS_123456",
+      accessKeyId: "",
+      accessKeySecret: "",
+      secretId: "",
+      secretKey: "",
+      sdkAppId: "",
+      region: "cn-hangzhou",
+      configJson: "{}",
+      credentialJson: ""
+    },
+    tencent: {
+      displayName: "腾讯云短信",
+      senderName: "联付中枢",
+      senderAddress: "联付中枢",
+      endpoint: "sms.tencentcloudapi.com",
+      templateCode: "123456",
+      accessKeyId: "",
+      accessKeySecret: "",
+      secretId: "",
+      secretKey: "",
+      sdkAppId: "",
+      region: "ap-guangzhou",
+      configJson: '{"templateParamKeys":["code"]}',
+      credentialJson: ""
+    },
+    aggregate: {
+      displayName: "聚合短信",
+      senderName: "联付中枢",
+      senderAddress: "联付中枢",
+      endpoint: "https://sms-provider.example.com",
+      templateCode: "LOGIN_CODE",
+      accessKeyId: "",
+      accessKeySecret: "",
+      secretId: "",
+      secretKey: "",
+      sdkAppId: "",
+      region: "",
+      configJson: '{"apiKeyHeader":"X-API-Key","extraBody":{}}',
+      credentialJson: '{"apiKey":""}'
+    },
+    local: {
+      displayName: "本地日志短信",
+      senderName: "联付中枢",
+      senderAddress: "联付中枢",
+      endpoint: "",
+      templateCode: "",
+      accessKeyId: "",
+      accessKeySecret: "",
+      secretId: "",
+      secretKey: "",
+      sdkAppId: "",
+      region: "",
+      configJson: "{}",
+      credentialJson: ""
+    }
+  },
+  EMAIL: {
+    smtp: {
+      displayName: "SMTP 邮箱",
+      senderName: "联付中枢",
+      senderAddress: "noreply@example.com",
+      endpoint: "smtp.example.com",
+      configJson: '{"host":"smtp.example.com","port":465,"ssl":true,"smtpAuth":true}',
+      credentialJson: '{"username":"","password":""}'
+    },
+    "aliyun-dm": {
+      displayName: "阿里云邮件推送",
+      senderName: "联付中枢",
+      senderAddress: "noreply@example.com",
+      endpoint: "dm.aliyuncs.com",
+      configJson: '{"accountName":"","regionId":"cn-hangzhou"}',
+      credentialJson: '{"accessKeyId":"","accessKeySecret":""}'
+    },
+    "tencent-ses": {
+      displayName: "腾讯云 SES",
+      senderName: "联付中枢",
+      senderAddress: "noreply@example.com",
+      endpoint: "ses.tencentcloudapi.com",
+      configJson: '{"region":"ap-guangzhou"}',
+      credentialJson: '{"secretId":"","secretKey":""}'
+    },
+    local: {
+      displayName: "本地日志邮件",
+      senderName: "联付中枢",
+      senderAddress: "noreply@example.com",
+      endpoint: "",
+      configJson: "{}",
+      credentialJson: ""
+    }
+  }
 };
 
 function $(id) { return document.getElementById(id); }
@@ -105,7 +234,10 @@ function bindProviderDefault(channelId, providerId) {
 }
 
 function init() {
+  applyLegacyView();
   if (!titles[state.view]) state.view = "dashboard";
+  if (["payment", "sms", "email"].indexOf(state.channelsTab) < 0) state.channelsTab = "payment";
+  if (["packages", "orders", "refunds"].indexOf(state.commerceTab) < 0) state.commerceTab = "packages";
   if (themeOptions.indexOf(state.theme) < 0) state.theme = "dark";
   if (accentOptions.indexOf(state.accent) < 0) state.accent = "teal";
   applyTheme();
@@ -126,6 +258,19 @@ function init() {
     btn.addEventListener("click", function () { switchView(btn.dataset.view); });
   });
   if (state.token) showApp(); else showLogin();
+}
+
+function applyLegacyView() {
+  var legacyChannels = { paymentConfigs: "payment" };
+  var legacyCommerce = { packages: "packages", orders: "orders", refunds: "refunds" };
+  if (legacyChannels[state.view]) {
+    state.channelsTab = legacyChannels[state.view];
+    state.view = "channels";
+  }
+  if (legacyCommerce[state.view]) {
+    state.commerceTab = legacyCommerce[state.view];
+    state.view = "commerce";
+  }
 }
 
 function applyTheme() {
@@ -170,6 +315,11 @@ function api(path, options) {
       if (text) {
         try { data = JSON.parse(text); } catch (err) { data = null; }
       }
+      if (isAuthExpired(res.status, data)) {
+        var authMessage = (data && data.message) || "登录已过期，请重新登录";
+        handleAuthExpired(authMessage);
+        throw new Error(authMessage);
+      }
       if (!res.ok) {
         var message = (data && data.message) || text || ("HTTP " + res.status);
         throw new Error(message);
@@ -181,6 +331,26 @@ function api(path, options) {
       return data;
     });
   });
+}
+
+function isAuthExpired(status, data) {
+  return status === 401 ||
+    (status === 403 && !!state.token) ||
+    (data && Number(data.code) === 401) ||
+    (data && Number(data.code) === 403 && !!state.token);
+}
+
+function handleAuthExpired(message) {
+  if (!state.token && $("loginView") && !$("loginView").classList.contains("hidden")) {
+    $("loginError").textContent = message || "登录已过期，请重新登录";
+    return;
+  }
+  localStorage.removeItem("lph_token");
+  state.token = "";
+  closeModal();
+  showLogin();
+  $("password").value = "";
+  $("loginError").textContent = message || "登录已过期，请重新登录";
 }
 
 function queryString(params) {
@@ -198,6 +368,17 @@ function exportCsv(path, filename) {
   var headers = {};
   if (state.token) headers["Authorization"] = "Bearer " + state.token;
   fetch(path, { headers: headers }).then(function (res) {
+    if (res.status === 401 || res.status === 403 && !!state.token) {
+      return res.text().then(function (text) {
+        var data = null;
+        if (text) {
+          try { data = JSON.parse(text); } catch (err) { data = null; }
+        }
+        var message = (data && data.message) || "登录已过期，请重新登录";
+        handleAuthExpired(message);
+        throw new Error(message);
+      });
+    }
     if (!res.ok) {
       return res.text().then(function (text) { throw new Error(text || ("HTTP " + res.status)); });
     }
@@ -301,16 +482,151 @@ function fieldClass(id, extraClass) {
   return "field field-" + safeId + (extraClass ? " " + extraClass : "");
 }
 
-function input(id, label, value, type) {
-  return '<label class="' + fieldClass(id) + '">' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + escapeHtml(value || "") + '"></label>';
+function normalizeFieldMeta(metaOrType) {
+  if (!metaOrType) return { required: true, type: "text", showBadge: true, placeholder: "" };
+  if (typeof metaOrType === "string") return { required: true, type: metaOrType, showBadge: true, placeholder: "" };
+  return {
+    required: metaOrType.required !== false,
+    conditional: !!metaOrType.conditional,
+    hint: metaOrType.hint || "",
+    type: metaOrType.type || "text",
+    showBadge: metaOrType.showBadge !== false,
+    placeholder: metaOrType.placeholder || ""
+  };
 }
 
-function textarea(id, label, value) {
-  return '<label class="' + fieldClass(id, "textarea-field") + '">' + label + '<textarea id="' + id + '">' + escapeHtml(value || "") + '</textarea></label>';
+function fieldLabel(label, meta) {
+  var html = '<span class="field-label"><span class="field-label-text">' + label;
+  if (meta.showBadge && (meta.required || meta.conditional)) {
+    html += '<span class="field-required-mark" aria-hidden="true">*</span>';
+  }
+  html += '</span></span>';
+  if (meta.hint) html += '<span class="field-hint">' + escapeHtml(meta.hint) + '</span>';
+  return html;
 }
 
-function select(id, label, values, value) {
-  var html = '<label class="' + fieldClass(id) + '">' + label + '<select id="' + id + '">';
+function input(id, label, value, metaOrType) {
+  var meta = normalizeFieldMeta(metaOrType);
+  return '<label class="' + fieldClass(id) + '">' + fieldLabel(label, meta) + '<input id="' + id + '" type="' + meta.type + '" value="' + escapeHtml(value || "") + '"></label>';
+}
+
+function textarea(id, label, value, meta) {
+  meta = normalizeFieldMeta(meta);
+  return '<label class="' + fieldClass(id, "textarea-field") + '">' + fieldLabel(label, meta) + '<textarea id="' + id + '">' + escapeHtml(value || "") + '</textarea></label>';
+}
+
+function smsProviderVisibility(providerCode) {
+  var provider = String(providerCode || "").toLowerCase();
+  return {
+    isAliyun: provider === "aliyun" || provider === "aliyun-sms",
+    isTencent: provider === "tencent" || provider === "tencent-sms"
+  };
+}
+
+function scopedInput(id, label, value, visible, metaOrType) {
+  var meta = normalizeFieldMeta(metaOrType);
+  return '<label class="' + fieldClass(id, visible ? "" : "hidden") + '">' + fieldLabel(label, meta) + '<input id="' + id + '" type="' + meta.type + '" value="' + escapeHtml(value || "") + '"></label>';
+}
+
+function renderSmsConfigFields(prefix, item, providerCode, mode) {
+  var visibility = smsProviderVisibility(providerCode);
+  var editing = mode === "edit";
+  return scopedInput(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
+    scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
+    scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
+    scopedInput(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填" : "仅腾讯云短信需要" }) +
+    scopedInput(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改" : "腾讯云发送必填") : "仅腾讯云短信需要", type: "password" }) +
+    scopedInput(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填" : "仅腾讯云短信需要" }) +
+    scopedInput(prefix + "Region", "地域", item.region, visibility.isTencent, { required: false, hint: "腾讯云常用，其他通道可留空" });
+}
+
+function syncSmsProviderFields(prefix, providerCode) {
+  var visibility = smsProviderVisibility(providerCode);
+  [prefix + "TemplateCode", prefix + "AccessKeyId", prefix + "AccessKeySecret"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isAliyun);
+  });
+  [prefix + "SecretId", prefix + "SecretKey", prefix + "SdkAppId", prefix + "Region"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isTencent);
+  });
+}
+
+function notificationBody(type, prefix) {
+  var body = {
+    providerCode: $(prefix + "Provider").value,
+    displayName: $(prefix + "Name").value,
+    senderName: $(prefix + "SenderName").value,
+    senderAddress: $(prefix + "SenderAddress").value,
+    endpoint: $(prefix + "Endpoint").value,
+    configJson: $(prefix + "Config").value,
+    credentialJson: $(prefix + "Credential").value
+  };
+  if (type === "SMS") {
+    body.templateCode = $(prefix + "TemplateCode").value;
+    body.accessKeyId = $(prefix + "AccessKeyId").value;
+    body.accessKeySecret = $(prefix + "AccessKeySecret").value;
+    body.secretId = $(prefix + "SecretId").value;
+    body.secretKey = $(prefix + "SecretKey").value;
+    body.sdkAppId = $(prefix + "SdkAppId").value;
+    body.region = $(prefix + "Region").value;
+  }
+  return body;
+}
+
+function notificationDetailFields(item) {
+  var fields = {
+    "ID": item.id,
+    "类型": item.channelType,
+    "平台": item.providerCode,
+    "名称": item.displayName,
+    "发送名称": item.senderName,
+    "发送地址": item.senderAddress,
+    "服务地址": item.endpoint
+  };
+  if (item.channelType === "SMS") {
+    fields["模板编码"] = item.templateCode;
+    fields["AccessKey ID"] = item.accessKeyId;
+    fields["SecretId"] = item.secretId;
+    fields["SDK App ID"] = item.sdkAppId;
+    fields["地域"] = item.region;
+  }
+  fields["普通配置"] = item.configJson;
+  fields["敏感凭据"] = item.credentialConfigured ? "已配置" : "未配置";
+  fields["状态"] = item.status;
+  fields["创建时间"] = item.createdAt;
+  fields["更新时间"] = item.updatedAt;
+  return fields;
+}
+
+function renderNotificationEditFields(item) {
+  return '<div class="form-grid notification-config-form">' +
+    select("notifyEditProvider", "平台", notificationProviderOptions(item.channelType, false), item.providerCode) +
+    input("notifyEditName", "配置名称", item.displayName) +
+    input("notifyEditSenderName", item.channelType === "SMS" ? "短信签名" : "发件名称", item.senderName) +
+    input("notifyEditSenderAddress", item.channelType === "SMS" ? "发送签名/扩展码" : "发件邮箱", item.senderAddress, { required: false }) +
+    input("notifyEditEndpoint", "服务地址", item.endpoint, { required: false }) +
+    (item.channelType === "SMS" ? renderSmsConfigFields("notifyEdit", item, item.providerCode, "edit") : "") +
+    textarea("notifyEditConfig", item.channelType === "SMS" ? "附加配置 JSON" : "普通配置 JSON", item.configJson || "{}", { required: false }) +
+    textarea("notifyEditCredential", item.channelType === "SMS" ? "附加凭据 JSON（留空不修改）" : "敏感凭据 JSON（留空不修改）", "", { required: false }) +
+    '</div>';
+}
+
+function bindNotificationEditProvider(item) {
+  if (item.channelType !== "SMS") return;
+  var provider = $("notifyEditProvider");
+  if (!provider) return;
+  syncSmsProviderFields("notifyEdit", provider.value);
+  provider.addEventListener("change", function () {
+    syncSmsProviderFields("notifyEdit", provider.value);
+  });
+}
+
+
+function select(id, label, values, value, meta) {
+  meta = normalizeFieldMeta(meta);
+  if (/(Filter|logTab)$/.test(String(id || ""))) meta.showBadge = false;
+  var html = '<label class="' + fieldClass(id) + '">' + fieldLabel(label, meta) + '<select id="' + id + '">';
   html += values.map(function (item) {
     var selected = item.value === value ? " selected" : "";
     return '<option value="' + escapeHtml(item.value) + '"' + selected + '>' + escapeHtml(item.label) + '</option>';
@@ -392,14 +708,12 @@ function renderCurrent() {
   var map = {
     dashboard: renderDashboard,
     apps: renderApps,
-    paymentConfigs: renderPaymentConfigs,
-    packages: renderPackages,
+    channels: renderChannels,
+    commerce: renderCommerce,
     users: renderUsers,
     bindings: renderBindings,
     devices: renderDevices,
     members: renderMembers,
-    orders: renderOrders,
-    refunds: renderRefunds,
     callbacks: renderCallbacks,
     launches: renderLaunches,
     adapter: renderAdapterReports,
@@ -418,6 +732,58 @@ function renderCurrent() {
   return Promise.resolve(task)
     .catch(function (err) { toast(err.message); })
     .then(function () { setBusy(false); });
+}
+
+function renderTabs(group, active, tabs) {
+  return '<div class="tab-bar" role="tablist">' + tabs.map(function (tab) {
+    var activeClass = tab.key === active ? " active" : "";
+    return '<button class="tab-btn' + activeClass + '" type="button" role="tab" aria-selected="' +
+      (tab.key === active ? "true" : "false") + '" onclick="' + tab.action + '(\'' + tab.key + '\')">' +
+      escapeHtml(tab.label) + '</button>';
+  }).join("") + '</div>';
+}
+
+function switchChannelsTab(tab) {
+  state.channelsTab = tab;
+  localStorage.setItem("lph_channels_tab", tab);
+  renderCurrent();
+}
+
+function switchCommerceTab(tab) {
+  state.commerceTab = tab;
+  localStorage.setItem("lph_commerce_tab", tab);
+  renderCurrent();
+}
+
+function renderChannels() {
+  if (["payment", "sms", "email"].indexOf(state.channelsTab) < 0) {
+    state.channelsTab = "payment";
+  }
+  var bodyId = state.channelsTab === "payment" ? "paymentConfigs" :
+    state.channelsTab === "sms" ? "smsConfigs" : "emailConfigs";
+  $("channels").innerHTML = renderTabs("channels", state.channelsTab, [
+    { key: "payment", label: "支付配置", action: "switchChannelsTab" },
+    { key: "sms", label: "短信配置", action: "switchChannelsTab" },
+    { key: "email", label: "邮件配置", action: "switchChannelsTab" }
+  ]) + '<div id="' + bodyId + '"></div>';
+  if (state.channelsTab === "payment") return renderPaymentConfigs(currentPage("paymentConfigs"));
+  if (state.channelsTab === "sms") return renderSmsConfigs(currentPage("smsConfigs"));
+  return renderEmailConfigs(currentPage("emailConfigs"));
+}
+
+function renderCommerce() {
+  if (["packages", "orders", "refunds"].indexOf(state.commerceTab) < 0) {
+    state.commerceTab = "packages";
+  }
+  var bodyId = state.commerceTab;
+  $("commerce").innerHTML = renderTabs("commerce", state.commerceTab, [
+    { key: "packages", label: "套餐", action: "switchCommerceTab" },
+    { key: "orders", label: "订单", action: "switchCommerceTab" },
+    { key: "refunds", label: "退款", action: "switchCommerceTab" }
+  ]) + '<div id="' + bodyId + '"></div>';
+  if (state.commerceTab === "packages") return renderPackages();
+  if (state.commerceTab === "orders") return renderOrders(currentPage("orders"));
+  return renderRefunds(currentPage("refunds"));
 }
 
 function setBusy(busy) {
@@ -440,12 +806,35 @@ function closeModal() {
 }
 
 function renderDashboard() {
+  var filters = queryFilters("dashboard");
+  var appId = filters.appId || "";
+  var granularity = filters.granularity || "DAY";
+  var metricName = filters.metric || "PAID_AMOUNT";
+  var periods = filters.periods || "30";
+  var analyticsPath = "/admin/reports/analytics" + queryString({
+    appId: appId,
+    granularity: granularity,
+    metric: metricName,
+    periods: periods
+  });
   return Promise.all([
     api("/admin/reports/overview"),
     api("/admin/reports/trend?days=14"),
-    api("/admin/reports/payment-summary")
+    api("/admin/reports/payment-summary"),
+    api(analyticsPath),
+    loadApps()
   ]).then(function (res) {
-    var overview = res[0], trend = res[1], summary = res[2] || {};
+    var overview = res[0], trend = res[1], summary = res[2] || {}, analytics = res[3] || {}, apps = res[4] || [];
+    var appOptions = [{ value: "", label: "全部 APP" }].concat(apps.map(function (a) {
+      return { value: a.appId, label: a.appId + " / " + a.appName };
+    }));
+    var analyticsBar = '<div class="toolbar analytics-toolbar">' +
+      select("analyticsAppFilter", "APP", appOptions, appId) +
+      select("analyticsGranularityFilter", "粒度", analyticsGranularityOptions(), granularity) +
+      select("analyticsMetricFilter", "指标", analyticsMetricOptions(), metricName) +
+      input("analyticsPeriodsFilter", "周期数", periods, "number") +
+      '<button class="secondary" type="button" onclick="applyAnalyticsFilter()">生成统计</button>' +
+      "</div>";
     $("dashboard").innerHTML =
       '<div class="grid metrics">' +
       metric("APP", overview.appCount) +
@@ -457,6 +846,8 @@ function renderDashboard() {
       metric("收入(元)", formatMoney(overview.paidAmountCents)) +
       metric("启动", overview.launchCount) +
       "</div>" +
+      panel("统计分析", analyticsBar + renderAnalyticsChart(analytics), "analytics-panel") +
+      '<div style="height:12px"></div>' +
       panel("近 14 天趋势", table([
         { title: "日期", key: "date" },
         { title: "订单", key: "orderCount" },
@@ -484,6 +875,85 @@ function renderDashboard() {
 
 function metric(label, value) {
   return '<div class="metric"><div class="label">' + label + '</div><div class="value">' + formatValue(value) + '</div></div>';
+}
+
+function applyAnalyticsFilter() {
+  setFilters("dashboard", {
+    appId: $("analyticsAppFilter").value,
+    granularity: $("analyticsGranularityFilter").value,
+    metric: $("analyticsMetricFilter").value,
+    periods: $("analyticsPeriodsFilter").value
+  });
+  renderDashboard();
+}
+
+function renderAnalyticsChart(data) {
+  var points = data.points || [];
+  var metricName = data.metric || "ORDER_COUNT";
+  var label = analyticsMetricLabels[metricName] || metricName;
+  var isAmount = metricName === "PAID_AMOUNT" || metricName === "REFUND_AMOUNT";
+  var max = 0;
+  var i;
+  for (i = 0; i < points.length; i++) {
+    max = Math.max(max, Number(points[i].value || 0));
+  }
+  var total = isAmount ? formatMoney(data.totalAmountCents || 0) : formatValue(data.totalValue || 0);
+  if (!points.length) {
+    return '<div class="chart-empty">暂无统计数据</div>';
+  }
+  var width = 720;
+  var height = 220;
+  var padLeft = 42;
+  var padRight = 18;
+  var padTop = 18;
+  var padBottom = 38;
+  var chartW = width - padLeft - padRight;
+  var chartH = height - padTop - padBottom;
+  var safeMax = max <= 0 ? 1 : max;
+  var path = "";
+  var area = "";
+  var bars = "";
+  var ticks = "";
+  var lastIndex = points.length - 1;
+  for (i = 0; i < points.length; i++) {
+    var x = padLeft + (lastIndex <= 0 ? chartW / 2 : chartW * i / lastIndex);
+    var y = padTop + chartH - chartH * Number(points[i].value || 0) / safeMax;
+    path += (i === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2) + " ";
+    area += (i === 0 ? "M" + x.toFixed(2) + " " + (padTop + chartH).toFixed(2) + " L" : "L") +
+      x.toFixed(2) + " " + y.toFixed(2) + " ";
+    var barW = Math.max(5, Math.min(26, chartW / Math.max(points.length, 1) * 0.42));
+    var barH = padTop + chartH - y;
+    bars += '<rect class="chart-bar" x="' + (x - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) +
+      '" width="' + barW.toFixed(2) + '" height="' + Math.max(1, barH).toFixed(2) + '"><title>' +
+      escapeHtml(points[i].period + " / " + analyticsDisplayValue(points[i].value, isAmount)) +
+      '</title></rect>';
+    if (i === 0 || i === lastIndex || (points.length > 8 && i % Math.ceil(points.length / 4) === 0)) {
+      ticks += '<text class="chart-tick" x="' + x.toFixed(2) + '" y="' + (height - 12) + '">' +
+        escapeHtml(points[i].period) + '</text>';
+    }
+  }
+  area += "L" + (padLeft + chartW).toFixed(2) + " " + (padTop + chartH).toFixed(2) + " Z";
+  return '<div class="analytics-summary"><div><span>' + escapeHtml(label) + '</span><strong>' +
+    analyticsDisplayValue(total, isAmount) + '</strong></div><div><span>范围</span><strong>' +
+    escapeHtml(data.appId || "全部 APP") + '</strong></div></div>' +
+    '<div class="chart-wrap"><svg class="line-chart" viewBox="0 0 ' + width + ' ' + height +
+    '" role="img" aria-label="' + escapeHtml(label) + '趋势图">' +
+    '<line class="chart-axis" x1="' + padLeft + '" y1="' + (padTop + chartH) + '" x2="' + (padLeft + chartW) +
+    '" y2="' + (padTop + chartH) + '"></line>' +
+    '<text class="chart-y" x="8" y="' + (padTop + 8) + '">' + escapeHtml(analyticsDisplayValue(max, isAmount)) + '</text>' +
+    '<path class="chart-area" d="' + area + '"></path>' +
+    bars +
+    '<path class="chart-line" d="' + path + '"></path>' +
+    ticks +
+    '</svg></div>';
+}
+
+function analyticsDisplayValue(value, isAmount) {
+  if (isAmount) {
+    if (typeof value === "string") return value;
+    return formatMoney(value);
+  }
+  return formatValue(value);
 }
 
 function loadApps() {
@@ -623,6 +1093,23 @@ function paymentChannelOptions(includeAll) {
   ]);
 }
 
+function analyticsMetricOptions() {
+  var values = [];
+  var key;
+  for (key in analyticsMetricLabels) {
+    values.push({ value: key, label: analyticsMetricLabels[key] });
+  }
+  return values;
+}
+
+function analyticsGranularityOptions() {
+  return [
+    { value: "DAY", label: analyticsGranularityLabels.DAY },
+    { value: "MONTH", label: analyticsGranularityLabels.MONTH },
+    { value: "YEAR", label: analyticsGranularityLabels.YEAR }
+  ];
+}
+
 function paymentConfigStatusOptions(includeAll) {
   var values = includeAll ? [{ value: "", label: "全部状态" }] : [];
   return values.concat([
@@ -631,83 +1118,161 @@ function paymentConfigStatusOptions(includeAll) {
   ]);
 }
 
+function notificationStatusOptions(includeAll) {
+  var values = includeAll ? [{ value: "", label: "全部状态" }] : [];
+  return values.concat([
+    optionOf("ENABLED"),
+    optionOf("DISABLED")
+  ]);
+}
+
+function notificationProviderOptions(type, includeAll) {
+  var values = includeAll ? [{ value: "", label: "全部平台" }] : [];
+  var providers = type === "SMS" ? [
+    { value: "aliyun", label: "阿里云" },
+    { value: "tencent", label: "腾讯云" },
+    { value: "aggregate", label: "聚合短信" },
+    { value: "local", label: "本地日志" }
+  ] : [
+    { value: "smtp", label: "SMTP 邮箱" },
+    { value: "aliyun-dm", label: "阿里云邮件推送" },
+    { value: "tencent-ses", label: "腾讯云 SES" },
+    { value: "sendcloud", label: "SendCloud" },
+    { value: "mailgun", label: "Mailgun" },
+    { value: "local", label: "本地日志" }
+  ];
+  return values.concat(providers);
+}
+
+function notificationPrefix(type) {
+  return type === "SMS" ? "smsCfg" : "emailCfg";
+}
+
+function notificationViewKey(type) {
+  return type === "SMS" ? "smsConfigs" : "emailConfigs";
+}
+
+function notificationDefault(type, provider) {
+  var map = notificationDefaults[type] || {};
+  return map[provider] || map.local || {
+    displayName: labelOf(provider),
+    senderName: "联付中枢",
+    senderAddress: "",
+    endpoint: "",
+    templateCode: "",
+    accessKeyId: "",
+    accessKeySecret: "",
+    secretId: "",
+    secretKey: "",
+    sdkAppId: "",
+    region: "",
+    configJson: "{}",
+    credentialJson: ""
+  };
+}
+
+function bindNotificationProviderDefault(type) {
+  var prefix = notificationPrefix(type);
+  var provider = $(prefix + "CreateProvider");
+  if (!provider) return;
+  if (type === "SMS") syncSmsProviderFields(prefix + "Create", provider.value);
+  provider.addEventListener("change", function () {
+    var d = notificationDefault(type, provider.value);
+    $(prefix + "CreateName").value = d.displayName || "";
+    $(prefix + "CreateSenderName").value = d.senderName || "";
+    $(prefix + "CreateSenderAddress").value = d.senderAddress || "";
+    $(prefix + "CreateEndpoint").value = d.endpoint || "";
+    var template = $(prefix + "CreateTemplateCode");
+    if (template) template.value = d.templateCode || "";
+    var accessKeyId = $(prefix + "CreateAccessKeyId");
+    if (accessKeyId) accessKeyId.value = d.accessKeyId || "";
+    var accessKeySecret = $(prefix + "CreateAccessKeySecret");
+    if (accessKeySecret) accessKeySecret.value = d.accessKeySecret || "";
+    var secretId = $(prefix + "CreateSecretId");
+    if (secretId) secretId.value = d.secretId || "";
+    var secretKey = $(prefix + "CreateSecretKey");
+    if (secretKey) secretKey.value = d.secretKey || "";
+    var sdkAppId = $(prefix + "CreateSdkAppId");
+    if (sdkAppId) sdkAppId.value = d.sdkAppId || "";
+    var region = $(prefix + "CreateRegion");
+    if (region) region.value = d.region || "";
+    $(prefix + "CreateConfig").value = d.configJson || "{}";
+    $(prefix + "CreateCredential").value = d.credentialJson || "";
+    if (type === "SMS") syncSmsProviderFields(prefix + "Create", provider.value);
+  });
+}
+
 function renderPaymentConfigs(page) {
   if (typeof page === "number") setPage("paymentConfigs", page);
   page = currentPage("paymentConfigs");
-  return loadApps().then(function (apps) {
-    var filters = queryFilters("paymentConfigs");
-    setFilters("paymentConfigs", {
-      appId: filters.appId || "",
-      payChannel: filters.payChannel || "",
-      status: filters.status || ""
-    });
-    var appOptions = [{ value: "", label: "全部 APP" }].concat(apps.map(function (a) {
-      return { value: a.appId, label: a.appId + " / " + a.appName };
-    }));
-    var createAppOptions = apps.map(function (a) {
-      return { value: a.appId, label: a.appId + " / " + a.appName };
-    });
-    var qs = ["page=" + page, "size=20"];
-    if (filters.appId) qs.push("appId=" + encodeURIComponent(filters.appId));
-    if (filters.payChannel) qs.push("payChannel=" + encodeURIComponent(filters.payChannel));
-    if (filters.status) qs.push("status=" + encodeURIComponent(filters.status));
-    return api("/admin/payment-configs?" + qs.join("&")).then(function (data) {
-      var rows = pageContent(data);
-      var createBody = '<div class="form-grid payment-config-form">' +
-        select("payCfgCreateAppId", "APP", createAppOptions, filters.appId || (apps[0] && apps[0].appId) || "") +
-        select("payCfgCreateChannel", "支付渠道", paymentChannelOptions(false), "ALIPAY") +
-        input("payCfgCreateProvider", "提供方编码", providerDefaultFor("ALIPAY")) +
-        input("payCfgCreateMerchant", "商户号") +
-        input("payCfgCreateChannelApp", "渠道 APP ID") +
-        input("payCfgCreateNotify", "回调地址") +
-        textarea("payCfgCreateConfig", "普通配置 JSON", "{}") +
-        textarea("payCfgCreateCredential", "敏感凭据 JSON") +
-        '<div class="form-actions"><button type="button" onclick="createPaymentConfig()">创建配置</button></div>' +
-        '</div>';
-      var filterBar = '<div class="toolbar">' +
-        select("payCfgAppFilter", "APP", appOptions, filters.appId || "") +
-        select("payCfgChannelFilter", "支付渠道", paymentChannelOptions(true), filters.payChannel || "") +
-        select("payCfgStatusFilter", "状态", paymentConfigStatusOptions(true), filters.status || "") +
-        '<button class="secondary" type="button" onclick="applyPaymentConfigFilter()">筛选</button>' +
-        '<button class="secondary" type="button" onclick="exportPaymentConfigs()">导出</button>' +
-        '</div>';
-      $("paymentConfigs").innerHTML =
-        panel("创建支付配置", createBody) +
-        '<div style="height:12px"></div>' +
-        panel("筛选", filterBar) +
-        '<div style="height:12px"></div>' +
-        panel("配置列表", table([
-          { title: "ID", key: "id" },
-          { title: "APP", key: "appId" },
-          { title: "渠道", render: function (r) { return formatValue(r.payChannel); } },
-          { title: "提供方", key: "providerCode" },
-          { title: "商户号", key: "merchantId" },
-          { title: "凭据", render: function (r) { return r.credentialConfigured ? "已配置" : "未配置"; } },
-          { title: "状态", render: function (r) { return badge(r.status); } },
-          {
-            title: "操作",
-            render: function (r) {
-              return '<div class="actions">' +
-                '<button class="small" onclick="openPaymentConfigDetail(' + r.id + ')">详情</button>' +
-                '<button class="small" onclick="openPaymentConfigEdit(' + r.id + ')">编辑</button>' +
-                '<button class="small" onclick="togglePaymentConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
-                '</div>';
-            }
+  return api("/admin/payment-configs?page=" + page + "&size=20").then(function (data) {
+    var rows = pageContent(data);
+    $("paymentConfigs").innerHTML =
+      panelTitleActions("支付配置列表",
+        '<button type="button" onclick="openPaymentConfigCreate()">新建配置</button>' +
+        '<button class="secondary" type="button" onclick="exportPaymentConfigs()">导出</button>') +
+      table([
+        { title: "ID", key: "id" },
+        { title: "APP", key: "appId" },
+        { title: "渠道", render: function (r) { return formatValue(r.payChannel); } },
+        { title: "提供方", key: "providerCode" },
+        { title: "商户号", key: "merchantId" },
+        { title: "凭据", render: function (r) { return r.credentialConfigured ? "已配置" : "未配置"; } },
+        { title: "状态", render: function (r) { return badge(r.status); } },
+        {
+          title: "操作",
+          render: function (r) {
+            return '<div class="actions">' +
+              '<button class="small" onclick="openPaymentConfigDetail(' + r.id + ')">详情</button>' +
+              '<button class="small" onclick="openPaymentConfigEdit(' + r.id + ')">编辑</button>' +
+              '<button class="small" onclick="togglePaymentConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
+              '</div>';
           }
-        ], rows)) +
-        renderPager("paymentConfigs", pageMeta(data), "renderPaymentConfigs");
-      bindProviderDefault("payCfgCreateChannel", "payCfgCreateProvider");
-    });
+        }
+      ], rows) +
+      renderPager("paymentConfigs", pageMeta(data), "renderPaymentConfigs") +
+      '</div>';
   });
 }
 
 function applyPaymentConfigFilter() {
-  setFilters("paymentConfigs", {
-    appId: $("payCfgAppFilter").value,
-    payChannel: $("payCfgChannelFilter").value,
-    status: $("payCfgStatusFilter").value
-  });
   renderPaymentConfigs(0);
+}
+
+function renderPaymentConfigForm(prefix, item, appOptions, mode) {
+  return '<div class="form-grid payment-config-form">' +
+    select(prefix + "AppId", "APP", appOptions, item.appId || "") +
+    select(prefix + "Channel", "支付渠道", paymentChannelOptions(false), item.payChannel || "ALIPAY") +
+    input(prefix + "Provider", "提供方编码", item.providerCode || providerDefaultFor(item.payChannel || "ALIPAY")) +
+    input(prefix + "Merchant", "商户号", item.merchantId || "") +
+    input(prefix + "ChannelApp", "渠道 APP ID", item.channelAppId || "", { required: false }) +
+    input(prefix + "Notify", "回调地址", item.notifyUrl || "", { required: false }) +
+    textarea(prefix + "Config", "普通配置 JSON", item.configJson || "{}", { required: false }) +
+    textarea(prefix + "Credential", mode === "edit" ? "敏感凭据 JSON（留空不修改）" : "敏感凭据 JSON", mode === "edit" ? "" : (item.credentialJson || ""), { required: false }) +
+    '</div>';
+}
+
+function openPaymentConfigCreate() {
+  loadApps().then(function (apps) {
+    if (!apps.length) throw new Error("请先创建 APP");
+    var appOptions = apps.map(function (a) {
+      return { value: a.appId, label: a.appId + " / " + a.appName };
+    });
+    var item = {
+      appId: queryFilters("paymentConfigs").appId || apps[0].appId,
+      payChannel: "ALIPAY",
+      providerCode: providerDefaultFor("ALIPAY"),
+      merchantId: "",
+      channelAppId: "",
+      notifyUrl: "",
+      configJson: "{}",
+      credentialJson: ""
+    };
+    openModal("新建支付配置", renderPaymentConfigForm("payCfgCreate", item, appOptions, "create"),
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      '<button type="button" onclick="createPaymentConfig()">创建</button>');
+    bindProviderDefault("payCfgCreateChannel", "payCfgCreateProvider");
+  }).catch(function (err) { toast(err.message); });
 }
 
 function createPaymentConfig() {
@@ -725,6 +1290,7 @@ function createPaymentConfig() {
     }
   }).then(function () {
     toast("支付配置已创建");
+    closeModal();
     renderPaymentConfigs(0);
   }).catch(function (err) { toast(err.message); });
 }
@@ -750,16 +1316,14 @@ function openPaymentConfigDetail(id) {
 
 function openPaymentConfigEdit(id) {
   api("/admin/payment-configs/" + id).then(function (item) {
-    openModal("编辑支付配置", '<div class="form-grid">' +
-      input("payCfgEditProvider", "提供方编码", item.providerCode) +
-      input("payCfgEditMerchant", "商户号", item.merchantId) +
-      input("payCfgEditChannelApp", "渠道 APP ID", item.channelAppId) +
-      input("payCfgEditNotify", "回调地址", item.notifyUrl) +
-      textarea("payCfgEditConfig", "普通配置 JSON", item.configJson || "{}") +
-      textarea("payCfgEditCredential", "敏感凭据 JSON（留空不修改）", "") +
-      '</div>',
+    var appOptions = [{ value: item.appId, label: item.appId + " / 当前 APP" }];
+    openModal("编辑支付配置", renderPaymentConfigForm("payCfgEdit", item, appOptions, "edit"),
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="savePaymentConfigEdit(' + id + ')">保存</button>');
+    var app = $("payCfgEditAppId");
+    if (app) app.disabled = true;
+    var channel = $("payCfgEditChannel");
+    if (channel) channel.disabled = true;
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -788,6 +1352,259 @@ function togglePaymentConfig(id, status) {
   }).then(function () {
     toast("支付配置状态已更新");
     renderPaymentConfigs(currentPage("paymentConfigs"));
+  }).catch(function (err) { toast(err.message); });
+}
+
+function renderSmsConfigs(page) {
+  return renderNotificationConfigs("SMS", page);
+}
+
+function renderEmailConfigs(page) {
+  return renderNotificationConfigs("EMAIL", page);
+}
+
+function renderNotificationConfigs(type, page) {
+  var viewKey = notificationViewKey(type);
+  if (typeof page === "number") setPage(viewKey, page);
+  page = currentPage(viewKey);
+  return api("/admin/notification-configs?channelType=" + type + "&page=" + page + "&size=20").then(function (data) {
+    var rows = pageContent(data);
+    if (type === "SMS") {
+      setFilters("smsSendLogs", queryFilters("smsSendLogs"));
+      return api("/admin/notification-configs/sms/logs?page=" + currentPage("smsSendLogs") + "&size=10").then(function (logData) {
+        $(viewKey).innerHTML =
+          panelTitleActions("短信配置列表",
+            '<button type="button" onclick="openNotificationConfigCreate(\'SMS\')">新建配置</button>' +
+            '<button class="secondary" type="button" onclick="exportNotificationConfigs(\'SMS\')">导出</button>') +
+          table([
+            { title: "ID", key: "id" },
+            { title: "平台", render: function (r) { return formatValue(r.providerCode); } },
+            { title: "名称", key: "displayName" },
+            { title: "签名", key: "senderName" },
+            { title: "地址", key: "senderAddress" },
+            { title: "服务地址", key: "endpoint" },
+            { title: "凭据", render: function (r) { return r.credentialConfigured ? "已配置" : "未配置"; } },
+            { title: "状态", render: function (r) { return badge(r.status); } },
+            {
+              title: "操作",
+              render: function (r) {
+                return '<div class="actions">' +
+                  '<button class="small" onclick="openNotificationConfigDetail(' + r.id + ')">详情</button>' +
+                  '<button class="small" onclick="openNotificationConfigEdit(' + r.id + ')">编辑</button>' +
+                  '<button class="small" onclick="toggleNotificationConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
+                  '</div>';
+              }
+            }
+          ], rows) +
+          renderPager(viewKey, pageMeta(data), "renderSmsConfigs") +
+          '<div style="height:12px"></div>' +
+          panel("最近短信发送记录", table([
+            { title: "ID", key: "id" },
+            { title: "平台", render: function (r) { return formatValue(r.providerCode); } },
+            { title: "通道ID", key: "configId" },
+            { title: "APP ID", key: "appId" },
+            { title: "手机号", key: "mobile" },
+            { title: "模板编码", key: "templateCode" },
+            { title: "消息ID", key: "messageId" },
+            { title: "结果", render: function (r) { return r.success ? badge("SUCCESS") : badge("FAILED"); } },
+            { title: "说明", key: "resultMessage" },
+            { title: "时间", key: "createdAt" }
+          ], pageContent(logData)) + renderPager("smsSendLogs", pageMeta(logData), "renderSmsSendLogs"));
+      });
+    }
+    $(viewKey).innerHTML =
+      panelTitleActions("邮件配置列表",
+        '<button type="button" onclick="openNotificationConfigCreate(\'EMAIL\')">新建配置</button>' +
+        '<button class="secondary" type="button" onclick="openEmailSendModal()">发送测试邮件</button>' +
+        '<button class="secondary" type="button" onclick="exportNotificationConfigs(\'EMAIL\')">导出</button>') +
+      table([
+        { title: "ID", key: "id" },
+        { title: "平台", render: function (r) { return formatValue(r.providerCode); } },
+        { title: "名称", key: "displayName" },
+        { title: "发件人", key: "senderName" },
+        { title: "地址", key: "senderAddress" },
+        { title: "服务地址", key: "endpoint" },
+        { title: "凭据", render: function (r) { return r.credentialConfigured ? "已配置" : "未配置"; } },
+        { title: "状态", render: function (r) { return badge(r.status); } },
+        {
+          title: "操作",
+          render: function (r) {
+            return '<div class="actions">' +
+              '<button class="small" onclick="openNotificationConfigDetail(' + r.id + ')">详情</button>' +
+              '<button class="small" onclick="openNotificationConfigEdit(' + r.id + ')">编辑</button>' +
+              '<button class="small" onclick="toggleNotificationConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
+              '</div>';
+          }
+        }
+      ], rows) +
+      renderPager(viewKey, pageMeta(data), "renderEmailConfigs") +
+      '</div>';
+  });
+}
+
+function renderSmsSendLogs(page) {
+  if (typeof page === "number") setPage("smsSendLogs", page);
+  return renderSmsConfigs(currentPage("smsConfigs"));
+}
+
+function panelTitleActions(title, actions) {
+  return '<div class="panel"><div class="panel-title panel-title-split"><div>' + title + '</div><div class="panel-title-actions">' + actions + '</div></div>';
+}
+
+function renderNotificationConfigForm(type, prefix, item, mode) {
+  return '<div class="form-grid notification-config-form">' +
+    select(prefix + "Provider", "平台", notificationProviderOptions(type, false), item.providerCode) +
+    input(prefix + "Name", "配置名称", item.displayName) +
+    input(prefix + "SenderName", type === "SMS" ? "短信签名" : "发件名称", item.senderName) +
+    input(prefix + "SenderAddress", type === "SMS" ? "发送签名/扩展码" : "发件邮箱", item.senderAddress, { required: false }) +
+    input(prefix + "Endpoint", "服务地址", item.endpoint, { required: false }) +
+    (type === "SMS" ? renderSmsConfigFields(prefix, item, item.providerCode, mode) : "") +
+    textarea(prefix + "Config", type === "SMS" ? "附加配置 JSON" : "普通配置 JSON", item.configJson || "{}", { required: false }) +
+    textarea(prefix + "Credential", mode === "edit" ? (type === "SMS" ? "附加凭据 JSON（留空不修改）" : "敏感凭据 JSON（留空不修改）") : (type === "SMS" ? "附加凭据 JSON" : "敏感凭据 JSON"), mode === "edit" ? "" : (item.credentialJson || ""), { required: false }) +
+    '</div>';
+}
+
+function openNotificationConfigCreate(type) {
+  var prefix = notificationPrefix(type) + "Create";
+  var item = Object.assign({ providerCode: type === "SMS" ? "aliyun" : "smtp" }, notificationDefault(type, type === "SMS" ? "aliyun" : "smtp"));
+  openModal(type === "SMS" ? "新建短信配置" : "新建邮件配置", renderNotificationConfigForm(type, prefix, item, "create"),
+    '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    '<button type="button" onclick="createNotificationConfig(\'' + type + '\')">创建</button>');
+  bindNotificationProviderDefault(type);
+}
+
+function openSmsSendCodeModal(configId) {
+  api("/admin/notification-configs?channelType=SMS&page=0&size=100").then(function (data) {
+    var rows = pageContent(data);
+    var current = null;
+    if (configId) {
+      current = rows.find(function (item) { return Number(item.id) === Number(configId); }) || null;
+    }
+    openModal("发送测试短信", '<div class="form-grid send-form">' +
+      input("smsSendAppId", "APP ID", current && current.appId ? current.appId : "", { required: false }) +
+      input("smsSendMobile", "手机号", "13800000000") +
+      input("smsSendCode", "验证码", "123456") +
+      '</div>',
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      '<button type="button" onclick="sendSmsCodeMessage(' + (configId ? Number(configId) : 'null') + ')">发送</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
+function sendSmsCodeMessage(configId) {
+  api("/admin/notification-configs/sms/send-code", {
+    method: "POST",
+    body: {
+      configId: configId ? Number(configId) : null,
+      appId: $("smsSendAppId").value,
+      mobile: $("smsSendMobile").value,
+      code: $("smsSendCode").value
+    }
+  }).then(function (data) {
+    toast(data.message || "短信已发送");
+    closeModal();
+    renderSmsConfigs(currentPage("smsConfigs"));
+  }).catch(function (err) { toast(err.message); });
+}
+
+function createNotificationConfig(type) {
+  var prefix = notificationPrefix(type) + "Create";
+  var body = notificationBody(type, prefix);
+  body.channelType = type;
+  api("/admin/notification-configs", {
+    method: "POST",
+    body: body
+  }).then(function () {
+    toast(type === "SMS" ? "短信配置已创建" : "邮件配置已创建");
+    closeModal();
+    if (type === "SMS") renderSmsConfigs(0); else renderEmailConfigs(0);
+  }).catch(function (err) { toast(err.message); });
+}
+
+function renderEmailSendPanel(rows) {
+  var options = [{ value: "", label: "自动选择启用通道" }].concat(rows.map(function (item) {
+    return { value: String(item.id), label: labelOf(item.providerCode) + " / " + item.displayName };
+  }));
+  return '<div class="form-grid send-form">' +
+    select("emailSendConfigId", "通道", options, "", { required: false }) +
+    input("emailSendTo", "收件邮箱", "user@example.com") +
+    input("emailSendSubject", "主题", "联付中枢测试邮件") +
+    checkbox("emailSendHtml", "HTML 邮件", false) +
+    textarea("emailSendContent", "邮件内容", "这是一封来自联付中枢的测试邮件。") +
+    '<div class="form-actions"><button type="button" onclick="sendEmailMessage()">发送邮件</button></div>' +
+    '</div>';
+}
+
+function applyNotificationConfigFilter(type) {
+  var viewKey = notificationViewKey(type);
+  var prefix = notificationPrefix(type);
+  setFilters(viewKey, {
+    providerCode: $(prefix + "ProviderFilter").value,
+    status: $(prefix + "StatusFilter").value
+  });
+  if (type === "SMS") renderSmsConfigs(0); else renderEmailConfigs(0);
+}
+
+function openNotificationConfigDetail(id) {
+  api("/admin/notification-configs/" + id).then(function (item) {
+    openModal("通知配置详情", detailList(notificationDetailFields(item)), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
+function openNotificationConfigEdit(id) {
+  api("/admin/notification-configs/" + id).then(function (item) {
+    var footer = '<button class="secondary" type="button" onclick="closeModal()">取消</button>';
+    if (item.channelType === "SMS") {
+      footer += '<button class="secondary" type="button" onclick="openSmsSendCodeModal(' + id + ')">发送测试短信</button>';
+    }
+    footer += '<button type="button" onclick="saveNotificationConfigEdit(' + id + ', \'' + item.channelType + '\')">保存</button>';
+    openModal("编辑通知配置", renderNotificationEditFields(item), footer);
+    bindNotificationEditProvider(item);
+  }).catch(function (err) { toast(err.message); });
+}
+
+function saveNotificationConfigEdit(id, type) {
+  api("/admin/notification-configs/" + id, {
+    method: "PUT",
+    body: notificationBody(type, "notifyEdit")
+  }).then(function () {
+    toast("通知配置已更新");
+    closeModal();
+    if (type === "SMS") renderSmsConfigs(currentPage("smsConfigs")); else renderEmailConfigs(currentPage("emailConfigs"));
+  }).catch(function (err) { toast(err.message); });
+}
+
+function toggleNotificationConfig(id, status) {
+  api("/admin/notification-configs/" + id + "/status", {
+    method: "PATCH",
+    body: { status: status === "ENABLED" ? "DISABLED" : "ENABLED" }
+  }).then(function () {
+    toast("通知配置状态已更新");
+    renderCurrent();
+  }).catch(function (err) { toast(err.message); });
+}
+
+function openEmailSendModal() {
+  api("/admin/notification-configs?channelType=EMAIL&page=0&size=100").then(function (data) {
+    var rows = pageContent(data);
+    openModal("发送测试邮件", renderEmailSendPanel(rows),
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      '<button type="button" onclick="sendEmailMessage()">发送</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
+function sendEmailMessage() {
+  api("/admin/notification-configs/email/send", {
+    method: "POST",
+    body: {
+      configId: $("emailSendConfigId").value ? Number($("emailSendConfigId").value) : null,
+      to: $("emailSendTo").value,
+      subject: $("emailSendSubject").value,
+      content: $("emailSendContent").value,
+      html: $("emailSendHtml").checked
+    }
+  }).then(function (data) {
+    toast(data.message || "邮件已发送");
+    closeModal();
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -1264,8 +2081,8 @@ function openGrantMember() {
         optionOf("USER"),
         optionOf("DEVICE")
       ], "USER") +
-      input("grantUserId", "用户 ID") +
-      input("grantDeviceId", "设备 ID") +
+      input("grantUserId", "用户 ID", "", { required: false, conditional: true, hint: "主体为 USER 时必填" }) +
+      input("grantDeviceId", "设备 ID", "", { required: false, conditional: true, hint: "主体为 DEVICE 时必填" }) +
       input("grantPackageId", "套餐 ID") +
       input("grantDays", "天数", "30") +
       "</div>",
@@ -1377,8 +2194,8 @@ function openOrderCreate() {
       select("createOrderAppId", "APP", apps.map(function (a) {
         return { value: a.appId, label: a.appId + " / " + a.appName };
       }), queryFilters("orders").appId || apps[0].appId) +
-      input("createOrderUserId", "用户 ID") +
-      input("createOrderDeviceId", "设备 ID") +
+      input("createOrderUserId", "用户 ID", "", { required: false, conditional: true, hint: "账号会员订单时填写" }) +
+      input("createOrderDeviceId", "设备 ID", "", { required: false, conditional: true, hint: "设备会员订单时填写" }) +
       input("createOrderPackageId", "套餐 ID") +
       select("createOrderChannel", "支付渠道", paymentChannelOptions(false), "ALIPAY") +
       '</div>',
@@ -1501,7 +2318,7 @@ function openRefundCreate() {
   openModal("申请退款", '<div class="form-grid">' +
     input("refundOrderId", "订单 ID") +
     input("refundAmount", "金额(分)") +
-    textarea("refundReason", "原因", "人工退款") +
+    textarea("refundReason", "原因", "人工退款", { required: false }) +
     "</div>",
     '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
     '<button type="button" onclick="saveRefundCreate()">申请</button>');
@@ -1967,6 +2784,17 @@ function exportPaymentConfigs() {
     status: f.status,
     limit: 5000
   }), "payment-configs.csv");
+}
+
+function exportNotificationConfigs(type) {
+  var viewKey = notificationViewKey(type);
+  var f = queryFilters(viewKey);
+  exportCsv("/admin/exports/notification-configs" + queryString({
+    channelType: type,
+    providerCode: f.providerCode,
+    status: f.status,
+    limit: 5000
+  }), (type === "SMS" ? "sms-configs.csv" : "email-configs.csv"));
 }
 
 function exportPackages() {

@@ -8,6 +8,7 @@ import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,7 +30,11 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String token = resolveBearerToken(request);
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            authenticate(token);
+            boolean authenticated = authenticate(token);
+            if (!authenticated && isProtectedAdminPath(request)) {
+                writeUnauthorized(response);
+                return;
+            }
         }
         filterChain.doFilter(request, response);
     }
@@ -42,11 +47,16 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
         return authorization.substring(7);
     }
 
-    private void authenticate(String token) {
+    private boolean isProtectedAdminPath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri.startsWith("/admin/") && !uri.startsWith("/admin/auth/login");
+    }
+
+    private boolean authenticate(String token) {
         try {
             Claims claims = jwtService.parse(token);
             if (!"ADMIN".equals(claims.get("type", String.class))) {
-                return;
+                return false;
             }
             Long adminId = Long.valueOf(claims.getSubject());
             String username = claims.get("username", String.class);
@@ -57,8 +67,17 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            return true;
         } catch (RuntimeException ignored) {
             SecurityContextHolder.clearContext();
+            return false;
         }
+    }
+
+    private void writeUnauthorized(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"code\":401,\"message\":\"未登录或登录已过期\",\"data\":null}");
     }
 }

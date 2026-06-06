@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8888
 
 spring:
   application:
@@ -47,3 +47,13 @@ lianpayhub:
     order-expire-minutes: 30
     order-auto-close-enabled: true
     order-close-scan-fixed-delay-ms: 60000
+  storage:
+    backend: local                          # local | aliyun-oss
+    local-path: ./storage
+    local-base-url: http://localhost:8888/files
+    max-config-file-bytes: 524288           # 512 KB
+    max-image-file-bytes: 5242880           # 5 MB
+    default-quota-bytes: 52428800           # 50 MB per (user, app)
+    max-file-count: 500
+    max-path-depth: 8
+    upload-rate-limit-per-minute: 20

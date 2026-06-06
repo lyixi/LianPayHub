@@ -193,6 +193,29 @@ label {
   font-weight: 650;
 }
 
+.field-label {
+  display: block;
+}
+
+.field-label-text {
+  min-width: 0;
+}
+
+.field-required-mark {
+  display: inline;
+  margin-left: 4px;
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 input,
 select,
 textarea {
@@ -552,12 +575,57 @@ h1 {
   padding: 15px;
 }
 
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+}
+
+.tab-btn {
+  min-width: 92px;
+  height: 34px;
+  border-color: transparent;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+  background: var(--panel-soft);
+  transform: none;
+}
+
+.tab-btn.active {
+  color: white;
+  border-color: color-mix(in srgb, var(--primary) 72%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 92%, white 8%), var(--primary-strong));
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
 .panel-title {
   display: flex;
   align-items: center;
   min-height: 28px;
   margin-bottom: 12px;
   font-weight: 760;
+}
+
+.panel-title-split {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .panel-title::before {
@@ -610,6 +678,11 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.notification-config-form,
+.send-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .payment-config-form .field-payCfgCreateChannelApp,
 .payment-config-form .field-payCfgCreateNotify,
 .payment-config-form .field-payCfgCreateConfig,
@@ -617,7 +690,17 @@ h1 {
   grid-column: span 2;
 }
 
-.payment-config-form .form-actions {
+.notification-config-form .field-smsCfgCreateConfig,
+.notification-config-form .field-smsCfgCreateCredential,
+.notification-config-form .field-emailCfgCreateConfig,
+.notification-config-form .field-emailCfgCreateCredential,
+.send-form .textarea-field {
+  grid-column: span 2;
+}
+
+.payment-config-form .form-actions,
+.notification-config-form .form-actions,
+.send-form .form-actions {
   grid-column: 1 / -1;
   justify-content: flex-end;
   padding-top: 2px;
@@ -628,6 +711,104 @@ h1 {
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  background: var(--panel-solid);
+}
+
+.analytics-panel {
+  margin-top: 12px;
+}
+
+.analytics-toolbar {
+  margin-bottom: 14px;
+}
+
+.analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.analytics-summary > div {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--panel-soft);
+}
+
+.analytics-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-summary strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.chart-wrap {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-solid);
+}
+
+.line-chart {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+}
+
+.chart-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.chart-area {
+  fill: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-bar {
+  fill: color-mix(in srgb, var(--primary) 34%, transparent);
+  rx: 3px;
+  transition: fill var(--duration) var(--ease);
+}
+
+.chart-bar:hover {
+  fill: color-mix(in srgb, var(--primary) 58%, transparent);
+}
+
+.chart-tick,
+.chart-y {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.chart-tick {
+  text-anchor: middle;
+}
+
+.chart-empty {
+  min-height: 168px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
   background: var(--panel-solid);
 }
 
@@ -977,7 +1158,9 @@ a:hover {
     justify-content: flex-start;
   }
 
-  .payment-config-form {
+  .payment-config-form,
+  .notification-config-form,
+  .send-form {
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
 
@@ -986,6 +1169,10 @@ a:hover {
   .payment-config-form .field-payCfgCreateConfig,
   .payment-config-form .field-payCfgCreateCredential,
   .payment-config-form .textarea-field,
+  .notification-config-form .textarea-field,
+  .notification-config-form .form-actions,
+  .send-form .textarea-field,
+  .send-form .form-actions,
   .payment-config-form .form-actions {
     grid-column: auto;
   }

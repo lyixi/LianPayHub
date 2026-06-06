@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public class AdminOperationLogFilter extends OncePerRequestFilter {
 
     private static final Pattern SENSITIVE_JSON_FIELD = Pattern.compile(
-            "(\"(?:password|oldPassword|newPassword|appSecret|token|credentialJson|privateKey|apiKey|merchantKey|certPassword)\"\\s*:\\s*\")((?:\\\\.|[^\"\\\\])*)(\")",
+            "(\"(?:password|oldPassword|newPassword|appSecret|token|credentialJson|privateKey|apiKey|merchantKey|certPassword|secretId|secretKey|accessKeyId|accessKeySecret|smtpPassword|authorizationCode)\"\\s*:\\s*\")((?:\\\\.|[^\"\\\\])*)(\")",
             Pattern.CASE_INSENSITIVE
     );
 

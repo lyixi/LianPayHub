@@ -9,6 +9,9 @@ import com.lianpayhub.domain.log.AdminOperationLog;
 import com.lianpayhub.domain.log.AppLoginLog;
 import com.lianpayhub.domain.log.PaymentEventLog;
 import com.lianpayhub.domain.member.MemberInfo;
+import com.lianpayhub.domain.notification.NotificationChannelConfig;
+import com.lianpayhub.domain.notification.NotificationChannelStatus;
+import com.lianpayhub.domain.notification.NotificationChannelType;
 import com.lianpayhub.domain.packageinfo.PackageInfo;
 import com.lianpayhub.domain.payment.PayChannel;
 import com.lianpayhub.domain.payment.PaymentCallbackLog;
@@ -27,6 +30,7 @@ import com.lianpayhub.repository.AppLoginLogRepository;
 import com.lianpayhub.repository.DeviceInfoRepository;
 import com.lianpayhub.repository.LaunchRecordRepository;
 import com.lianpayhub.repository.MemberInfoRepository;
+import com.lianpayhub.repository.NotificationChannelConfigRepository;
 import com.lianpayhub.repository.PackageInfoRepository;
 import com.lianpayhub.repository.PaymentCallbackLogRepository;
 import com.lianpayhub.repository.PaymentChannelConfigRepository;
@@ -54,6 +58,7 @@ public class AdminExportController {
 
     private final AppInfoRepository appInfoRepository;
     private final PaymentChannelConfigRepository paymentChannelConfigRepository;
+    private final NotificationChannelConfigRepository notificationChannelConfigRepository;
     private final PackageInfoRepository packageInfoRepository;
     private final UserInfoRepository userInfoRepository;
     private final UserAppBindingRepository userAppBindingRepository;
@@ -71,6 +76,7 @@ public class AdminExportController {
 
     public AdminExportController(AppInfoRepository appInfoRepository,
                                  PaymentChannelConfigRepository paymentChannelConfigRepository,
+                                 NotificationChannelConfigRepository notificationChannelConfigRepository,
                                  PackageInfoRepository packageInfoRepository,
                                  UserInfoRepository userInfoRepository,
                                  UserAppBindingRepository userAppBindingRepository,
@@ -87,6 +93,7 @@ public class AdminExportController {
                                  AdminUserRepository adminUserRepository) {
         this.appInfoRepository = appInfoRepository;
         this.paymentChannelConfigRepository = paymentChannelConfigRepository;
+        this.notificationChannelConfigRepository = notificationChannelConfigRepository;
         this.packageInfoRepository = packageInfoRepository;
         this.userInfoRepository = userInfoRepository;
         this.userAppBindingRepository = userAppBindingRepository;
@@ -101,6 +108,32 @@ public class AdminExportController {
         this.appLoginLogRepository = appLoginLogRepository;
         this.paymentEventLogRepository = paymentEventLogRepository;
         this.adminUserRepository = adminUserRepository;
+    }
+
+    @GetMapping(value = "/notification-configs", produces = "text/csv;charset=UTF-8")
+    public ResponseEntity<String> notificationConfigs(@RequestParam(required = false) String channelType,
+                                                      @RequestParam(required = false) String providerCode,
+                                                      @RequestParam(required = false) String status,
+                                                      @RequestParam(defaultValue = "1000") int limit) {
+        List<NotificationChannelConfig> rows = notificationChannelConfigRepository.search(
+                enumOrNull(NotificationChannelType.class, channelType),
+                blankToNull(providerCode),
+                enumOrNull(NotificationChannelStatus.class, status),
+                exportPage(limit)).getContent();
+        return csv("notification-configs.csv",
+                Arrays.asList("id", "channelType", "providerCode", "displayName", "senderName",
+                        "senderAddress", "endpoint", "configJson", "credentialConfigured",
+                        "status", "createdAt", "updatedAt"),
+                rows,
+                new RowMapper<NotificationChannelConfig>() {
+                    @Override
+                    public List<Object> map(NotificationChannelConfig item) {
+                        return Arrays.asList(item.getId(), item.getChannelType(), item.getProviderCode(),
+                                item.getDisplayName(), item.getSenderName(), item.getSenderAddress(),
+                                item.getEndpoint(), item.getConfigJson(), item.isCredentialConfigured(),
+                                item.getStatus(), item.getCreatedAt(), item.getUpdatedAt());
+                    }
+                });
     }
 
     @GetMapping(value = "/apps", produces = "text/csv;charset=UTF-8")
