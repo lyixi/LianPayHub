@@ -45,6 +45,9 @@ public class AdminOperationLog {
     @Column(name = "request_body")
     private String requestBody;
 
+    @Column(name = "confirm_reason", length = 512)
+    private String confirmReason;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "result_status", nullable = false, length = 32)
     private LogResultStatus resultStatus;
@@ -61,6 +64,13 @@ public class AdminOperationLog {
     public AdminOperationLog(Long adminId, String username, String operationType, String targetType, String targetId,
                              String requestMethod, String requestUri, String ipAddress, String userAgent,
                              String requestBody, LogResultStatus resultStatus, String errorMessage) {
+        this(adminId, username, operationType, targetType, targetId, requestMethod, requestUri, ipAddress,
+                userAgent, requestBody, null, resultStatus, errorMessage);
+    }
+
+    public AdminOperationLog(Long adminId, String username, String operationType, String targetType, String targetId,
+                             String requestMethod, String requestUri, String ipAddress, String userAgent,
+                             String requestBody, String confirmReason, LogResultStatus resultStatus, String errorMessage) {
         this.adminId = adminId;
         this.username = username;
         this.operationType = operationType;
@@ -71,6 +81,7 @@ public class AdminOperationLog {
         this.ipAddress = ipAddress;
         this.userAgent = userAgent;
         this.requestBody = requestBody;
+        this.confirmReason = confirmReason;
         this.resultStatus = resultStatus;
         this.errorMessage = errorMessage;
     }
@@ -91,6 +102,7 @@ public class AdminOperationLog {
     public String getIpAddress() { return ipAddress; }
     public String getUserAgent() { return userAgent; }
     public String getRequestBody() { return requestBody; }
+    public String getConfirmReason() { return confirmReason; }
     public LogResultStatus getResultStatus() { return resultStatus; }
     public String getErrorMessage() { return errorMessage; }
     public LocalDateTime getCreatedAt() { return createdAt; }

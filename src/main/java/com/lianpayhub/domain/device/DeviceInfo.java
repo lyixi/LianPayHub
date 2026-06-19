@@ -99,6 +99,10 @@ public class DeviceInfo extends BaseEntity {
         this.bindAt = LocalDateTime.now();
     }
 
+    public void changeDeviceCode(String deviceCode) {
+        this.deviceCode = deviceCode;
+    }
+
     public void unbindUser() {
         this.userId = null;
         this.bindStatus = DeviceBindStatus.UNBOUND;

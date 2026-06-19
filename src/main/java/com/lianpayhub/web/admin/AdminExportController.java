@@ -1,5 +1,8 @@
 package com.lianpayhub.web.admin;
 
+import com.lianpayhub.common.error.BusinessException;
+import com.lianpayhub.common.error.ErrorCode;
+import com.lianpayhub.config.DefaultAdminProperties;
 import com.lianpayhub.domain.adapter.AdapterReport;
 import com.lianpayhub.domain.admin.AdminUser;
 import com.lianpayhub.domain.app.AppInfo;
@@ -73,6 +76,7 @@ public class AdminExportController {
     private final AppLoginLogRepository appLoginLogRepository;
     private final PaymentEventLogRepository paymentEventLogRepository;
     private final AdminUserRepository adminUserRepository;
+    private final DefaultAdminProperties defaultAdminProperties;
 
     public AdminExportController(AppInfoRepository appInfoRepository,
                                  PaymentChannelConfigRepository paymentChannelConfigRepository,
@@ -90,7 +94,8 @@ public class AdminExportController {
                                  AdminOperationLogRepository adminOperationLogRepository,
                                  AppLoginLogRepository appLoginLogRepository,
                                  PaymentEventLogRepository paymentEventLogRepository,
-                                 AdminUserRepository adminUserRepository) {
+                                 AdminUserRepository adminUserRepository,
+                                 DefaultAdminProperties defaultAdminProperties) {
         this.appInfoRepository = appInfoRepository;
         this.paymentChannelConfigRepository = paymentChannelConfigRepository;
         this.notificationChannelConfigRepository = notificationChannelConfigRepository;
@@ -108,6 +113,7 @@ public class AdminExportController {
         this.appLoginLogRepository = appLoginLogRepository;
         this.paymentEventLogRepository = paymentEventLogRepository;
         this.adminUserRepository = adminUserRepository;
+        this.defaultAdminProperties = defaultAdminProperties;
     }
 
     @GetMapping(value = "/notification-configs", produces = "text/csv;charset=UTF-8")
@@ -370,14 +376,15 @@ public class AdminExportController {
         List<LaunchRecord> rows = findLaunchRecords(appId, deviceId, userId, exportPage(limit));
         return csv("launch-records.csv",
                 Arrays.asList("id", "appId", "deviceId", "userId", "platform", "version",
-                        "networkType", "ipAddress", "eventType", "eventData", "createdAt"),
+                        "networkType", "ipAddress", "eventType", "sessionStartAt", "sessionEndAt", "durationSeconds", "eventData", "createdAt"),
                 rows,
                 new RowMapper<LaunchRecord>() {
                     @Override
                     public List<Object> map(LaunchRecord item) {
                         return Arrays.asList(item.getId(), item.getAppId(), item.getDeviceId(), item.getUserId(),
                                 item.getPlatform(), item.getVersion(), item.getNetworkType(), item.getIpAddress(),
-                                item.getEventType(), item.getEventData(), item.getCreatedAt());
+                                item.getEventType(), item.getSessionStartAt(), item.getSessionEndAt(),
+                                item.getDurationSeconds(), item.getEventData(), item.getCreatedAt());
                     }
                 });
     }
@@ -417,7 +424,7 @@ public class AdminExportController {
                 : adminOperationLogRepository.findByAdminId(adminId, exportPage(limit)).getContent();
         return csv("admin-operation-logs.csv",
                 Arrays.asList("id", "adminId", "username", "operationType", "targetType", "targetId",
-                        "requestMethod", "requestUri", "ipAddress", "userAgent", "resultStatus",
+                        "requestMethod", "requestUri", "ipAddress", "userAgent", "confirmReason", "resultStatus",
                         "errorMessage", "requestBody", "createdAt"),
                 rows,
                 new RowMapper<AdminOperationLog>() {
@@ -426,7 +433,7 @@ public class AdminExportController {
                         return Arrays.asList(item.getId(), item.getAdminId(), item.getUsername(),
                                 item.getOperationType(), item.getTargetType(), item.getTargetId(),
                                 item.getRequestMethod(), item.getRequestUri(), item.getIpAddress(),
-                                item.getUserAgent(), item.getResultStatus(), item.getErrorMessage(),
+                                item.getUserAgent(), item.getConfirmReason(), item.getResultStatus(), item.getErrorMessage(),
                                 item.getRequestBody(), item.getCreatedAt());
                     }
                 });
@@ -531,6 +538,9 @@ public class AdminExportController {
 
     private <T> ResponseEntity<String> csv(String filename, List<String> headers, List<T> source,
                                            RowMapper<T> rowMapper) {
+        if (!defaultAdminProperties.isExportEnabled()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "后台导出功能已关闭");
+        }
         StringBuilder builder = new StringBuilder();
         appendRow(builder, new ArrayList<Object>(headers));
         for (T item : source) {

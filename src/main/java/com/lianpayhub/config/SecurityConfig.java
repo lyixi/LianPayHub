@@ -1,7 +1,9 @@
 package com.lianpayhub.config;
 
+import com.lianpayhub.security.AdminIpWhitelistFilter;
 import com.lianpayhub.security.AdminJwtAuthenticationFilter;
 import com.lianpayhub.security.AdminOperationLogFilter;
+import com.lianpayhub.security.AdminPasswordPolicyFilter;
 import com.lianpayhub.security.AppUserJwtAuthenticationFilter;
 import com.lianpayhub.security.ApiAppAuthenticationFilter;
 import com.lianpayhub.security.JsonAccessDeniedHandler;
@@ -22,22 +24,28 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final AdminIpWhitelistFilter adminIpWhitelistFilter;
     private final AdminJwtAuthenticationFilter adminJwtAuthenticationFilter;
     private final AppUserJwtAuthenticationFilter appUserJwtAuthenticationFilter;
     private final AdminOperationLogFilter adminOperationLogFilter;
+    private final AdminPasswordPolicyFilter adminPasswordPolicyFilter;
     private final ApiAppAuthenticationFilter apiAppAuthenticationFilter;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
     private final JsonAccessDeniedHandler accessDeniedHandler;
 
-    public SecurityConfig(AdminJwtAuthenticationFilter adminJwtAuthenticationFilter,
+    public SecurityConfig(AdminIpWhitelistFilter adminIpWhitelistFilter,
+                          AdminJwtAuthenticationFilter adminJwtAuthenticationFilter,
                           AppUserJwtAuthenticationFilter appUserJwtAuthenticationFilter,
                           AdminOperationLogFilter adminOperationLogFilter,
+                          AdminPasswordPolicyFilter adminPasswordPolicyFilter,
                           ApiAppAuthenticationFilter apiAppAuthenticationFilter,
                           JsonAuthenticationEntryPoint authenticationEntryPoint,
                           JsonAccessDeniedHandler accessDeniedHandler) {
+        this.adminIpWhitelistFilter = adminIpWhitelistFilter;
         this.adminJwtAuthenticationFilter = adminJwtAuthenticationFilter;
         this.appUserJwtAuthenticationFilter = appUserJwtAuthenticationFilter;
         this.adminOperationLogFilter = adminOperationLogFilter;
+        this.adminPasswordPolicyFilter = adminPasswordPolicyFilter;
         this.apiAppAuthenticationFilter = apiAppAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
@@ -67,8 +75,10 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authenticationEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)
                 .and()
-                .addFilterBefore(adminJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(appUserJwtAuthenticationFilter, AdminJwtAuthenticationFilter.class)
+                .addFilterBefore(adminIpWhitelistFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(adminJwtAuthenticationFilter, AdminIpWhitelistFilter.class)
+                .addFilterAfter(adminPasswordPolicyFilter, AdminJwtAuthenticationFilter.class)
+                .addFilterAfter(appUserJwtAuthenticationFilter, AdminPasswordPolicyFilter.class)
                 .addFilterAfter(apiAppAuthenticationFilter, AppUserJwtAuthenticationFilter.class)
                 .addFilterAfter(adminOperationLogFilter, AdminJwtAuthenticationFilter.class);
         return http.build();

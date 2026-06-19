@@ -22,7 +22,10 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
                                    @Param("pathPrefix") String pathPrefix);
 
     /** 按精确虚拟路径查找（含已删除，用于覆盖写入判断） */
-    Optional<UserFile> findByUserIdAndAppIdAndVirtualPath(Long userId, String appId, String virtualPath);
+    Optional<UserFile> findByUserIdAndAppIdAndVirtualPathHashAndVirtualPath(Long userId,
+                                                                            String appId,
+                                                                            String virtualPathHash,
+                                                                            String virtualPath);
 
     /** 增量同步：查询 updated_at 大于指定时间的所有变更（含删除记录） */
     @Query("SELECT f FROM UserFile f WHERE f.userId = :userId AND f.appId = :appId " +

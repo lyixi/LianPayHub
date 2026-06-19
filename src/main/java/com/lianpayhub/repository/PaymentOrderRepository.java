@@ -13,11 +13,36 @@ import org.springframework.data.jpa.repository.Query;
 public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long> {
     Optional<PaymentOrder> findByOrderNo(String orderNo);
     Page<PaymentOrder> findByAppId(String appId, Pageable pageable);
+
+    @Query("select o from PaymentOrder o " +
+            "left join DeviceInfo d on d.id = o.deviceId " +
+            "left join UserInfo u on u.id = o.userId " +
+            "where (?1 is null or ?1 = '' or o.appId = ?1) " +
+            "and (?2 is null or ?2 = '' " +
+            "or lower(o.orderNo) like lower(concat('%', ?2, '%')) " +
+            "or lower(coalesce(o.tradeNo, '')) like lower(concat('%', ?2, '%')) " +
+            "or lower(coalesce(o.channelOrderNo, '')) like lower(concat('%', ?2, '%')) " +
+            "or lower(coalesce(d.deviceCode, '')) like lower(concat('%', ?2, '%')) " +
+            "or lower(coalesce(u.mobile, '')) like lower(concat('%', ?2, '%'))) ")
+    Page<PaymentOrder> search(String appId, String keyword, Pageable pageable);
+
+    List<PaymentOrder> findTop10ByAppIdOrderByIdDesc(String appId);
+    List<PaymentOrder> findTop10ByDeviceIdOrderByIdDesc(Long deviceId);
     List<PaymentOrder> findTop100ByPayStatusAndExpireAtBeforeOrderByExpireAtAsc(PayStatus payStatus, LocalDateTime expireAt);
+    long countByAppId(String appId);
+    long countByDeviceId(Long deviceId);
+    long countByAppIdAndPayStatus(String appId, PayStatus payStatus);
+    long countByDeviceIdAndPayStatus(Long deviceId, PayStatus payStatus);
     long countByPayStatus(PayStatus payStatus);
 
     @Query("select coalesce(sum(o.amountCents), 0) from PaymentOrder o where o.payStatus = ?1")
     Long sumAmountCentsByPayStatus(PayStatus payStatus);
+
+    @Query("select coalesce(sum(o.amountCents), 0) from PaymentOrder o where o.appId = ?1 and o.payStatus = ?2")
+    Long sumAmountCentsByAppIdAndPayStatus(String appId, PayStatus payStatus);
+
+    @Query("select coalesce(sum(o.amountCents), 0) from PaymentOrder o where o.deviceId = ?1 and o.payStatus = ?2")
+    Long sumAmountCentsByDeviceIdAndPayStatus(Long deviceId, PayStatus payStatus);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     long countByAppIdAndCreatedAtBetween(String appId, LocalDateTime start, LocalDateTime end);

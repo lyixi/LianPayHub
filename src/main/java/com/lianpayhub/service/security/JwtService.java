@@ -17,11 +17,16 @@ public class JwtService {
     }
 
     public String generateAdminToken(Long adminId, String username) {
+        return generateAdminToken(adminId, username, null);
+    }
+
+    public String generateAdminToken(Long adminId, String username, Integer passwordVersion) {
         Date now = new Date();
         Date expireAt = new Date(now.getTime() + securityProperties.getJwtExpireMinutes() * 60L * 1000L);
         return Jwts.builder()
                 .setSubject(String.valueOf(adminId))
                 .claim("username", username)
+                .claim("passwordVersion", passwordVersion)
                 .claim("type", "ADMIN")
                 .setIssuedAt(now)
                 .setExpiration(expireAt)

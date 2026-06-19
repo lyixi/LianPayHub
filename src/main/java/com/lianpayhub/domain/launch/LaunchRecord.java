@@ -6,7 +6,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "launch_record", indexes = {
         @Index(name = "idx_launch_record_app_time", columnList = "app_id,created_at"),
-        @Index(name = "idx_launch_record_device", columnList = "device_id")
+        @Index(name = "idx_launch_record_device", columnList = "device_id"),
+        @Index(name = "idx_launch_record_session", columnList = "session_id")
 })
 public class LaunchRecord {
 
@@ -39,6 +40,18 @@ public class LaunchRecord {
     @Column(name = "event_type", nullable = false, length = 32)
     private LaunchEventType eventType;
 
+    @Column(name = "session_id", length = 64)
+    private String sessionId;
+
+    @Column(name = "session_start_at")
+    private LocalDateTime sessionStartAt;
+
+    @Column(name = "session_end_at")
+    private LocalDateTime sessionEndAt;
+
+    @Column(name = "duration_seconds")
+    private Long durationSeconds;
+
     @Lob
     @Column(name = "event_data")
     private String eventData;
@@ -51,6 +64,21 @@ public class LaunchRecord {
 
     public LaunchRecord(String appId, Long deviceId, Long userId, String platform, String version,
                         String networkType, String ipAddress, LaunchEventType eventType, String eventData) {
+        this(appId, deviceId, userId, platform, version, networkType, ipAddress, eventType, null, null, null, null, eventData);
+    }
+
+    public LaunchRecord(String appId, Long deviceId, Long userId, String platform, String version,
+                        String networkType, String ipAddress, LaunchEventType eventType,
+                        LocalDateTime sessionStartAt, LocalDateTime sessionEndAt,
+                        Long durationSeconds, String eventData) {
+        this(appId, deviceId, userId, platform, version, networkType, ipAddress, eventType, null,
+                sessionStartAt, sessionEndAt, durationSeconds, eventData);
+    }
+
+    public LaunchRecord(String appId, Long deviceId, Long userId, String platform, String version,
+                        String networkType, String ipAddress, LaunchEventType eventType, String sessionId,
+                        LocalDateTime sessionStartAt, LocalDateTime sessionEndAt,
+                        Long durationSeconds, String eventData) {
         this.appId = appId;
         this.deviceId = deviceId;
         this.userId = userId;
@@ -59,6 +87,10 @@ public class LaunchRecord {
         this.networkType = networkType;
         this.ipAddress = ipAddress;
         this.eventType = eventType;
+        this.sessionId = sessionId;
+        this.sessionStartAt = sessionStartAt;
+        this.sessionEndAt = sessionEndAt;
+        this.durationSeconds = durationSeconds;
         this.eventData = eventData;
     }
 
@@ -103,8 +135,30 @@ public class LaunchRecord {
         return eventType;
     }
 
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public LocalDateTime getSessionStartAt() {
+        return sessionStartAt;
+    }
+
+    public LocalDateTime getSessionEndAt() {
+        return sessionEndAt;
+    }
+
+    public Long getDurationSeconds() {
+        return durationSeconds;
+    }
+
     public String getEventData() {
         return eventData;
+    }
+
+    public void completeSession(LocalDateTime sessionEndAt, Long durationSeconds) {
+        this.sessionStartAt = this.sessionStartAt == null ? this.createdAt : this.sessionStartAt;
+        this.sessionEndAt = sessionEndAt;
+        this.durationSeconds = durationSeconds;
     }
 
     public LocalDateTime getCreatedAt() {

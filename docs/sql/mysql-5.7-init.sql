@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS admin_user (
   display_name VARCHAR(128) NOT NULL,
   status VARCHAR(32) NOT NULL,
   last_login_at DATETIME NULL,
+  password_version INT NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
@@ -135,6 +136,24 @@ CREATE TABLE IF NOT EXISTS device_info (
   PRIMARY KEY (id),
   UNIQUE KEY uk_device_info_app_device (app_id, device_code),
   KEY idx_device_info_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS device_code_change_log (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  device_id BIGINT NOT NULL,
+  app_id VARCHAR(64) NOT NULL,
+  old_device_code VARCHAR(128) NOT NULL,
+  new_device_code VARCHAR(128) NOT NULL,
+  reason VARCHAR(512) NULL,
+  admin_id BIGINT NULL,
+  admin_username VARCHAR(64) NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_device_code_change_device (device_id),
+  KEY idx_device_code_change_app (app_id),
+  KEY idx_device_code_change_old (old_device_code),
+  KEY idx_device_code_change_new (new_device_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS package_info (
@@ -229,11 +248,16 @@ CREATE TABLE IF NOT EXISTS launch_record (
   network_type VARCHAR(64) NULL,
   ip_address VARCHAR(64) NULL,
   event_type VARCHAR(32) NOT NULL,
+  session_id VARCHAR(64) NULL,
+  session_start_at DATETIME NULL,
+  session_end_at DATETIME NULL,
+  duration_seconds BIGINT NULL,
   event_data LONGTEXT NULL,
   created_at DATETIME NOT NULL,
   PRIMARY KEY (id),
   KEY idx_launch_record_app_time (app_id, created_at),
-  KEY idx_launch_record_device (device_id)
+  KEY idx_launch_record_device (device_id),
+  KEY idx_launch_record_session (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS payment_callback_log (
@@ -284,6 +308,7 @@ CREATE TABLE IF NOT EXISTS admin_operation_log (
   ip_address VARCHAR(64) NULL,
   user_agent VARCHAR(512) NULL,
   request_body LONGTEXT NULL,
+  confirm_reason VARCHAR(512) NULL,
   result_status VARCHAR(32) NOT NULL,
   error_message VARCHAR(512) NULL,
   created_at DATETIME NOT NULL,

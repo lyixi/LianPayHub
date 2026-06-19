@@ -30,6 +30,9 @@ public class AdminUser extends BaseEntity {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "password_version", nullable = false)
+    private Integer passwordVersion = 1;
+
     protected AdminUser() {
     }
 
@@ -71,6 +74,10 @@ public class AdminUser extends BaseEntity {
         return lastLoginAt;
     }
 
+    public Integer getPasswordVersion() {
+        return passwordVersion;
+    }
+
     public void changeDisplayName(String displayName) {
         this.displayName = displayName;
     }
@@ -81,5 +88,6 @@ public class AdminUser extends BaseEntity {
 
     public void resetPassword(String passwordHash) {
         this.passwordHash = passwordHash;
+        this.passwordVersion = this.passwordVersion == null ? 1 : this.passwordVersion + 1;
     }
 }

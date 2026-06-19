@@ -11,6 +11,9 @@ spring:
     url: jdbc:mysql://localhost:3306/lianpayhub?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: iwxyiroot
+  flyway:
+    enabled: false
+    baseline-on-migrate: true
   jpa:
     hibernate:
       ddl-auto: update
@@ -39,9 +42,13 @@ lianpayhub:
     api-auth-enabled: false
     api-auth-mode: secret
     api-signature-time-window-seconds: 300
+    admin-ip-whitelist: []
   admin:
     default-username: admin
     default-password: admin123456
+    force-default-password-change: false
+    password-complexity-required: false
+    export-enabled: true
   payment:
     dev-tools-enabled: true
     order-expire-minutes: 30

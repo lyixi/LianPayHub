@@ -1,5 +1,7 @@
 package com.lianpayhub.config;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +20,7 @@ public class SecurityProperties {
     private Boolean apiAuthEnabled = false;
     private String apiAuthMode = "secret";
     private Integer apiSignatureTimeWindowSeconds = 300;
+    private List<String> adminIpWhitelist = new ArrayList<>();
 
     public String getJwtSecret() {
         return jwtSecret;
@@ -105,5 +108,13 @@ public class SecurityProperties {
 
     public void setApiSignatureTimeWindowSeconds(Integer apiSignatureTimeWindowSeconds) {
         this.apiSignatureTimeWindowSeconds = apiSignatureTimeWindowSeconds;
+    }
+
+    public List<String> getAdminIpWhitelist() {
+        return adminIpWhitelist;
+    }
+
+    public void setAdminIpWhitelist(List<String> adminIpWhitelist) {
+        this.adminIpWhitelist = adminIpWhitelist == null ? new ArrayList<>() : adminIpWhitelist;
     }
 }

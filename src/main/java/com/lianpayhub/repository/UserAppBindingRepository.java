@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 public interface UserAppBindingRepository extends JpaRepository<UserAppBinding, Long> {
     boolean existsByUserIdAndAppId(Long userId, String appId);
     Optional<UserAppBinding> findByUserIdAndAppId(Long userId, String appId);
+    long countByAppId(String appId);
 
     @Query("select b from UserAppBinding b where (:appId is null or b.appId = :appId) " +
             "and (:userId is null or b.userId = :userId) " +

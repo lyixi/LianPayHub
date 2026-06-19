@@ -16,10 +16,13 @@ public class AdminUserService {
 
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AdminPasswordPolicy passwordPolicy;
 
-    public AdminUserService(AdminUserRepository adminUserRepository, PasswordEncoder passwordEncoder) {
+    public AdminUserService(AdminUserRepository adminUserRepository, PasswordEncoder passwordEncoder,
+                            AdminPasswordPolicy passwordPolicy) {
         this.adminUserRepository = adminUserRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordPolicy = passwordPolicy;
     }
 
     @Transactional(readOnly = true)
@@ -41,6 +44,7 @@ public class AdminUserService {
         if (adminUserRepository.existsByUsername(normalizedUsername)) {
             throw new BusinessException(ErrorCode.CONFLICT, "管理员用户名已存在");
         }
+        passwordPolicy.validate(password);
         AdminUser adminUser = new AdminUser(
                 normalizedUsername,
                 passwordEncoder.encode(password),
@@ -73,6 +77,7 @@ public class AdminUserService {
 
     @Transactional
     public AdminUserResult resetPassword(Long id, String newPassword) {
+        passwordPolicy.validate(newPassword);
         AdminUser adminUser = requireAdmin(id);
         adminUser.resetPassword(passwordEncoder.encode(newPassword));
         return new AdminUserResult(adminUserRepository.save(adminUser));
@@ -80,6 +85,7 @@ public class AdminUserService {
 
     @Transactional
     public void changeOwnPassword(Long adminId, String oldPassword, String newPassword) {
+        passwordPolicy.validate(newPassword);
         AdminUser adminUser = requireAdmin(adminId);
         if (!passwordEncoder.matches(oldPassword, adminUser.getPasswordHash())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "原密码不正确");

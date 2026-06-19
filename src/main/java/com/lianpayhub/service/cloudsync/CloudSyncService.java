@@ -65,8 +65,9 @@ public class CloudSyncService {
         UserStorageQuota quota = getOrCreateQuota(cmd.getUserId(), cmd.getAppId());
 
         // 检查文件数量上限（仅对新文件；覆盖写入不新增数量）
-        Optional<UserFile> existing = fileRepo.findByUserIdAndAppIdAndVirtualPath(
-                cmd.getUserId(), cmd.getAppId(), normalizedPath);
+        String normalizedPathHash = UserFile.sha256Hex(normalizedPath);
+        Optional<UserFile> existing = fileRepo.findByUserIdAndAppIdAndVirtualPathHashAndVirtualPath(
+                cmd.getUserId(), cmd.getAppId(), normalizedPathHash, normalizedPath);
         boolean isOverwrite = existing.isPresent() && !existing.get().isDeleted();
 
         if (!isOverwrite) {

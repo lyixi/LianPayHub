@@ -4,12 +4,15 @@ import com.lianpayhub.domain.BaseEntity;
 import com.lianpayhub.service.storage.FileCategory;
 
 import javax.persistence.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_file", indexes = {
         @Index(name = "idx_user_file_owner", columnList = "user_id, app_id"),
-        @Index(name = "idx_user_file_path", columnList = "user_id, app_id, virtual_path"),
+        @Index(name = "idx_user_file_path_hash", columnList = "user_id, app_id, virtual_path_hash"),
         @Index(name = "idx_user_file_updated", columnList = "user_id, app_id, updated_at")
 })
 public class UserFile extends BaseEntity {
@@ -27,6 +30,9 @@ public class UserFile extends BaseEntity {
     /** 用户视角虚拟路径，如 /settings/config.json */
     @Column(name = "virtual_path", nullable = false, length = 1024)
     private String virtualPath;
+
+    @Column(name = "virtual_path_hash", length = 64)
+    private String virtualPathHash;
 
     @Column(name = "file_name", nullable = false, length = 256)
     private String fileName;
@@ -60,18 +66,42 @@ public class UserFile extends BaseEntity {
     protected UserFile() {
     }
 
+    @PrePersist
+    @PreUpdate
+    protected void syncDerivedFields() {
+        this.virtualPathHash = sha256Hex(virtualPath);
+    }
+
     public UserFile(Long userId, String appId, String virtualPath, String fileName,
                     String storageKey, String contentType, long sizeBytes,
                     String checksum, FileCategory fileCategory) {
         this.userId = userId;
         this.appId = appId;
         this.virtualPath = virtualPath;
+        this.virtualPathHash = sha256Hex(virtualPath);
         this.fileName = fileName;
         this.storageKey = storageKey;
         this.contentType = contentType;
         this.sizeBytes = sizeBytes;
         this.checksum = checksum;
         this.fileCategory = fileCategory;
+    }
+
+    public static String sha256Hex(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm unavailable", e);
+        }
     }
 
     public void softDelete() {

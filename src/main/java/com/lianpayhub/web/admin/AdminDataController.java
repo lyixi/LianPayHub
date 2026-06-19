@@ -24,6 +24,7 @@ import com.lianpayhub.service.report.AdminTrendService;
 import com.lianpayhub.service.report.DailyTrendItem;
 import com.lianpayhub.service.report.PaymentSummaryResult;
 import com.lianpayhub.service.report.PaymentSummaryService;
+import com.lianpayhub.service.admin.AdminAggregateService;
 import com.lianpayhub.service.member.GrantMemberCommand;
 import com.lianpayhub.service.member.MemberService;
 import com.lianpayhub.service.device.DeviceService;
@@ -38,6 +39,7 @@ public class AdminDataController {
 
     private final UserInfoRepository userInfoRepository;
     private final DeviceInfoRepository deviceInfoRepository;
+    private final DeviceCodeChangeLogRepository deviceCodeChangeLogRepository;
     private final MemberInfoRepository memberInfoRepository;
     private final PaymentOrderRepository paymentOrderRepository;
     private final PaymentCallbackLogRepository callbackLogRepository;
@@ -50,9 +52,11 @@ public class AdminDataController {
     private final AnalyticsReportService analyticsReportService;
     private final MemberService memberService;
     private final DeviceService deviceService;
+    private final AdminAggregateService adminAggregateService;
 
     public AdminDataController(UserInfoRepository userInfoRepository,
                                DeviceInfoRepository deviceInfoRepository,
+                               DeviceCodeChangeLogRepository deviceCodeChangeLogRepository,
                                MemberInfoRepository memberInfoRepository,
                                PaymentOrderRepository paymentOrderRepository,
                                PaymentCallbackLogRepository callbackLogRepository,
@@ -64,9 +68,11 @@ public class AdminDataController {
                                PaymentSummaryService paymentSummaryService,
                                AnalyticsReportService analyticsReportService,
                                MemberService memberService,
-                               DeviceService deviceService) {
+                               DeviceService deviceService,
+                               AdminAggregateService adminAggregateService) {
         this.userInfoRepository = userInfoRepository;
         this.deviceInfoRepository = deviceInfoRepository;
+        this.deviceCodeChangeLogRepository = deviceCodeChangeLogRepository;
         this.memberInfoRepository = memberInfoRepository;
         this.paymentOrderRepository = paymentOrderRepository;
         this.callbackLogRepository = callbackLogRepository;
@@ -79,6 +85,7 @@ public class AdminDataController {
         this.analyticsReportService = analyticsReportService;
         this.memberService = memberService;
         this.deviceService = deviceService;
+        this.adminAggregateService = adminAggregateService;
     }
 
     @GetMapping("/users")
@@ -133,6 +140,19 @@ public class AdminDataController {
         return ApiResponse.ok(deviceService.bindUser(id, request.userId()));
     }
 
+    @PatchMapping("/devices/{id}/device-code")
+    public ApiResponse<DeviceInfo> changeDeviceCode(@PathVariable Long id,
+                                                    @javax.validation.Valid @RequestBody ChangeDeviceCodeRequest request,
+                                                    @org.springframework.security.core.annotation.AuthenticationPrincipal com.lianpayhub.security.AdminPrincipal principal) {
+        return ApiResponse.ok(deviceService.changeDeviceCode(
+                id,
+                request.deviceCode(),
+                request.reason(),
+                principal == null ? null : principal.getAdminId(),
+                principal == null ? null : principal.getUsername()
+        ));
+    }
+
     @GetMapping("/members")
     public ApiResponse<Page<MemberInfo>> members(@RequestParam(required = false) String appId,
                                                  @RequestParam(defaultValue = "0") int page,
@@ -169,12 +189,20 @@ public class AdminDataController {
 
     @GetMapping("/orders")
     public ApiResponse<Page<PaymentOrder>> orders(@RequestParam(required = false) String appId,
+                                                  @RequestParam(required = false) String keyword,
+                                                  @RequestParam(required = false) String orderNo,
+                                                  @RequestParam(required = false) String deviceCode,
+                                                  @RequestParam(required = false) String tradeNo,
+                                                  @RequestParam(required = false) String mobile,
                                                   @RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "20") int size) {
         PageRequest pageRequest = pageRequest(page, size);
-        Page<PaymentOrder> result = appId == null || appId.trim().isEmpty()
+        String searchText = firstText(keyword, orderNo, deviceCode, tradeNo, mobile);
+        Page<PaymentOrder> result = searchText == null
+                ? (appId == null || appId.trim().isEmpty()
                 ? paymentOrderRepository.findAll(pageRequest)
-                : paymentOrderRepository.findByAppId(appId, pageRequest);
+                : paymentOrderRepository.findByAppId(appId, pageRequest))
+                : paymentOrderRepository.search(trimToNull(appId), searchText, pageRequest);
         return ApiResponse.ok(result);
     }
 
@@ -283,6 +311,20 @@ public class AdminDataController {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "设备不存在")));
     }
 
+    @GetMapping("/devices/{id}/aggregate")
+    public ApiResponse<DeviceAggregateResult> deviceAggregate(@PathVariable Long id) {
+        return ApiResponse.ok(adminAggregateService.deviceAggregate(id));
+    }
+
+    @GetMapping("/devices/{id}/device-code-logs")
+    public ApiResponse<Page<com.lianpayhub.domain.device.DeviceCodeChangeLog>> deviceCodeLogs(@PathVariable Long id,
+                                                                                              @RequestParam(defaultValue = "0") int page,
+                                                                                              @RequestParam(defaultValue = "20") int size) {
+        deviceInfoRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "设备不存在"));
+        return ApiResponse.ok(deviceCodeChangeLogRepository.findByDeviceId(id, pageRequest(page, size)));
+    }
+
     @GetMapping("/launch-records/{id}")
     public ApiResponse<LaunchRecord> launchRecordDetail(@PathVariable Long id) {
         return ApiResponse.ok(launchRecordRepository.findById(id)
@@ -310,6 +352,27 @@ public class AdminDataController {
                                                   @RequestParam(required = false) String appId,
                                                   @RequestParam(defaultValue = "30") int periods) {
         return ApiResponse.ok(analyticsReportService.analytics(granularity, metric, appId, periods));
+    }
+
+    private String firstText(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            String trimmed = trimToNull(value);
+            if (trimmed != null) {
+                return trimmed;
+            }
+        }
+        return null;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private PageRequest pageRequest(int page, int size) {

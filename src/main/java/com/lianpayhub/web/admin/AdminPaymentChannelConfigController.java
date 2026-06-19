@@ -5,6 +5,8 @@ import com.lianpayhub.domain.payment.PayChannel;
 import com.lianpayhub.domain.payment.PaymentChannelConfig;
 import com.lianpayhub.domain.payment.PaymentChannelConfigStatus;
 import com.lianpayhub.service.payment.PaymentChannelConfigService;
+import java.util.ArrayList;
+import java.util.List;
 import javax.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -43,6 +45,19 @@ public class AdminPaymentChannelConfigController {
         return ApiResponse.ok(configService.detail(id));
     }
 
+    @GetMapping("/{id}/check")
+    public ApiResponse<PaymentConfigCheckResult> check(@PathVariable Long id) {
+        PaymentChannelConfig config = configService.detail(id);
+        List<String> warnings = new ArrayList<>();
+        if (isBlank(config.getMerchantId())) warnings.add("商户号未配置");
+        if (isBlank(config.getProviderCode())) warnings.add("支付提供方未配置");
+        if (isBlank(config.getNotifyUrl())) warnings.add("回调地址未配置，建议使用 /api/payment/notify/" + config.getPayChannel());
+        if (!config.isCredentialConfigured()) warnings.add("敏感凭据未配置");
+        if (!config.isEnabled()) warnings.add("当前配置已停用");
+        String suggestedNotifyPath = "/api/payment/notify/" + config.getPayChannel();
+        return ApiResponse.ok(new PaymentConfigCheckResult(warnings.isEmpty(), suggestedNotifyPath, warnings));
+    }
+
     @PostMapping
     public ApiResponse<PaymentChannelConfig> create(@Valid @RequestBody CreatePaymentChannelConfigRequest request) {
         return ApiResponse.ok(configService.create(
@@ -75,6 +90,10 @@ public class AdminPaymentChannelConfigController {
     public ApiResponse<PaymentChannelConfig> changeStatus(@PathVariable Long id,
                                                           @Valid @RequestBody ChangePaymentChannelConfigStatusRequest request) {
         return ApiResponse.ok(configService.changeStatus(id, request.status()));
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     private PageRequest pageRequest(int page, int size) {

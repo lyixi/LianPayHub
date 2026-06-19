@@ -1,5 +1,7 @@
 package com.lianpayhub.security;
 
+import com.lianpayhub.domain.admin.AdminUser;
+import com.lianpayhub.repository.AdminUserRepository;
 import com.lianpayhub.service.security.JwtService;
 import io.jsonwebtoken.Claims;
 import java.io.IOException;
@@ -20,9 +22,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final AdminUserRepository adminUserRepository;
 
-    public AdminJwtAuthenticationFilter(JwtService jwtService) {
+    public AdminJwtAuthenticationFilter(JwtService jwtService, AdminUserRepository adminUserRepository) {
         this.jwtService = jwtService;
+        this.adminUserRepository = adminUserRepository;
     }
 
     @Override
@@ -60,6 +64,14 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
             }
             Long adminId = Long.valueOf(claims.getSubject());
             String username = claims.get("username", String.class);
+            Integer tokenPasswordVersion = claims.get("passwordVersion", Integer.class);
+            AdminUser adminUser = adminUserRepository.findById(adminId).orElse(null);
+            if (adminUser == null || !adminUser.isEnabled()) {
+                return false;
+            }
+            if (tokenPasswordVersion == null || !tokenPasswordVersion.equals(adminUser.getPasswordVersion())) {
+                return false;
+            }
             AdminPrincipal principal = new AdminPrincipal(adminId, username);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,

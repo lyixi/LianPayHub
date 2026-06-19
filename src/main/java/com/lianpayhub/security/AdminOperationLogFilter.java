@@ -13,6 +13,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
@@ -20,6 +21,10 @@ public class AdminOperationLogFilter extends OncePerRequestFilter {
 
     private static final Pattern SENSITIVE_JSON_FIELD = Pattern.compile(
             "(\"(?:password|oldPassword|newPassword|appSecret|token|credentialJson|privateKey|apiKey|merchantKey|certPassword|secretId|secretKey|accessKeyId|accessKeySecret|smtpPassword|authorizationCode)\"\\s*:\\s*\")((?:\\\\.|[^\"\\\\])*)(\")",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern CONFIRM_REASON_FIELD = Pattern.compile(
+            "\"(?:confirmReason|reason)\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -56,6 +61,7 @@ public class AdminOperationLogFilter extends OncePerRequestFilter {
         int status = response.getStatus();
         LogResultStatus resultStatus = failure == null && status < 400 ? LogResultStatus.SUCCESS : LogResultStatus.FAILED;
         String errorMessage = failure == null ? null : failure.getMessage();
+        String body = request.getCachedBodyAsString();
         logRepository.save(new AdminOperationLog(
                 principal == null ? null : principal.getAdminId(),
                 principal == null ? null : principal.getUsername(),
@@ -64,9 +70,10 @@ public class AdminOperationLogFilter extends OncePerRequestFilter {
                 guessTargetId(request.getRequestURI()),
                 request.getMethod(),
                 request.getRequestURI(),
-                request.getRemoteAddr(),
+                clientIp(request),
                 request.getHeader("User-Agent"),
-                trimBody(maskSensitiveBody(request.getCachedBodyAsString())),
+                trimBody(maskSensitiveBody(body)),
+                trimBody(extractConfirmReason(body)),
                 resultStatus,
                 errorMessage
         ));
@@ -90,12 +97,50 @@ public class AdminOperationLogFilter extends OncePerRequestFilter {
         return SENSITIVE_JSON_FIELD.matcher(body).replaceAll("$1******$3");
     }
 
+    private String extractConfirmReason(String body) {
+        if (body == null || body.isEmpty()) {
+            return null;
+        }
+        Matcher matcher = CONFIRM_REASON_FIELD.matcher(body);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.trim().isEmpty()) {
+            return forwarded.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        return realIp == null || realIp.trim().isEmpty() ? request.getRemoteAddr() : realIp.trim();
+    }
+
     private String guessOperationType(String method, String uri) {
         if ("GET".equalsIgnoreCase(method)) {
             return "QUERY";
         }
         if (uri.endsWith("/reset-secret")) {
             return "RESET_SECRET";
+        }
+        if (uri.endsWith("/device-code")) {
+            return "CHANGE_DEVICE_CODE";
+        }
+        if (uri.endsWith("/mark-paid")) {
+            return "MARK_ORDER_PAID";
+        }
+        if (uri.endsWith("/close")) {
+            return "CLOSE_ORDER";
+        }
+        if (uri.endsWith("/mark-success")) {
+            return "MARK_REFUND_SUCCESS";
+        }
+        if (uri.endsWith("/mark-failed")) {
+            return "MARK_REFUND_FAILED";
+        }
+        if (uri.endsWith("/cancel")) {
+            return "CANCEL_MEMBER";
+        }
+        if (uri.endsWith("/unbind")) {
+            return "UNBIND_DEVICE";
         }
         if (uri.endsWith("/status")) {
             return "CHANGE_STATUS";

@@ -47,6 +47,11 @@ public class DeviceController {
                 request.version(),
                 request.networkType(),
                 request.ipAddress(),
+                request.sessionId(),
+                request.previousSessionId(),
+                request.previousSessionStartAt(),
+                request.previousSessionEndAt(),
+                request.previousDurationSeconds(),
                 request.eventData()
         ));
         return ApiResponse.ok();

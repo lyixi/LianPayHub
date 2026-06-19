@@ -26,6 +26,7 @@
 ## 目录结构
 
 - `docs/`：设计文档
+  - `docs/admin-roadmap.md`：后台功能优化路线图与优先队列
 - `src/main/java/`：后端服务代码
 - `src/main/resources/`：配置文件
 
@@ -46,10 +47,11 @@
 - 会员开通/续期基础流程
 - 适配型 APP 数据上报
 - 统一 API 返回与异常处理
-- 后台管理员登录、JWT 鉴权、默认管理员初始化、管理员创建/启停/重置密码/修改自身密码
+- 后台管理员登录、JWT 鉴权、默认管理员初始化、强制默认密码修改、管理员创建/启停/重置密码/修改自身密码
 - 静态管理后台页面：总览、APP、平台配置（支付/短信/邮件）、交易管理（套餐/订单/退款）、用户、绑定、设备、会员、回调、启动、适配、日志、管理员、工具
 - 后台用户、用户-APP 绑定、设备绑定/解绑、会员、订单、启动记录分页查询与基础维护
 - 后台 APP、支付配置、通知配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配上报、日志、管理员 CSV 导出
+- APP 接入包 Markdown 下载、公开启用套餐列表接口
 - 后台总览报表基础指标
 - 后台支付汇总报表：按 APP 和支付渠道统计订单、支付订单与收入
 - 后台多维统计报表：支持按日/月/年、全部或指定 APP、订单数、启动数、登录数、支付/退款金额等指标生成趋势图
@@ -69,9 +71,13 @@ lianpayhub:
   admin:
     default-username: admin
     default-password: admin123456
+    force-default-password-change: false
+    password-complexity-required: false
+    export-enabled: true
   security:
     jwt-secret: change-me-to-a-long-random-secret-for-production
     jwt-expire-minutes: 720
+    admin-ip-whitelist: [] # 为空不限制；可填 127.0.0.1、192.168.1.*
 ```
 
 登录接口：
@@ -127,6 +133,7 @@ admin / admin123456
 
 常用后台查询接口：
 
+- `GET /admin/apps/{id}/integration-package`
 - `GET /admin/users`
 - `GET /admin/payment-configs`
 - `GET /admin/payment-configs/{id}`
@@ -135,8 +142,10 @@ admin / admin123456
 - `GET /admin/user-bindings`
 - `GET /admin/user-bindings/{id}`
 - `GET /admin/devices`
+- `GET /admin/devices/{id}/aggregate`
+- `GET /admin/devices/{id}/device-code-logs`
 - `GET /admin/members`
-- `GET /admin/orders`
+- `GET /admin/orders?keyword=<订单号/设备码/交易号/手机号>`
 - `GET /admin/orders/{id}`
 - `GET /admin/payment-callbacks`
 - `GET /admin/payment-refunds`
@@ -202,7 +211,8 @@ APP 侧常用接口：
 - `POST /api/auth/send-code`
 - `POST /api/auth/login`
 - `POST /api/device/register`
-- `POST /api/device/launch`
+- `POST /api/device/launch`：启动上报；客户端每次启动生成 `sessionId`；下次启动时补传 `previousSessionId`、`previousSessionEndAt`、`previousDurationSeconds`。后台只在找到同 APP、同设备、同会话 ID 的上一条 `LAUNCH` 时回填退出时间和时长，不再单独写 `EXIT` 行，避免异常漏报导致超长误算
+- `GET /api/packages?appId=demo-app`：公开启用套餐列表
 - `GET /api/member/status?appId=demo-app&userId=1`
 - `GET /api/member/status?appId=demo-app&deviceCode=device-001`
 - `POST /api/payment/create-order`
@@ -249,6 +259,14 @@ lianpayhub:
     sms-code-required: true
     sms-debug-return-code: false
 ```
+
+## 数据库迁移
+
+项目已接入 Flyway。默认本地开发仍使用 `spring.jpa.hibernate.ddl-auto=update` 并关闭 Flyway，生产配置 `application-prod.yml` 启用 Flyway 且使用 `ddl-auto=validate`。
+
+- 初始化脚本：`docs/sql/mysql-5.7-init.sql`
+- Flyway 迁移：`src/main/resources/db/migration/V1__init_schema.sql`
+- 生产升级建议：后续表结构变化新增 `V2__*.sql`，不要直接修改已发布迁移。
 
 相关配置：
 
@@ -453,4 +471,7 @@ Windows 本地也可以直接运行完整回归脚本：
 
 ## 文档
 
+- 对外接入文档：`docs/integration-api.md`
 - 设计文档：`docs/enterprise-payment-member-system.md`
+- 云同步设计文档：`docs/cloud-sync-file-system.md`
+- 初始化 SQL：`docs/sql/mysql-5.7-init.sql`

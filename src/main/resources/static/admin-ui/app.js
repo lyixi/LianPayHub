@@ -315,6 +315,10 @@ function api(path, options) {
       if (text) {
         try { data = JSON.parse(text); } catch (err) { data = null; }
       }
+      if (data && data.data && data.data.mustChangePassword) {
+        openMustChangePasswordModal((data && data.message) || "默认管理员密码必须先修改");
+        throw new Error((data && data.message) || "默认管理员密码必须先修改");
+      }
       if (isAuthExpired(res.status, data)) {
         var authMessage = (data && data.message) || "登录已过期，请重新登录";
         handleAuthExpired(authMessage);
@@ -365,6 +369,15 @@ function queryString(params) {
 }
 
 function exportCsv(path, filename) {
+  if (!state.exportConfirmed) {
+    openRiskConfirm("确认导出数据", "导出可能包含业务敏感数据，请确认用途合规。", "确认导出", function () {
+      state.exportConfirmed = true;
+      closeModal();
+      exportCsv(path, filename);
+      state.exportConfirmed = false;
+    }, { reasonRequired: false });
+    return;
+  }
   var headers = {};
   if (state.token) headers["Authorization"] = "Bearer " + state.token;
   fetch(path, { headers: headers }).then(function (res) {
@@ -414,7 +427,29 @@ function escapeHtml(value) {
 function formatValue(value) {
   if (value === null || value === undefined || value === "") return "-";
   if (typeof value === "boolean") return value ? "是" : "否";
+  if (isIsoDateTime(value)) return escapeHtml(formatDateTime(value));
   return escapeHtml(labelOf(value));
+}
+
+function isIsoDateTime(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value);
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  return String(value).replace("T", " ").slice(0, 16);
+}
+
+function formatDuration(seconds) {
+  if (seconds === null || seconds === undefined || seconds === "") return "-";
+  var total = Math.max(0, Math.round(Number(seconds) || 0));
+  if (total < 60) return total + " 秒";
+  var minutes = Math.floor(total / 60);
+  var remainSeconds = total % 60;
+  if (minutes < 60) return remainSeconds ? minutes + " 分 " + remainSeconds + " 秒" : minutes + " 分";
+  var hours = Math.floor(minutes / 60);
+  var remainMinutes = minutes % 60;
+  return remainMinutes ? hours + " 小时 " + remainMinutes + " 分" : hours + " 小时";
 }
 
 function formatMoney(cents) {
@@ -676,6 +711,9 @@ function login(e) {
     state.token = data.token;
     localStorage.setItem("lph_token", state.token);
     showApp();
+    if (data.mustChangePassword) {
+      openMustChangePasswordModal("当前仍使用默认管理员密码，请先修改后继续使用后台。");
+    }
   }).catch(function (err) {
     $("loginError").textContent = err.message;
   });
@@ -803,6 +841,30 @@ function closeModal() {
   $("modalMask").classList.add("hidden");
   $("modalBody").innerHTML = "";
   $("modalFooter").innerHTML = "";
+}
+
+function openRiskConfirm(title, message, actionLabel, onConfirm, options) {
+  options = options || {};
+  var reasonId = options.reasonId || "riskReason";
+  var body = '<div class="risk-box">' + escapeHtml(message) + '</div>';
+  if (options.reason !== false) {
+    body += '<div class="form-grid">' + textarea(reasonId, "操作原因", "", { required: options.reasonRequired !== false, hint: "会写入后台操作日志，便于后续审计" }) + '</div>';
+  }
+  openModal(title, body,
+    '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    '<button class="danger" type="button" onclick="confirmRiskAction(\'' + reasonId + '\')">' + escapeHtml(actionLabel || "确认") + '</button>');
+  state.pendingRiskAction = function () {
+    var reason = $(reasonId) ? $(reasonId).value.trim() : "";
+    if (options.reasonRequired !== false && options.reason !== false && !reason) {
+      toast("请填写操作原因");
+      return;
+    }
+    onConfirm(reason);
+  };
+}
+
+function confirmRiskAction() {
+  if (typeof state.pendingRiskAction === "function") state.pendingRiskAction();
 }
 
 function renderDashboard() {
@@ -964,24 +1026,11 @@ function loadApps() {
 
 function renderApps() {
   return loadApps().then(function (rows) {
-    var createBody = '<div class="form-grid">' +
-      input("appId", "APP ID") +
-      input("appName", "APP 名称") +
-      select("appType", "类型", [
-        optionOf("STANDARD"),
-        optionOf("DEVICE_ONLY"),
-        optionOf("ADAPTER")
-      ], "STANDARD") +
-      checkbox("needMobileLogin", "手机号登录", true) +
-      checkbox("needDeviceVip", "设备会员", false) +
-      '<div class="form-actions"><button type="button" onclick="createApp()">创建</button>' +
-      '<button class="secondary" type="button" onclick="exportCsv(\'/admin/exports/apps?limit=5000\', \'apps.csv\')">导出</button></div>' +
-      "</div>";
-
     $("apps").innerHTML =
-      panel("创建 APP", createBody) +
-      '<div style="height:12px"></div>' +
-      panel("APP 列表", table([
+      panelTitleActions("APP 列表",
+        '<button type="button" onclick="openAppCreate()">新建 APP</button>' +
+        '<button class="secondary" type="button" onclick="exportCsv(\'/admin/exports/apps?limit=5000\', \'apps.csv\')">导出</button>') +
+      table([
         { title: "ID", key: "id" },
         { title: "APP ID", key: "appId" },
         { title: "名称", key: "appName" },
@@ -995,14 +1044,36 @@ function renderApps() {
           render: function (r) {
             return '<div class="actions">' +
               '<button class="small" onclick="openAppDetail(' + r.id + ')">详情</button>' +
+              '<button class="small" onclick="downloadIntegrationPackage(' + r.id + ')">接入包</button>' +
               '<button class="small" onclick="openAppEdit(' + r.id + ')">编辑</button>' +
               '<button class="small" onclick="toggleApp(' + r.id + ', \'' + r.status + '\')">启停</button>' +
               '<button class="small" onclick="resetSecret(' + r.id + ')">重置密钥</button>' +
               '</div>';
           }
         }
-      ], rows));
+      ], rows) +
+      '</div>';
   });
+}
+
+function downloadIntegrationPackage(id) {
+  exportCsv("/admin/apps/" + id + "/integration-package", "lianpayhub-integration-" + id + ".md");
+}
+
+function openAppCreate() {
+  openModal("新建 APP", '<div class="form-grid">' +
+    input("appId", "APP ID") +
+    input("appName", "APP 名称") +
+    select("appType", "类型", [
+      optionOf("STANDARD"),
+      optionOf("DEVICE_ONLY"),
+      optionOf("ADAPTER")
+    ], "STANDARD") +
+    checkbox("needMobileLogin", "手机号登录", true) +
+    checkbox("needDeviceVip", "设备会员", false) +
+    "</div>",
+    '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    '<button type="button" onclick="createApp()">创建</button>');
 }
 
 function createApp() {
@@ -1017,15 +1088,15 @@ function createApp() {
     }
   }).then(function (data) {
     toast("创建成功，secret: " + data.appSecret);
+    closeModal();
     renderApps();
   }).catch(function (err) { toast(err.message); });
 }
 
 function openAppDetail(id) {
-  api("/admin/apps").then(function (rows) {
-    var item = findById(rows, id);
-    if (!item) throw new Error("APP 不存在");
-    openModal("APP 详情", detailList({
+  api("/admin/apps/" + id + "/aggregate").then(function (data) {
+    var item = data.app;
+    var body = detailList({
       "ID": item.id,
       "APP ID": item.appId,
       "名称": item.appName,
@@ -1033,9 +1104,20 @@ function openAppDetail(id) {
       "密钥版本": item.appSecretVersion,
       "手机号登录": item.needMobileLogin,
       "设备会员": item.needDeviceVip,
-      "状态": item.status,
-      "密钥哈希": item.appSecretHash || "-"
-    }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+      "状态": item.status
+    }) + sectionBlock("关键指标", statsGrid(data.stats)) +
+      sectionBlock("套餐", compactTable([
+        { title: "ID", key: "id" }, { title: "名称", key: "packageName" }, { title: "价格(分)", key: "priceCents" }, { title: "状态", render: function (r) { return badge(r.status); } }
+      ], data.packages)) +
+      sectionBlock("最近订单", compactTable([
+        { title: "ID", key: "id" }, { title: "订单号", key: "orderNo" }, { title: "金额(分)", key: "amountCents" }, { title: "状态", render: function (r) { return badge(r.payStatus); } }
+      ], data.recentOrders)) +
+      sectionBlock("最近设备", compactTable([
+        { title: "ID", key: "id" }, { title: "设备码", key: "deviceCode" }, { title: "用户", key: "userId" }, { title: "最近启动", key: "lastLaunchAt" }
+      ], data.recentDevices));
+    openModal("APP 详情", body,
+      '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(item.appId || "") + '\')">复制 APP ID</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -1069,19 +1151,26 @@ function saveAppEdit(id) {
 }
 
 function toggleApp(id, status) {
-  api("/admin/apps/" + id + "/status", {
-    method: "PATCH",
-    body: { status: status === "ENABLED" ? "DISABLED" : "ENABLED" }
-  }).then(function () {
-    toast("状态已更新");
-    renderApps();
-  }).catch(function (err) { toast(err.message); });
+  var next = status === "ENABLED" ? "DISABLED" : "ENABLED";
+  openRiskConfirm("确认变更 APP 状态", "即将把 APP 状态改为「" + labelOf(next) + "」，可能影响外部项目接入。", "确认变更", function (reason) {
+    api("/admin/apps/" + id + "/status", {
+      method: "PATCH",
+      body: { status: next, confirmReason: reason }
+    }).then(function () {
+      toast("状态已更新");
+      closeModal();
+      renderApps();
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function resetSecret(id) {
-  api("/admin/apps/" + id + "/reset-secret", { method: "POST" }).then(function (data) {
-    toast("新 secret: " + data.appSecret);
-  }).catch(function (err) { toast(err.message); });
+  openRiskConfirm("确认重置 APP 密钥", "重置后旧密钥会失效，已接入项目需要同步更新配置。", "确认重置", function (reason) {
+    api("/admin/apps/" + id + "/reset-secret", { method: "POST", body: { confirmReason: reason } }).then(function (data) {
+      toast("新 secret: " + data.appSecret);
+      closeModal();
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function paymentChannelOptions(includeAll) {
@@ -1224,6 +1313,7 @@ function renderPaymentConfigs(page) {
           render: function (r) {
             return '<div class="actions">' +
               '<button class="small" onclick="openPaymentConfigDetail(' + r.id + ')">详情</button>' +
+              '<button class="small" onclick="checkPaymentConfig(' + r.id + ')">检查</button>' +
               '<button class="small" onclick="openPaymentConfigEdit(' + r.id + ')">编辑</button>' +
               '<button class="small" onclick="togglePaymentConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
               '</div>';
@@ -1305,12 +1395,26 @@ function openPaymentConfigDetail(id) {
       "商户号": item.merchantId,
       "渠道 APP ID": item.channelAppId,
       "回调地址": item.notifyUrl,
+      "建议回调路径": "/api/payment/notify/" + item.payChannel,
       "普通配置": item.configJson,
       "敏感凭据": item.credentialConfigured ? "已配置" : "未配置",
       "状态": item.status,
       "创建时间": item.createdAt,
       "更新时间": item.updatedAt
-    }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+    }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent('/api/payment/notify/' + item.payChannel) + '\')">复制回调路径</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
+function checkPaymentConfig(id) {
+  api("/admin/payment-configs/" + id + "/check").then(function (data) {
+    var warnings = data.warnings && data.warnings.length ? data.warnings.join("\n") : "配置检查通过";
+    openModal("支付配置检查", detailList({
+      "是否就绪": data.ready ? "是" : "否",
+      "建议回调路径": data.suggestedNotifyPath,
+      "检查结果": warnings
+    }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(data.suggestedNotifyPath || "") + '\')">复制回调路径</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -1824,15 +1928,6 @@ function renderBindings(page) {
     if (filters.status) qs.push("status=" + encodeURIComponent(filters.status));
     return api("/admin/user-bindings?" + qs.join("&")).then(function (data) {
       var rows = pageContent(data);
-      var createBody = '<div class="form-grid">' +
-        select("bindingCreateAppId", "APP", createAppOptions, filters.appId || (apps[0] && apps[0].appId) || "") +
-        input("bindingCreateUserId", "用户 ID") +
-        select("bindingCreateType", "绑定类型", [
-          optionOf("MOBILE_LOGIN"),
-          optionOf("DEVICE_BIND")
-        ], "MOBILE_LOGIN") +
-        '<button type="button" onclick="createBinding()">创建绑定</button>' +
-        '</div>';
       var filterBar = '<div class="toolbar">' +
         select("bindingAppFilter", "APP", appOptions, filters.appId || "") +
         input("bindingUserFilter", "用户 ID", filters.userId || "") +
@@ -1842,14 +1937,14 @@ function renderBindings(page) {
           optionOf("DISABLED")
         ], filters.status || "") +
         '<button class="secondary" type="button" onclick="applyBindingFilter()">筛选</button>' +
-        '<button class="secondary" type="button" onclick="exportBindings()">导出</button>' +
         '</div>';
       $("bindings").innerHTML =
-        panel("创建绑定", createBody) +
-        '<div style="height:12px"></div>' +
         panel("筛选", filterBar) +
         '<div style="height:12px"></div>' +
-        panel("绑定列表", table([
+        panelTitleActions("绑定列表",
+          '<button type="button" onclick="openBindingCreate()">新建绑定</button>' +
+          '<button class="secondary" type="button" onclick="exportBindings()">导出</button>') +
+        table([
           { title: "ID", key: "id" },
           { title: "用户 ID", key: "userId" },
           { title: "APP", key: "appId" },
@@ -1865,8 +1960,9 @@ function renderBindings(page) {
                 '</div>';
             }
           }
-        ], rows)) +
-        renderPager("bindings", pageMeta(data), "renderBindings");
+        ], rows) +
+        renderPager("bindings", pageMeta(data), "renderBindings") +
+        '</div>';
     });
   });
 }
@@ -1880,6 +1976,26 @@ function applyBindingFilter() {
   renderBindings(0);
 }
 
+function openBindingCreate() {
+  loadApps().then(function (apps) {
+    if (!apps.length) throw new Error("请先创建 APP");
+    var filters = queryFilters("bindings");
+    var appOptions = apps.map(function (a) {
+      return { value: a.appId, label: a.appId + " / " + a.appName };
+    });
+    openModal("新建绑定", '<div class="form-grid">' +
+      select("bindingCreateAppId", "APP", appOptions, filters.appId || apps[0].appId) +
+      input("bindingCreateUserId", "用户 ID") +
+      select("bindingCreateType", "绑定类型", [
+        optionOf("MOBILE_LOGIN"),
+        optionOf("DEVICE_BIND")
+      ], "MOBILE_LOGIN") +
+      '</div>',
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      '<button type="button" onclick="createBinding()">创建</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
 function createBinding() {
   api("/admin/user-bindings", {
     method: "POST",
@@ -1890,6 +2006,7 @@ function createBinding() {
     }
   }).then(function () {
     toast("绑定已创建");
+    closeModal();
     renderBindings(0);
   }).catch(function (err) { toast(err.message); });
 }
@@ -1935,6 +2052,7 @@ function renderDevices(page) {
     if (filters.deviceCode) qs.push("deviceCode=" + encodeURIComponent(filters.deviceCode));
     return api("/admin/devices?" + qs.join("&")).then(function (data) {
       var rows = pageContent(data);
+      state.deviceRows = rows;
       var filterBar = '<div class="toolbar">' +
         select("deviceAppFilter", "APP", apps.map(function (a) {
           return { value: a.appId, label: a.appId + " / " + a.appName };
@@ -1959,6 +2077,7 @@ function renderDevices(page) {
             render: function (r) {
             return '<div class="actions">' +
                 '<button class="small" onclick="openDeviceDetail(' + r.id + ')">详情</button>' +
+                '<button class="small" onclick="openDeviceCodeEdit(' + r.id + ')">改设备码</button>' +
                 '<button class="small" onclick="openDeviceBindUser(' + r.id + ')">绑定用户</button>' +
                 '<button class="small danger" onclick="unbindDevice(' + r.id + ')">解绑</button>' +
                 '</div>';
@@ -1980,10 +2099,9 @@ function applyDeviceFilter() {
 }
 
 function openDeviceDetail(id) {
-  api("/admin/devices?appId=" + encodeURIComponent(queryFilters("devices").appId || "") + "&page=0&size=100").then(function (data) {
-    var item = findById(pageContent(data), id);
-    if (!item) throw new Error("设备不存在");
-    openModal("设备详情", detailList({
+  api("/admin/devices/" + id + "/aggregate").then(function (data) {
+    var item = data.device;
+    var body = detailList({
       "ID": item.id,
       "APP": item.appId,
       "设备码": item.deviceCode,
@@ -1993,9 +2111,54 @@ function openDeviceDetail(id) {
       "用户 ID": item.userId,
       "绑定状态": item.bindStatus,
       "绑定时间": item.bindAt,
-      "最近启动": item.lastLaunchAt
-    }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+      "最近启动": item.lastLaunchAt,
+      "会员状态": data.deviceMember ? data.deviceMember.status : "无",
+      "会员到期": data.deviceMember ? data.deviceMember.expireAt : "-",
+      "总使用时长": data.usageStats ? formatDuration(data.usageStats.totalDurationSeconds) : "-",
+      "平均使用时长": data.usageStats ? formatDuration(data.usageStats.averageDurationSeconds) : "-"
+    }) + sectionBlock("关键指标", statsGrid(data.stats)) +
+      sectionBlock("最近订单", compactTable([
+        { title: "ID", key: "id" }, { title: "订单号", key: "orderNo" }, { title: "金额(分)", key: "amountCents" }, { title: "状态", render: function (r) { return badge(r.payStatus); } }
+      ], data.recentOrders)) +
+      sectionBlock("最近启动", compactTable([
+        { title: "ID", key: "id" }, { title: "平台", key: "platform" }, { title: "版本", key: "version" }, { title: "时长", render: function (r) { return formatDuration(r.durationSeconds); } }, { title: "时间", render: function (r) { return formatDateTime(r.createdAt); } }
+      ], data.recentLaunches)) +
+      sectionBlock("设备码修改历史", compactTable([
+        { title: "时间", key: "createdAt" }, { title: "旧设备码", key: "oldDeviceCode" }, { title: "新设备码", key: "newDeviceCode" }, { title: "原因", key: "reason" }, { title: "管理员", key: "adminUsername" }
+      ], data.recentDeviceCodeChanges));
+    openModal("设备详情", body,
+      '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(item.deviceCode || "") + '\')">复制设备码</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
+}
+
+function openDeviceCodeEdit(id) {
+  var rows = state.deviceRows || [];
+  var item = findById(rows, id);
+  if (!item) {
+    toast("设备不存在");
+    return;
+  }
+  openModal("修改设备码", '<div class="form-grid">' +
+    input("editDeviceCode", "设备码", item.deviceCode) +
+    '<div class="field-hint">会员权益绑定在 Device ID 上，修改设备码用于管理员处理用户换设备。</div>' +
+    '</div>',
+    '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    '<button type="button" onclick="saveDeviceCodeEdit(' + id + ')">保存</button>');
+}
+
+function saveDeviceCodeEdit(id) {
+  var nextCode = $("editDeviceCode").value;
+  openRiskConfirm("确认修改设备码", "会员权益绑定在 Device ID 上。修改设备码会把该会员资格迁移给新的设备码使用。", "确认修改", function (reason) {
+    api("/admin/devices/" + id + "/device-code", {
+      method: "PATCH",
+      body: { deviceCode: nextCode, reason: reason, confirmReason: reason }
+    }).then(function () {
+      toast("设备码已更新");
+      closeModal();
+      renderDevices(currentPage("devices"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function openDeviceBindUser(id) {
@@ -2018,10 +2181,13 @@ function saveDeviceBindUser(id) {
 }
 
 function unbindDevice(id) {
-  api("/admin/devices/" + id + "/unbind", { method: "POST" }).then(function () {
-    toast("设备已解绑");
-    renderDevices(currentPage("devices"));
-  }).catch(function (err) { toast(err.message); });
+  openRiskConfirm("确认解绑设备", "解绑会移除设备与用户的绑定关系，但不会删除设备记录。", "确认解绑", function (reason) {
+    api("/admin/devices/" + id + "/unbind", { method: "POST", body: { confirmReason: reason } }).then(function () {
+      toast("设备已解绑");
+      closeModal();
+      renderDevices(currentPage("devices"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function renderMembers(page) {
@@ -2129,10 +2295,13 @@ function openMemberDetail(id) {
 }
 
 function cancelMember(id) {
-  api("/admin/members/" + id + "/cancel", { method: "POST" }).then(function () {
-    toast("会员已取消");
-    renderMembers(currentPage("members"));
-  }).catch(function (err) { toast(err.message); });
+  openRiskConfirm("确认取消会员", "取消后会员会立即失效，请确认这是管理员手动处理。", "确认取消", function (reason) {
+    api("/admin/members/" + id + "/cancel", { method: "POST", body: { confirmReason: reason } }).then(function () {
+      toast("会员已取消");
+      closeModal();
+      renderMembers(currentPage("members"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function renderOrders(page) {
@@ -2141,13 +2310,16 @@ function renderOrders(page) {
   return loadApps().then(function (apps) {
     var filters = queryFilters("orders");
     var currentApp = filters.appId || (apps[0] && apps[0].appId) || "";
-    setFilters("orders", { appId: currentApp });
-    return api("/admin/orders?appId=" + encodeURIComponent(currentApp) + "&page=" + page + "&size=20").then(function (data) {
+    setFilters("orders", { appId: currentApp, keyword: filters.keyword || "" });
+    var orderQs = ["appId=" + encodeURIComponent(currentApp), "page=" + page, "size=20"];
+    if (filters.keyword) orderQs.push("keyword=" + encodeURIComponent(filters.keyword));
+    return api("/admin/orders?" + orderQs.join("&")).then(function (data) {
       var rows = pageContent(data);
       var filterBar = '<div class="toolbar">' +
         select("orderAppFilter", "APP", apps.map(function (a) {
           return { value: a.appId, label: a.appId + " / " + a.appName };
         }), currentApp) +
+        input("orderKeywordFilter", "订单/设备/交易/手机号", filters.keyword || "", { required: false }) +
         '<button class="secondary" type="button" onclick="applyOrderFilter()">筛选</button>' +
         '<button type="button" onclick="openOrderCreate()">创建订单</button>' +
         '<button class="secondary" type="button" onclick="exportOrders()">导出</button>' +
@@ -2183,7 +2355,7 @@ function renderOrders(page) {
 }
 
 function applyOrderFilter() {
-  setFilters("orders", { appId: $("orderAppFilter").value });
+  setFilters("orders", { appId: $("orderAppFilter").value, keyword: $("orderKeywordFilter").value });
   renderOrders(0);
 }
 
@@ -2222,8 +2394,9 @@ function saveOrderCreate() {
 }
 
 function openOrderDetail(id) {
-  api("/admin/orders/" + id).then(function (item) {
-    openModal("订单详情", detailList({
+  api("/admin/orders/" + id + "/timeline").then(function (data) {
+    var item = data.order;
+    var body = detailList({
       "ID": item.id,
       "APP": item.appId,
       "用户": item.userId,
@@ -2241,31 +2414,45 @@ function openOrderDetail(id) {
       "支付时间": item.paidAt,
       "过期时间": item.expireAt,
       "关闭时间": item.closedAt,
-      "关闭原因": item.closeReason
-    }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+      "关闭原因": item.closeReason,
+      "会员状态": data.member ? data.member.status : "-"
+    }) + sectionBlock("订单时间线", compactTable([
+      { title: "时间", key: "happenedAt" },
+      { title: "事件", key: "title" },
+      { title: "状态", render: function (r) { return badge(r.status); } },
+      { title: "金额(分)", key: "amountCents" },
+      { title: "说明", key: "description" }
+    ], data.items));
+    openModal("订单详情", body,
+      '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(item.orderNo || "") + '\')">复制订单号</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
 
 function markPaid(id) {
-  api("/admin/orders/" + id + "/mark-paid", {
-    method: "POST",
-    body: { tradeNo: "MANUAL-" + Date.now() }
-  }).then(function () {
-    toast("已标记支付");
-    renderOrders(currentPage("orders"));
-  }).catch(function (err) { toast(err.message); });
+  openRiskConfirm("确认标记支付", "这会直接把订单改为已支付并触发会员开通/续期，仅用于人工补单。", "确认标记支付", function (reason) {
+    api("/admin/orders/" + id + "/mark-paid", {
+      method: "POST",
+      body: { tradeNo: "MANUAL-" + Date.now(), confirmReason: reason }
+    }).then(function () {
+      toast("已标记支付");
+      closeModal();
+      renderOrders(currentPage("orders"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function closeOrder(id) {
-  var reason = window.prompt("关闭原因", "后台手动关闭");
-  if (reason === null) return;
-  api("/admin/orders/" + id + "/close", {
-    method: "POST",
-    body: { reason: reason }
-  }).then(function () {
-    toast("订单已关闭");
-    renderOrders(currentPage("orders"));
-  }).catch(function (err) { toast(err.message); });
+  openRiskConfirm("确认关闭订单", "关闭后订单不能再支付、标记支付或退款。", "确认关闭", function (reason) {
+    api("/admin/orders/" + id + "/close", {
+      method: "POST",
+      body: { reason: reason, confirmReason: reason }
+    }).then(function () {
+      toast("订单已关闭");
+      closeModal();
+      renderOrders(currentPage("orders"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function renderRefunds(page) {
@@ -2358,20 +2545,26 @@ function openRefundDetail(id) {
 }
 
 function refundOk(id) {
-  api("/admin/refunds/" + id + "/mark-success", {
-    method: "POST",
-    body: { channelRefundNo: "MANUAL-REFUND-" + Date.now() }
-  }).then(function () {
-    toast("退款成功");
-    renderRefunds(currentPage("refunds"));
-  }).catch(function (err) { toast(err.message); });
+  openRiskConfirm("确认退款成功", "这会把退款单标记为成功，并累计订单已退款金额。", "确认成功", function (reason) {
+    api("/admin/refunds/" + id + "/mark-success", {
+      method: "POST",
+      body: { channelRefundNo: "MANUAL-REFUND-" + Date.now(), confirmReason: reason }
+    }).then(function () {
+      toast("退款成功");
+      closeModal();
+      renderRefunds(currentPage("refunds"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function refundFail(id) {
-  api("/admin/refunds/" + id + "/mark-failed", { method: "POST" }).then(function () {
-    toast("退款失败已记录");
-    renderRefunds(currentPage("refunds"));
-  }).catch(function (err) { toast(err.message); });
+  openRiskConfirm("确认退款失败", "这会把退款单标记为失败，后续如需退款需重新申请。", "确认失败", function (reason) {
+    api("/admin/refunds/" + id + "/mark-failed", { method: "POST", body: { confirmReason: reason } }).then(function () {
+      toast("退款失败已记录");
+      closeModal();
+      renderRefunds(currentPage("refunds"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function renderCallbacks(page) {
@@ -2482,13 +2675,23 @@ function renderLaunches(page) {
           { title: "平台", key: "platform" },
           { title: "版本", key: "version" },
           { title: "网络", key: "networkType" },
-          { title: "事件", key: "eventType" },
-          { title: "时间", key: "createdAt" },
+          { title: "事件", render: function (r) { return launchEventLabel(r); } },
+          { title: "开始时间", render: function (r) { return formatDateTime(r.sessionStartAt || r.createdAt); } },
+          { title: "结束时间", render: function (r) { return formatDateTime(r.sessionEndAt); } },
+          { title: "时长", render: function (r) { return formatDuration(r.durationSeconds); } },
           { title: "操作", render: function (r) { return '<button class="small" onclick="openLaunchDetail(' + r.id + ')">详情</button>'; } }
         ], rows)) +
         renderPager("launches", pageMeta(data), "renderLaunches");
     });
   });
+}
+
+function launchEventLabel(record) {
+  var text = formatValue(record.eventType);
+  if (record.eventType === "LAUNCH" && record.sessionId) {
+    return '<span title="会话 ID：' + escapeHtml(record.sessionId) + '">' + text + '</span>';
+  }
+  return text;
 }
 
 function applyLaunchFilter() {
@@ -2502,7 +2705,7 @@ function applyLaunchFilter() {
 
 function openLaunchDetail(id) {
   api("/admin/launch-records/" + id).then(function (item) {
-    openModal("启动详情", detailList({
+    var details = {
       "ID": item.id,
       "APP": item.appId,
       "设备 ID": item.deviceId,
@@ -2512,9 +2715,14 @@ function openLaunchDetail(id) {
       "网络": item.networkType,
       "IP": item.ipAddress,
       "事件": item.eventType,
+      "开始时间": formatDateTime(item.sessionStartAt || item.createdAt),
+      "结束时间": formatDateTime(item.sessionEndAt),
+      "使用时长": formatDuration(item.durationSeconds),
       "内容": item.eventData,
-      "时间": item.createdAt
-    }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+      "记录时间": formatDateTime(item.createdAt)
+    };
+    if (item.eventType === "LAUNCH" && item.sessionId) details["会话 ID"] = item.sessionId;
+    openModal("启动详情", detailList(details), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -2907,28 +3115,22 @@ function renderAdmins(page) {
     var rows = pageContent(data);
     var passwordBody = '<div class="form-grid">' +
       input("ownOldPassword", "原密码", "", "password") +
-      input("ownNewPassword", "新密码", "", "password") +
+      input("ownNewPassword", "新密码", "", { type: "password", hint: "至少 6 位" }) +
       '<button type="button" onclick="changeOwnPassword()">修改密码</button>' +
-      '</div>';
-    var createBody = '<div class="form-grid">' +
-      input("adminUsername", "用户名") +
-      input("adminDisplayName", "显示名") +
-      input("adminPassword", "初始密码", "", "password") +
-      '<button type="button" onclick="createAdminUser()">创建管理员</button>' +
       '</div>';
     var filterBar = '<div class="toolbar">' +
       input("adminUsernameFilter", "用户名", filters.username || "") +
       '<button class="secondary" type="button" onclick="applyAdminFilter()">筛选</button>' +
-      '<button class="secondary" type="button" onclick="exportAdmins()">导出</button>' +
-      "</div>";
+      '</div>';
     $("admins").innerHTML =
       panel("修改当前密码", passwordBody) +
       '<div style="height:12px"></div>' +
-      panel("创建管理员", createBody) +
-      '<div style="height:12px"></div>' +
       panel("筛选", filterBar) +
       '<div style="height:12px"></div>' +
-      panel("管理员列表", table([
+      panelTitleActions("管理员列表",
+        '<button type="button" onclick="openAdminCreate()">新建管理员</button>' +
+        '<button class="secondary" type="button" onclick="exportAdmins()">导出</button>') +
+      table([
         { title: "ID", key: "id" },
         { title: "用户名", key: "username" },
         { title: "显示名", key: "displayName" },
@@ -2945,14 +3147,25 @@ function renderAdmins(page) {
               '</div>';
           }
         }
-      ], rows)) +
-      renderPager("admins", pageMeta(data), "renderAdmins");
+      ], rows) +
+      renderPager("admins", pageMeta(data), "renderAdmins") +
+      '</div>';
   });
 }
 
 function applyAdminFilter() {
   setFilters("admins", { username: $("adminUsernameFilter").value });
   renderAdmins(0);
+}
+
+function openAdminCreate() {
+  openModal("新建管理员", '<div class="form-grid">' +
+    input("adminUsername", "用户名") +
+    input("adminDisplayName", "显示名") +
+    input("adminPassword", "初始密码", "", { type: "password", hint: "至少 6 位" }) +
+    '</div>',
+    '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    '<button type="button" onclick="createAdminUser()">创建</button>');
 }
 
 function createAdminUser() {
@@ -2965,6 +3178,7 @@ function createAdminUser() {
     }
   }).then(function () {
     toast("管理员已创建");
+    closeModal();
     renderAdmins(0);
   }).catch(function (err) { toast(err.message); });
 }
@@ -3002,7 +3216,7 @@ function toggleAdminUser(id, status) {
 
 function openAdminResetPassword(id) {
   openModal("重置管理员密码", '<div class="form-grid">' +
-    input("resetAdminPassword", "新密码", "", "password") +
+    input("resetAdminPassword", "新密码", "", { type: "password", hint: "至少 6 位" }) +
     '</div>',
     '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
     '<button class="danger" type="button" onclick="saveAdminResetPassword(' + id + ')">重置</button>');
@@ -3016,6 +3230,14 @@ function saveAdminResetPassword(id) {
     toast("密码已重置");
     closeModal();
   }).catch(function (err) { toast(err.message); });
+}
+
+function openMustChangePasswordModal(message) {
+  openModal("必须修改默认密码", '<p class="muted">' + escapeHtml(message || "默认管理员密码必须先修改") + '</p><div class="form-grid">' +
+    input("ownOldPassword", "当前密码", "", "password") +
+    input("ownNewPassword", "新密码", "", { type: "password", hint: "至少 6 位" }) +
+    '</div>',
+    '<button type="button" onclick="changeOwnPassword()">修改密码</button>');
 }
 
 function changeOwnPassword() {
@@ -3032,8 +3254,15 @@ function changeOwnPassword() {
 }
 
 function renderTools() {
+  var launchCurl = "curl -X POST http://localhost:8888/api/device/launch -H 'Content-Type: application/json' -d '{\"appId\":\"<appId>\",\"deviceCode\":\"<deviceCode>\",\"platform\":\"ios\",\"version\":\"1.0.0\"}'";
+  var payCurl = "curl -X POST http://localhost:8888/api/payment/create-order -H 'Content-Type: application/json' -d '{\"appId\":\"<appId>\",\"deviceId\":1,\"packageId\":1,\"payChannel\":\"ALIPAY\"}'";
   $("tools").innerHTML =
     panel("演示数据", '<p class="muted">创建演示设备码 APP、套餐、设备、订单，并标记支付成功。</p><button type="button" onclick="createDemo()">创建演示数据</button>') +
+    '<div style="height:12px"></div>' +
+    panel("设备码支付接入向导", '<p class="muted">外部项目接入时，按顺序调用：注册设备 → 上报启动 → 查询会员 → 创建支付宝订单。</p>' +
+      '<div class="actions"><button type="button" onclick="copyEncodedText(\'' + encodeURIComponent(launchCurl) + '\')">复制启动上报 curl</button>' +
+      '<button type="button" onclick="copyEncodedText(\'' + encodeURIComponent(payCurl) + '\')">复制支付宝下单 curl</button>' +
+      '<button class="secondary" type="button" onclick="downloadOpenApi()">下载 OpenAPI</button></div>') +
     '<div style="height:12px"></div>' +
     panel("模拟支付回调", '<div class="form-grid">' +
       select("mockNotifyChannel", "渠道", [
@@ -3046,7 +3275,11 @@ function renderTools() {
       '<button type="button" onclick="mockPaymentNotify()">提交回调</button>' +
       '</div>') +
     '<div style="height:12px"></div>' +
-    panel("常用入口", '<p><a href="/swagger-ui/index.html" target="_blank">Swagger 接口文档</a></p><p><a href="/actuator/health" target="_blank">健康检查</a></p>');
+    panel("常用入口", '<p><a href="/swagger" target="_blank">Swagger 接口文档</a></p><p><a href="/docs" target="_blank">文档别名</a></p><p><a href="/actuator/health" target="_blank">健康检查</a></p>');
+}
+
+function downloadOpenApi() {
+  exportCsv("/v3/api-docs", "lianpayhub-openapi.json");
 }
 
 function createDemo() {
@@ -3079,6 +3312,42 @@ function detailList(map) {
   }
   html += "</div>";
   return html;
+}
+
+function statsGrid(stats) {
+  stats = stats || {};
+  return '<div class="metric-grid compact">' +
+    metric("套餐", stats.packageCount || 0) +
+    metric("设备", stats.deviceCount || 0) +
+    metric("会员", stats.memberCount || 0) +
+    metric("订单", stats.orderCount || 0) +
+    metric("已支付", stats.paidOrderCount || 0) +
+    metric("收入", formatMoney(stats.paidAmountCents || 0)) +
+    metric("启动", stats.launchCount || 0) +
+    metric("登录", stats.loginCount || 0) +
+    '</div>';
+}
+
+function sectionBlock(title, body) {
+  return '<div class="subsection"><h4>' + escapeHtml(title) + '</h4>' + body + '</div>';
+}
+
+function compactTable(columns, rows) {
+  rows = rows || [];
+  return table(columns, rows.slice(0, 10));
+}
+
+function copyText(text) {
+  if (!navigator.clipboard) {
+    toast("当前浏览器不支持复制");
+    return;
+  }
+  navigator.clipboard.writeText(String(text || "")).then(function () { toast("已复制"); })
+    .catch(function (err) { toast(err.message); });
+}
+
+function copyEncodedText(text) {
+  copyText(decodeURIComponent(text || ""));
 }
 
 function findById(rows, id) {

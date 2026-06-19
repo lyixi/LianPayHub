@@ -9,8 +9,15 @@ import com.lianpayhub.service.app.CreateAppCommand;
 import com.lianpayhub.service.app.CreateAppResult;
 import com.lianpayhub.service.app.ResetAppSecretResult;
 import com.lianpayhub.service.app.UpdateAppCommand;
+import com.lianpayhub.service.admin.AdminAggregateService;
+import com.lianpayhub.service.admin.IntegrationPackageService;
 import javax.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,10 +26,16 @@ public class AdminAppController {
 
     private final AppService appService;
     private final AppInfoRepository appInfoRepository;
+    private final AdminAggregateService adminAggregateService;
+    private final IntegrationPackageService integrationPackageService;
 
-    public AdminAppController(AppService appService, AppInfoRepository appInfoRepository) {
+    public AdminAppController(AppService appService, AppInfoRepository appInfoRepository,
+                              AdminAggregateService adminAggregateService,
+                              IntegrationPackageService integrationPackageService) {
         this.appService = appService;
         this.appInfoRepository = appInfoRepository;
+        this.adminAggregateService = adminAggregateService;
+        this.integrationPackageService = integrationPackageService;
     }
 
     @PostMapping
@@ -39,6 +52,23 @@ public class AdminAppController {
     @GetMapping
     public ApiResponse<List<AppInfo>> list() {
         return ApiResponse.ok(appInfoRepository.findAll());
+    }
+
+    @GetMapping("/{id}/aggregate")
+    public ApiResponse<AppAggregateResult> aggregate(@PathVariable Long id) {
+        return ApiResponse.ok(adminAggregateService.appAggregate(id));
+    }
+
+    @GetMapping("/{id}/integration-package")
+    public ResponseEntity<String> integrationPackage(@PathVariable Long id) {
+        String markdown = integrationPackageService.buildMarkdown(id);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("lianpayhub-integration-" + id + ".md", StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(new MediaType("text", "markdown", StandardCharsets.UTF_8))
+                .body(markdown);
     }
 
     @PutMapping("/{id}")

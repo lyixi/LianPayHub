@@ -2,6 +2,7 @@ package com.lianpayhub.repository;
 
 import com.lianpayhub.domain.member.MemberInfo;
 import com.lianpayhub.domain.member.MemberSubjectType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +16,8 @@ public interface MemberInfoRepository extends JpaRepository<MemberInfo, Long> {
             String appId, MemberSubjectType subjectType, Long deviceId);
 
     Page<MemberInfo> findByAppId(String appId, Pageable pageable);
+    List<MemberInfo> findTop10ByAppIdOrderByIdDesc(String appId);
+    long countByAppId(String appId);
 
     Optional<MemberInfo> findByOrderId(Long orderId);
 }

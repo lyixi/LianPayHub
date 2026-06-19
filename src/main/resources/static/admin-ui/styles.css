@@ -323,6 +323,16 @@ button.danger {
   box-shadow: 0 8px 18px color-mix(in srgb, var(--danger) 18%, transparent);
 }
 
+.risk-box {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  background: var(--danger-bg);
+  line-height: 1.65;
+}
+
 button.icon-btn,
 button.icon-action {
   min-width: 38px;
@@ -531,6 +541,31 @@ h1 {
 
 .metrics {
   grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+.metric-grid.compact .metric {
+  min-height: 78px;
+  padding: 12px;
+}
+
+.metric-grid.compact .metric .value {
+  font-size: 22px;
+}
+
+.subsection {
+  margin-top: 14px;
+}
+
+.subsection h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .metric,

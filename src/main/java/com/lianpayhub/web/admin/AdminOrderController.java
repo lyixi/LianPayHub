@@ -3,8 +3,10 @@ package com.lianpayhub.web.admin;
 import com.lianpayhub.common.api.ApiResponse;
 import com.lianpayhub.security.AdminPrincipal;
 import com.lianpayhub.service.payment.PaymentService;
+import com.lianpayhub.service.admin.AdminAggregateService;
 import javax.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,9 +18,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminOrderController {
 
     private final PaymentService paymentService;
+    private final AdminAggregateService adminAggregateService;
 
-    public AdminOrderController(PaymentService paymentService) {
+    public AdminOrderController(PaymentService paymentService, AdminAggregateService adminAggregateService) {
         this.paymentService = paymentService;
+        this.adminAggregateService = adminAggregateService;
+    }
+
+    @GetMapping("/{id}/timeline")
+    public ApiResponse<OrderTimelineResult> timeline(@PathVariable Long id) {
+        return ApiResponse.ok(adminAggregateService.orderTimeline(id));
     }
 
     @PostMapping("/{id}/mark-paid")

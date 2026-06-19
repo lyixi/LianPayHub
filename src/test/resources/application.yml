@@ -1,0 +1,8 @@
+spring:
+  flyway:
+    enabled: false
+
+lianpayhub:
+  admin:
+    force-default-password-change: false
+    password-complexity-required: false
