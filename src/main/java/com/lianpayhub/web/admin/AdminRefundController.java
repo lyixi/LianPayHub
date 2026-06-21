@@ -37,6 +37,15 @@ public class AdminRefundController {
         )));
     }
 
+    @PostMapping("/{id}/channel-refund")
+    public ApiResponse<RefundResult> channelRefund(@PathVariable Long id,
+                                                   @AuthenticationPrincipal AdminPrincipal principal) {
+        return ApiResponse.ok(paymentService.refundToChannel(
+                id,
+                principal == null ? null : String.valueOf(principal.getAdminId())
+        ));
+    }
+
     @PostMapping("/{id}/mark-success")
     public ApiResponse<RefundResult> markSuccess(@PathVariable Long id,
                                                  @RequestBody(required = false) MarkRefundSuccessRequest request,

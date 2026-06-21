@@ -15,6 +15,7 @@ import com.lianpayhub.service.payment.PaymentService;
 import javax.validation.Valid;
 import java.time.Duration;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -47,7 +48,9 @@ public class PaymentController {
                 request.userId(),
                 request.deviceId(),
                 request.packageId(),
-                payChannel
+                payChannel,
+                request.payMode(),
+                request.returnUrl()
         )));
     }
 
@@ -60,9 +63,21 @@ public class PaymentController {
         return ApiResponse.ok();
     }
 
-    @PostMapping("/notify/{payChannel}")
+    @GetMapping("/orders/{orderNo}")
+    public ApiResponse<PublicPaymentOrderResult> order(@PathVariable String orderNo) {
+        return ApiResponse.ok(new PublicPaymentOrderResult(paymentService.publicOrder(orderNo)));
+    }
+
+    @PostMapping(value = "/notify/{payChannel}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<PaymentNotifyResult> notify(@PathVariable PayChannel payChannel,
                                                    @Valid @RequestBody PaymentNotifyRequest request) {
         return ApiResponse.ok(paymentService.handlePaymentNotify(payChannel, request.payload()));
+    }
+
+    @PostMapping(value = "/notify/{payChannel}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public String notifyForm(@PathVariable PayChannel payChannel,
+                             @RequestBody String rawPayload) {
+        paymentService.handlePaymentNotify(payChannel, rawPayload);
+        return "success";
     }
 }

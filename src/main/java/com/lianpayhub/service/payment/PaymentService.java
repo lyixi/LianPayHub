@@ -109,7 +109,10 @@ public class PaymentService {
         PaymentCreateResult payment = provider.createPayment(new PaymentCreateContext(
                 order.getOrderNo(),
                 order.getAmountCents(),
-                packageInfo.getPackageName()
+                packageInfo.getPackageName(),
+                command.payMode(),
+                command.returnUrl(),
+                channelConfig
         ));
         return new CreateOrderResult(order.getOrderNo(), order.getAmountCents(),
                 enrichPaymentParams(payment.paymentParams(), channelConfig, payProvider));
@@ -179,18 +182,10 @@ public class PaymentService {
     public PaymentNotifyResult handlePaymentNotify(PayChannel payChannel, String rawPayload) {
         PaymentProvider provider = providerRegistry.require(payChannel);
         PaymentCallbackResult callback = provider.parseCallback(rawPayload);
-        if (!callback.verified()) {
-            callbackLogRepository.save(new PaymentCallbackLog(
-                    "UNKNOWN", null, payChannel, provider.providerCode(), callback.tradeNo(),
-                    callback.rawPayload(), CallbackVerifyStatus.FAILED, CallbackProcessStatus.FAILED,
-                    "支付回调验签失败或支付状态未成功"
-            ));
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "支付回调验签失败或支付状态未成功");
-        }
         if (callback.orderNo() == null || callback.orderNo().trim().isEmpty()) {
             callbackLogRepository.save(new PaymentCallbackLog(
                     "UNKNOWN", null, payChannel, provider.providerCode(), callback.tradeNo(),
-                    callback.rawPayload(), CallbackVerifyStatus.VERIFIED, CallbackProcessStatus.FAILED,
+                    callback.rawPayload(), CallbackVerifyStatus.FAILED, CallbackProcessStatus.FAILED,
                     "支付回调缺少订单号"
             ));
             throw new BusinessException(ErrorCode.BAD_REQUEST, "支付回调缺少订单号");
@@ -198,6 +193,18 @@ public class PaymentService {
 
         PaymentOrder order = paymentOrderRepository.findByOrderNo(callback.orderNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "订单不存在"));
+        PaymentChannelConfig channelConfig = paymentChannelConfigService.findByAppAndChannel(order.getAppId(), payChannel).orElse(null);
+        if (channelConfig != null) {
+            callback = provider.parseCallback(new PaymentChannelContext(channelConfig), rawPayload);
+        }
+        if (!callback.verified()) {
+            callbackLogRepository.save(new PaymentCallbackLog(
+                    order.getAppId(), order.getId(), payChannel, provider.providerCode(), callback.tradeNo(),
+                    callback.rawPayload(), CallbackVerifyStatus.FAILED, CallbackProcessStatus.FAILED,
+                    "支付回调验签失败或支付状态未成功"
+            ));
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "支付回调验签失败或支付状态未成功");
+        }
         if (order.isPaid()) {
             callbackLogRepository.save(new PaymentCallbackLog(
                     order.getAppId(), order.getId(), payChannel, provider.providerCode(), callback.tradeNo(),
@@ -286,6 +293,52 @@ public class PaymentService {
                 "{\"refundNo\":\"" + refund.getRefundNo() + "\"}"
         ));
         return new RefundResult(refund.getId(), refund.getRefundNo(), refund.getAmountCents(), refund.getStatus());
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentOrder publicOrder(String orderNo) {
+        return paymentOrderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "订单不存在"));
+    }
+
+    @Transactional(readOnly = true)
+    public ChannelOrderResult queryChannelOrder(Long orderId) {
+        PaymentOrder order = paymentOrderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "订单不存在"));
+        PaymentProvider provider = providerRegistry.require(order.getPayChannel());
+        PaymentChannelConfig config = paymentChannelConfigService.findByAppAndChannel(order.getAppId(), order.getPayChannel())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "支付渠道未配置"));
+        return provider.queryOrder(new PaymentChannelContext(config), order.getOrderNo(), order.getTradeNo());
+    }
+
+    @Transactional
+    public RefundResult refundToChannel(Long refundId, String operatorId) {
+        PaymentRefund refund = paymentRefundRepository.findById(refundId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "退款单不存在"));
+        PaymentOrder order = paymentOrderRepository.findById(refund.getOrderId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "订单不存在"));
+        if (!refund.isPending()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "退款单已处理，不能重复退款");
+        }
+        PaymentProvider provider = providerRegistry.require(order.getPayChannel());
+        PaymentChannelConfig config = paymentChannelConfigService.findByAppAndChannel(order.getAppId(), order.getPayChannel())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "支付渠道未配置"));
+        ChannelRefundResult result = provider.refund(new PaymentChannelContext(config), order.getOrderNo(), order.getTradeNo(),
+                refund.getRefundNo(), refund.getAmountCents(), refund.getReason());
+        if (!result.isSupported()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, result.getMessage());
+        }
+        if (!result.isSuccess()) {
+            refund.markFailed();
+            paymentEventLogRepository.save(new PaymentEventLog(
+                    order.getAppId(), order.getId(), PaymentEventType.REFUND_FAILED, order.getPayChannel(),
+                    order.getPayProvider(), refund.getAmountCents(), order.getTradeNo(),
+                    PaymentEventOperatorType.ADMIN, operatorId,
+                    "{\"refundNo\":\"" + refund.getRefundNo() + "\",\"message\":\"" + escapeJson(result.getMessage()) + "\"}"
+            ));
+            return new RefundResult(refund.getId(), refund.getRefundNo(), refund.getAmountCents(), refund.getStatus());
+        }
+        return markRefundSuccess(refundId, result.getChannelRefundNo(), operatorId);
     }
 
     private void closeIfExpired(PaymentOrder order, String message) {

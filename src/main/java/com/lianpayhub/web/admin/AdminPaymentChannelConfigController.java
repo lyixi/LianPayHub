@@ -49,10 +49,15 @@ public class AdminPaymentChannelConfigController {
     public ApiResponse<PaymentConfigCheckResult> check(@PathVariable Long id) {
         PaymentChannelConfig config = configService.detail(id);
         List<String> warnings = new ArrayList<>();
-        if (isBlank(config.getMerchantId())) warnings.add("商户号未配置");
+        if (config.getPayChannel() != PayChannel.ALIPAY && isBlank(config.getMerchantId())) warnings.add("商户号未配置");
         if (isBlank(config.getProviderCode())) warnings.add("支付提供方未配置");
+        if (isBlank(config.getChannelAppId())) warnings.add("渠道 AppId 未配置");
         if (isBlank(config.getNotifyUrl())) warnings.add("回调地址未配置，建议使用 /api/payment/notify/" + config.getPayChannel());
         if (!config.isCredentialConfigured()) warnings.add("敏感凭据未配置");
+        if (config.getPayChannel() == PayChannel.ALIPAY) {
+            if (isBlank(config.getConfigJson())) warnings.add("支付宝普通配置建议包含 sandbox/gatewayUrl/signType/returnUrl");
+            if (isBlank(config.getCredentialJson())) warnings.add("支付宝敏感凭据必须包含 merchantPrivateKey 和 alipayPublicKey");
+        }
         if (!config.isEnabled()) warnings.add("当前配置已停用");
         String suggestedNotifyPath = "/api/payment/notify/" + config.getPayChannel();
         return ApiResponse.ok(new PaymentConfigCheckResult(warnings.isEmpty(), suggestedNotifyPath, warnings));

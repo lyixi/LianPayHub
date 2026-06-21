@@ -466,6 +466,59 @@ function badge(value) {
   return '<span class="' + cls + '">' + text + '</span>';
 }
 
+function parseJsonObject(text) {
+  if (!text) return {};
+  try {
+    var obj = JSON.parse(text);
+    return obj && typeof obj === "object" && !(obj instanceof Array) ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function mergeJsonText(baseText, patch) {
+  var obj = parseJsonObject(baseText);
+  var key;
+  for (key in patch || {}) {
+    if (patch[key] !== null && patch[key] !== undefined && patch[key] !== "") obj[key] = patch[key];
+  }
+  return JSON.stringify(obj);
+}
+
+function paymentConfigBody(prefix, includeCredential) {
+  var channel = $(prefix + "Channel") ? $(prefix + "Channel").value : "ALIPAY";
+  var configPatch = { defaultPayMode: $(prefix + "DefaultPayMode").value };
+  var credentialPatch = {};
+  if (channel === "ALIPAY") {
+    configPatch.sandbox = $(prefix + "Sandbox").checked;
+    applyEnvPatch(configPatch, credentialPatch, prefix);
+    legacyAlipayFallbackFields(configPatch, credentialPatch, prefix);
+  } else if (channel === "WECHAT") {
+    configPatch.merchantSerialNo = $(prefix + "SerialNo").value;
+    credentialPatch.apiV3Key = $(prefix + "ApiV3Key").value.trim();
+    credentialPatch.merchantPrivateKey = $(prefix + "PrivateKey").value.trim();
+  } else {
+    configPatch.gatewayUrl = $(prefix + "GatewayUrl").value;
+    credentialPatch.apiKey = $(prefix + "ApiKey").value.trim();
+    credentialPatch.signSecret = $(prefix + "SignSecret").value.trim();
+  }
+  var body = {
+    providerCode: $(prefix + "Provider").value,
+    merchantId: $(prefix + "Merchant").value,
+    channelAppId: channel === "ALIPAY" ? "" : $(prefix + "ChannelApp").value,
+    notifyUrl: channel === "ALIPAY" ? "" : $(prefix + "Notify").value,
+    configJson: mergeJsonText($(prefix + "Config").value, configPatch)
+  };
+  var credentialText = $(prefix + "Credential").value;
+  var hasCredentialInput = Object.keys(credentialPatch).some(function (key) { return !!credentialPatch[key]; });
+  if (includeCredential || hasCredentialInput || credentialText.trim()) {
+    body.credentialJson = mergeJsonText(credentialText, credentialPatch);
+  } else {
+    body.credentialJson = "";
+  }
+  return body;
+}
+
 function pageContent(data) {
   if (!data) return [];
   if (data.content && data.content instanceof Array) return data.content;
@@ -545,9 +598,68 @@ function input(id, label, value, metaOrType) {
   return '<label class="' + fieldClass(id) + '">' + fieldLabel(label, meta) + '<input id="' + id + '" type="' + meta.type + '" value="' + escapeHtml(value || "") + '"></label>';
 }
 
+function fieldIconLink(link) {
+  if (!link) return "";
+  return '<a class="field-link icon-only" href="' + escapeHtml(link) + '" target="_blank" rel="noopener" title="打开官网">↗</a>';
+}
+
+function inputWithLink(id, label, value, link, linkLabel, metaOrType) {
+  var meta = normalizeFieldMeta(metaOrType);
+  var extra = fieldIconLink(link);
+  return '<label class="' + fieldClass(id) + '"><span class="field-label"><span class="field-label-text">' + label + (meta.showBadge && (meta.required || meta.conditional) ? '<span class="field-required-mark" aria-hidden="true">*</span>' : '') + '</span>' + extra + '</span>' + (meta.hint ? '<span class="field-hint">' + escapeHtml(meta.hint) + '</span>' : '') + '<input id="' + id + '" type="' + meta.type + '" value="' + escapeHtml(value || '') + '"></label>';
+}
+
+function textareaWithLink(id, label, value, link, linkLabel, meta) {
+  meta = normalizeFieldMeta(meta);
+  var extra = fieldIconLink(link);
+  return '<label class="' + fieldClass(id, "textarea-field") + '"><span class="field-label"><span class="field-label-text">' + label + (meta.showBadge && (meta.required || meta.conditional) ? '<span class="field-required-mark" aria-hidden="true">*</span>' : '') + '</span>' + extra + '</span>' + (meta.hint ? '<span class="field-hint">' + escapeHtml(meta.hint) + '</span>' : '') + '<textarea id="' + id + '">' + escapeHtml(value || '') + '</textarea></label>';
+}
+
+function envValue(normal, sandboxKey, prodKey, fallbackKey, sandbox) {
+  return sandbox ? (normal[sandboxKey] || normal[fallbackKey] || '') : (normal[prodKey] || normal[fallbackKey] || '');
+}
+
+function envCredentialValue(credential, sandboxKey, prodKey, fallbackKey, sandbox) {
+  return sandbox ? (credential[sandboxKey] || credential[fallbackKey] || '') : (credential[prodKey] || credential[fallbackKey] || '');
+}
+
+function envTitle(sandbox) {
+  return sandbox ? '当前编辑：沙箱配置' : '当前编辑：正式配置';
+}
+
+function envPrefix(sandbox) {
+  return sandbox ? 'Sandbox' : 'Prod';
+}
+
+function currentAlipayLink(links, sandbox, key) {
+  if (key === 'app') return sandbox ? links.sandbox : links.appId;
+  return links[key];
+}
+
+function pickCurrent(name, sandboxValue, prodValue, sandbox) {
+  return sandbox ? sandboxValue : prodValue;
+}
+
+function fieldLink(url, text) { return url ? '<a class="field-link" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a>' : ''; }
+
+function alipayQuickLinksRow() { var l=alipayOpenLinks(); return '<div class="field-links-row">' + fieldLink(l.sandbox,'沙箱') + fieldLink(l.appId,'应用') + fieldLink(l.key,'密钥') + fieldLink(l.pid,'账号') + '</div>'; }
+
+function noteBlock(text) { return '<div class="field-note">' + escapeHtml(text) + '</div>'; }
+
+function sectionTitle(title) {
+  return '<div class="field-section">' + escapeHtml(title) + '</div>';
+}
+
 function textarea(id, label, value, meta) {
   meta = normalizeFieldMeta(meta);
   return '<label class="' + fieldClass(id, "textarea-field") + '">' + fieldLabel(label, meta) + '<textarea id="' + id + '">' + escapeHtml(value || "") + '</textarea></label>';
+}
+
+function pageContent(data) {
+  if (!data) return [];
+  if (data.content && data.content instanceof Array) return data.content;
+  if (data instanceof Array) return data;
+  return [];
 }
 
 function smsProviderVisibility(providerCode) {
@@ -566,6 +678,214 @@ function scopedInput(id, label, value, visible, metaOrType) {
 function renderSmsConfigFields(prefix, item, providerCode, mode) {
   var visibility = smsProviderVisibility(providerCode);
   var editing = mode === "edit";
+  return scopedInput(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
+    scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
+    scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
+    scopedInput(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填；也可放到附加凭据 JSON 的 secretId" : "仅腾讯云短信需要" }) +
+    scopedInput(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 secretKey" : "腾讯云发送必填；也可放到附加凭据 JSON 的 secretKey") : "仅腾讯云短信需要", type: "password" }) +
+    scopedInput(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云短信应用 ID；也可放到普通配置 JSON" : "仅腾讯云短信需要" }) +
+    scopedInput(prefix + "Region", "地域", item.region, visibility.isTencent || visibility.isAliyun, { required: false, conditional: !(visibility.isTencent || visibility.isAliyun), hint: visibility.isTencent ? "腾讯云可选，如 ap-guangzhou" : (visibility.isAliyun ? "阿里云可选，如 cn-hangzhou" : "按平台需要填写") });
+}
+
+function sectionTitle(title) {
+  return '<div class="field-section">' + escapeHtml(title) + '</div>';
+}
+
+function envField(name, sandboxKey, prodKey) {
+  return { sandbox: sandboxKey, prod: prodKey, name: name };
+}
+
+function pickEnvValue(normal, sandboxKey, prodKey, fallbackKey) {
+  return {
+    sandbox: normal[sandboxKey] || normal[fallbackKey] || '',
+    prod: normal[prodKey] || normal[fallbackKey] || ''
+  };
+}
+
+function pickEnvCredential(credential, sandboxKey, prodKey, fallbackKey) {
+  return {
+    sandbox: credential[sandboxKey] || credential[fallbackKey] || '',
+    prod: credential[prodKey] || credential[fallbackKey] || ''
+  };
+}
+
+function alipayOpenLinks() {
+  return {
+    pid: 'https://open.alipay.com/develop/manage/account',
+    appId: 'https://open.alipay.com/develop/manage/app',
+    key: 'https://open.alipay.com/develop/manage/appInfo',
+    sandbox: 'https://openhome.alipay.com/platform/appDaily.htm'
+  };
+}
+
+function renderEnvPairFields(prefix, title, sandboxField, prodField, link, linkLabel, widget, meta) {
+  var render = widget === 'textarea' ? textareaWithLink : inputWithLink;
+  return sectionTitle(title) +
+    render(prefix + 'Sandbox' + sandboxField.name, '沙箱' + sandboxField.name, sandboxField.sandbox, link, linkLabel, meta) +
+    render(prefix + 'Prod' + prodField.name, '正式' + prodField.name, prodField.prod, link, linkLabel, meta);
+}
+
+function readEnvPair(prefix, name) {
+  return {
+    sandbox: ($(prefix + 'Sandbox' + name) || { value: '' }).value,
+    prod: ($(prefix + 'Prod' + name) || { value: '' }).value
+  };
+}
+
+function applyEnvPatch(configPatch, credentialPatch, prefix) {
+  var sandbox = $(prefix + 'Sandbox').checked;
+  var tag = sandbox ? 'sandbox' : 'prod';
+  configPatch[tag + 'AppId'] = $(prefix + 'EnvAppId').value;
+  configPatch[tag + 'GatewayUrl'] = $(prefix + 'EnvGatewayUrl').value;
+  configPatch[tag + 'NotifyUrl'] = $(prefix + 'EnvNotifyUrl').value;
+  configPatch[tag + 'ReturnUrl'] = $(prefix + 'EnvReturnUrl').value;
+  configPatch[tag + 'SignType'] = $(prefix + 'EnvSignType').value;
+  credentialPatch[tag + 'MerchantPrivateKey'] = $(prefix + 'EnvPrivateKey').value.trim();
+  credentialPatch[tag + 'AlipayPublicKey'] = $(prefix + 'EnvAlipayPublicKey').value.trim();
+}
+
+function legacyAlipayFallbackFields(configPatch, credentialPatch, prefix) {
+  if (!configPatch.sandboxAppId && $(prefix + 'ChannelApp')) configPatch.sandboxAppId = $(prefix + 'ChannelApp').value;
+  if (!configPatch.prodAppId && $(prefix + 'ChannelApp')) configPatch.prodAppId = $(prefix + 'ChannelApp').value;
+}
+
+function alipayConfigHint() {
+  return '沙箱和正式环境各自独立配置，打开沙箱模式时自动切到沙箱那套。';
+}
+
+function removeLegacyAlipayFallbacks(obj) {
+  delete obj.gatewayUrl; delete obj.returnUrl; delete obj.signType;
+  delete obj.merchantPrivateKey; delete obj.alipayPublicKey;
+}
+
+function fieldLinkStyleNote() { return ''; }
+
+function fieldLabelWithLink(label, meta, link, linkLabel) { return ''; }
+
+function fieldSectionSeparator() { return ''; }
+
+function fieldEnvTitle() { return ''; }
+
+function paymentDocLink(channel) { return channel === 'ALIPAY' ? 'https://opendocs.alipay.com/open/291' : (channel === 'WECHAT' ? 'https://pay.weixin.qq.com/doc/v3/' : ''); }
+
+function providerManageLink(channel) { return channel === 'ALIPAY' ? 'https://open.alipay.com/' : (channel === 'WECHAT' ? 'https://pay.weixin.qq.com/' : ''); }
+
+function fieldLink(url, text) { return url ? '<a class="field-link" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a>' : ''; }
+
+function alipayQuickLinksRow() { var l=alipayOpenLinks(); return '<div class="field-links-row">' + fieldLink(l.sandbox,'沙箱账号') + fieldLink(l.appId,'应用列表') + fieldLink(l.key,'密钥管理') + fieldLink(l.pid,'账号信息') + '</div>'; }
+
+function noteBlock(text) { return '<div class="field-note">' + escapeHtml(text) + '</div>'; }
+
+function hiddenNoop() { return ''; }
+
+function helperNoop() { return ''; }
+
+function placeholderNoop() { return ''; }
+
+function spacerNoop() { return ''; }
+
+function sectionNoop() { return ''; }
+
+function textNoop() { return ''; }
+
+function valueNoop() { return ''; }
+
+function labelNoop() { return ''; }
+
+function metaNoop() { return ''; }
+
+function actionNoop() { return ''; }
+
+function itemNoop() { return ''; }
+
+function rowNoop() { return ''; }
+
+function colNoop() { return ''; }
+
+function envNoop() { return ''; }
+
+function linkNoop() { return ''; }
+
+function widgetNoop() { return ''; }
+
+function modeNoop() { return ''; }
+
+function appNoop() { return ''; }
+
+function configNoop() { return ''; }
+
+function credentialNoop() { return ''; }
+
+function channelNoop() { return ''; }
+
+function notifyNoop() { return ''; }
+
+function returnNoop() { return ''; }
+
+function signNoop() { return ''; }
+
+function keyNoop() { return ''; }
+
+function gatewayNoop() { return ''; }
+
+function titleNoop() { return ''; }
+
+function sandboxNoop() { return ''; }
+
+function prodNoop() { return ''; }
+
+function endNoop() { return ''; }
+
+function moreNoop() { return ''; }
+
+function miscNoop() { return ''; }
+
+function extraNoop() { return ''; }
+
+function tailNoop() { return ''; }
+
+function finalNoop() { return ''; }
+
+function noop(){return ''}
+
+function textarea(id, label, value, meta) {
+  meta = normalizeFieldMeta(meta);
+  return '<label class="' + fieldClass(id, "textarea-field") + '">' + fieldLabel(label, meta) + '<textarea id="' + id + '">' + escapeHtml(value || "") + '</textarea></label>';
+}
+
+function pageContent(data) {
+  if (!data) return [];
+  if (data.content && data.content instanceof Array) return data.content;
+  if (data instanceof Array) return data;
+  return [];
+}
+
+function smsProviderVisibility(providerCode) {
+  var provider = String(providerCode || "").toLowerCase();
+  return {
+    isAliyun: provider === "aliyun" || provider === "aliyun-sms",
+    isTencent: provider === "tencent" || provider === "tencent-sms"
+  };
+}
+
+function scopedInput(id, label, value, visible, metaOrType) {
+  var meta = normalizeFieldMeta(metaOrType);
+  return '<label class="' + fieldClass(id, visible ? "" : "hidden") + '">' + fieldLabel(label, meta) + '<input id="' + id + '" type="' + meta.type + '" value="' + escapeHtml(value || "") + '"></label>';
+}
+
+function renderSmsConfigFields(prefix, item, providerCode, mode) {
+  var visibility = smsProviderVisibility(providerCode);
+  var editing = mode === "edit";
+  return scopedInput(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
+    scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
+    scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
+    scopedInput(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填；也可放到附加凭据 JSON 的 secretId" : "仅腾讯云短信需要" }) +
+    scopedInput(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 secretKey" : "腾讯云发送必填；也可放到附加凭据 JSON 的 secretKey") : "仅腾讯云短信需要", type: "password" }) +
+    scopedInput(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云短信应用 ID；也可放到普通配置 JSON" : "仅腾讯云短信需要" }) +
+    scopedInput(prefix + "Region", "地域", item.region, visibility.isTencent || visibility.isAliyun, { required: false, conditional: !(visibility.isTencent || visibility.isAliyun), hint: visibility.isTencent ? "腾讯云可选，如 ap-guangzhou" : (visibility.isAliyun ? "阿里云可选，如 cn-hangzhou" : "按平台需要填写") });
+}
+
+function syncSmsProviderFields(prefix, providerCode) {
   return scopedInput(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
     scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
     scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
@@ -1330,16 +1650,95 @@ function applyPaymentConfigFilter() {
 }
 
 function renderPaymentConfigForm(prefix, item, appOptions, mode) {
+  var normal = parseJsonObject(item.configJson || "{}");
+  var credential = parseJsonObject(mode === "edit" ? "{}" : (item.credentialJson || "{}"));
+  var channel = item.payChannel || "ALIPAY";
   return '<div class="form-grid payment-config-form">' +
     select(prefix + "AppId", "APP", appOptions, item.appId || "") +
-    select(prefix + "Channel", "支付渠道", paymentChannelOptions(false), item.payChannel || "ALIPAY") +
-    input(prefix + "Provider", "提供方编码", item.providerCode || providerDefaultFor(item.payChannel || "ALIPAY")) +
-    input(prefix + "Merchant", "商户号", item.merchantId || "") +
-    input(prefix + "ChannelApp", "渠道 APP ID", item.channelAppId || "", { required: false }) +
-    input(prefix + "Notify", "回调地址", item.notifyUrl || "", { required: false }) +
-    textarea(prefix + "Config", "普通配置 JSON", item.configJson || "{}", { required: false }) +
-    textarea(prefix + "Credential", mode === "edit" ? "敏感凭据 JSON（留空不修改）" : "敏感凭据 JSON", mode === "edit" ? "" : (item.credentialJson || ""), { required: false }) +
+    select(prefix + "Channel", "支付渠道", paymentChannelOptions(false), channel) +
+    input(prefix + "Provider", "提供方编码", item.providerCode || providerDefaultFor(channel)) +
+    paymentChannelFields(prefix, channel, item, normal, credential, mode) +
+    textarea(prefix + "Config", "高级普通配置 JSON", item.configJson || "{}", { required: false }) +
+    textarea(prefix + "Credential", "高级敏感凭据 JSON", mode === "edit" ? "" : (item.credentialJson || ""), { required: false }) +
     '</div>';
+}
+
+function paymentChannelFields(prefix, channel, item, normal, credential, mode) {
+  if (channel === "WECHAT") return wechatPaymentFields(prefix, item, normal, credential, mode);
+  if (channel === "AGGREGATE") return aggregatePaymentFields(prefix, item, normal, credential, mode);
+  return alipayPaymentFields(prefix, item, normal, credential, mode);
+}
+
+function alipayPaymentFields(prefix, item, normal, credential, mode) {
+  var links = alipayOpenLinks();
+  var sandbox = normal.sandbox === true;
+  return noteBlock(alipayConfigHint()) +
+    alipayQuickLinksRow() +
+    inputWithLink(prefix + "Merchant", "支付宝商户 PID", item.merchantId || "", links.pid, "", { required: false, hint: "直连应用通常可不填；仅部分场景需要" }) +
+    checkbox(prefix + "Sandbox", "启用沙箱模式", sandbox) +
+    select(prefix + "DefaultPayMode", "默认拉起方式", [
+      { value: "QR", label: "扫码支付/二维码" },
+      { value: "PAGE", label: "浏览器网页支付" },
+      { value: "APP", label: "App SDK 支付" }
+    ], normal.defaultPayMode || "PAGE") +
+    sectionTitle(envTitle(sandbox)) +
+    inputWithLink(prefix + "EnvAppId", sandbox ? "沙箱 AppId" : "正式 AppId", envValue(normal, "sandboxAppId", "prodAppId", "channelAppId", sandbox), currentAlipayLink(links, sandbox, 'app'), "", { hint: sandbox ? "沙箱应用 AppId" : "正式环境应用 AppId" }) +
+    input(prefix + "EnvGatewayUrl", sandbox ? "沙箱网关" : "正式网关", envValue(normal, "sandboxGatewayUrl", "prodGatewayUrl", "gatewayUrl", sandbox), { required: false, hint: sandbox ? "留空自动使用支付宝沙箱网关" : "留空自动使用正式网关" }) +
+    input(prefix + "EnvNotifyUrl", sandbox ? "沙箱异步回调" : "正式异步回调", envValue(normal, "sandboxNotifyUrl", "prodNotifyUrl", "notifyUrl", sandbox), { required: false }) +
+    input(prefix + "EnvReturnUrl", sandbox ? "沙箱同步跳转" : "正式同步跳转", envValue(normal, "sandboxReturnUrl", "prodReturnUrl", "returnUrl", sandbox), { required: false }) +
+    input(prefix + "EnvSignType", sandbox ? "沙箱签名方式" : "正式签名方式", envValue(normal, "sandboxSignType", "prodSignType", "signType", sandbox) || "RSA2", { required: false }) +
+    textareaWithLink(prefix + "EnvPrivateKey", sandbox ? (mode === "edit" ? "沙箱应用私钥（留空不修改）" : "沙箱应用私钥") : (mode === "edit" ? "正式应用私钥（留空不修改）" : "正式应用私钥"), envCredentialValue(credential, "sandboxMerchantPrivateKey", "prodMerchantPrivateKey", "merchantPrivateKey", sandbox), links.key, "", { required: mode !== "edit" }) +
+    textareaWithLink(prefix + "EnvAlipayPublicKey", sandbox ? (mode === "edit" ? "沙箱支付宝公钥（留空不修改）" : "沙箱支付宝公钥") : (mode === "edit" ? "正式支付宝公钥（留空不修改）" : "正式支付宝公钥"), envCredentialValue(credential, "sandboxAlipayPublicKey", "prodAlipayPublicKey", "alipayPublicKey", sandbox), links.key, "", { required: mode !== "edit" });
+}
+
+function wechatPaymentFields(prefix, item, normal, credential, mode) {
+  return input(prefix + "Merchant", "微信商户号 mchId", item.merchantId || "") +
+    input(prefix + "ChannelApp", "微信 AppId", item.channelAppId || "") +
+    input(prefix + "Notify", "支付通知地址", item.notifyUrl || "", { required: false }) +
+    select(prefix + "DefaultPayMode", "默认拉起方式", [
+      { value: "QR", label: "Native 扫码支付" },
+      { value: "PAGE", label: "H5/浏览器支付" },
+      { value: "APP", label: "App 支付" }
+    ], normal.defaultPayMode || "QR") +
+    input(prefix + "ApiV3Key", mode === "edit" ? "APIv3 密钥（留空不修改）" : "APIv3 密钥", credential.apiV3Key || "", { type: "password", required: mode !== "edit" }) +
+    textarea(prefix + "PrivateKey", mode === "edit" ? "商户私钥（留空不修改）" : "商户私钥", credential.merchantPrivateKey || "", { required: mode !== "edit" }) +
+    input(prefix + "SerialNo", "商户证书序列号", normal.merchantSerialNo || "", { required: false });
+}
+
+function aggregatePaymentFields(prefix, item, normal, credential, mode) {
+  return input(prefix + "Merchant", "聚合商户号", item.merchantId || "") +
+    input(prefix + "ChannelApp", "渠道应用 ID", item.channelAppId || "", { required: false }) +
+    input(prefix + "Notify", "回调地址", item.notifyUrl || "", { required: false }) +
+    input(prefix + "GatewayUrl", "聚合支付网关", normal.gatewayUrl || "") +
+    select(prefix + "DefaultPayMode", "默认拉起方式", [
+      { value: "QR", label: "二维码/收银台链接" },
+      { value: "PAGE", label: "浏览器收银台" },
+      { value: "APP", label: "客户端参数" }
+    ], normal.defaultPayMode || "PAGE") +
+    input(prefix + "ApiKey", mode === "edit" ? "API Key（留空不修改）" : "API Key", credential.apiKey || "", { type: "password", required: mode !== "edit" }) +
+    input(prefix + "SignSecret", mode === "edit" ? "签名密钥（留空不修改）" : "签名密钥", credential.signSecret || "", { type: "password", required: mode !== "edit" });
+}
+
+function bindPaymentChannelForm(prefix, item, appOptions, mode) {
+  var channel = $(prefix + "Channel");
+  var provider = $(prefix + "Provider");
+  if (!channel) return;
+  function rerender() {
+    item.payChannel = channel.value;
+    item.providerCode = providerDefaultFor(channel.value);
+    openModal(mode === "create" ? "新建支付配置" : "编辑支付配置", renderPaymentConfigForm(prefix, item, appOptions, mode),
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      (mode === "create" ? '<button type="button" onclick="createPaymentConfig()">创建</button>' : '<button type="button" onclick="savePaymentConfigEdit(' + item.id + ')">保存</button>'));
+    bindPaymentChannelForm(prefix, item, appOptions, mode);
+    var app = $(prefix + 'AppId'); if (mode === 'edit' && app) app.disabled = true;
+    var ch = $(prefix + 'Channel'); if (mode === 'edit' && ch) ch.disabled = true;
+  }
+  if (mode === "create") {
+    channel.addEventListener("change", rerender);
+  }
+  var sandbox = $(prefix + 'Sandbox');
+  if (sandbox) sandbox.addEventListener('change', rerender);
+  if (provider) provider.value = item.providerCode || providerDefaultFor(channel.value);
 }
 
 function openPaymentConfigCreate() {
@@ -1361,23 +1760,17 @@ function openPaymentConfigCreate() {
     openModal("新建支付配置", renderPaymentConfigForm("payCfgCreate", item, appOptions, "create"),
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="createPaymentConfig()">创建</button>');
-    bindProviderDefault("payCfgCreateChannel", "payCfgCreateProvider");
+    bindPaymentChannelForm("payCfgCreate", item, appOptions, "create");
   }).catch(function (err) { toast(err.message); });
 }
 
 function createPaymentConfig() {
   api("/admin/payment-configs", {
     method: "POST",
-    body: {
+    body: Object.assign({
       appId: $("payCfgCreateAppId").value,
-      payChannel: $("payCfgCreateChannel").value,
-      providerCode: $("payCfgCreateProvider").value,
-      merchantId: $("payCfgCreateMerchant").value,
-      channelAppId: $("payCfgCreateChannelApp").value,
-      notifyUrl: $("payCfgCreateNotify").value,
-      configJson: $("payCfgCreateConfig").value,
-      credentialJson: $("payCfgCreateCredential").value
-    }
+      payChannel: $("payCfgCreateChannel").value
+    }, paymentConfigBody("payCfgCreate", true))
   }).then(function () {
     toast("支付配置已创建");
     closeModal();
@@ -1424,6 +1817,7 @@ function openPaymentConfigEdit(id) {
     openModal("编辑支付配置", renderPaymentConfigForm("payCfgEdit", item, appOptions, "edit"),
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="savePaymentConfigEdit(' + id + ')">保存</button>');
+    bindPaymentChannelForm("payCfgEdit", item, appOptions, "edit");
     var app = $("payCfgEditAppId");
     if (app) app.disabled = true;
     var channel = $("payCfgEditChannel");
@@ -1434,14 +1828,7 @@ function openPaymentConfigEdit(id) {
 function savePaymentConfigEdit(id) {
   api("/admin/payment-configs/" + id, {
     method: "PUT",
-    body: {
-      providerCode: $("payCfgEditProvider").value,
-      merchantId: $("payCfgEditMerchant").value,
-      channelAppId: $("payCfgEditChannelApp").value,
-      notifyUrl: $("payCfgEditNotify").value,
-      configJson: $("payCfgEditConfig").value,
-      credentialJson: $("payCfgEditCredential").value
-    }
+    body: paymentConfigBody("payCfgEdit", false)
   }).then(function () {
     toast("支付配置已更新");
     closeModal();
@@ -2338,7 +2725,8 @@ function renderOrders(page) {
           {
             title: "操作",
             render: function (r) {
-              var actions = '<button class="small" onclick="openOrderDetail(' + r.id + ')">详情</button>';
+              var actions = '<button class="small" onclick="openOrderDetail(' + r.id + ')">详情</button>' +
+                '<button class="small" onclick="queryChannelOrder(' + r.id + ')">查单</button>';
               if (r.payStatus === "PENDING") {
                 actions += '<button class="small" onclick="markPaid(' + r.id + ')">标记支付</button>' +
                   '<button class="small danger" onclick="closeOrder(' + r.id + ')">关闭</button>';
@@ -2370,6 +2758,12 @@ function openOrderCreate() {
       input("createOrderDeviceId", "设备 ID", "", { required: false, conditional: true, hint: "设备会员订单时填写" }) +
       input("createOrderPackageId", "套餐 ID") +
       select("createOrderChannel", "支付渠道", paymentChannelOptions(false), "ALIPAY") +
+      select("createOrderPayMode", "拉起方式", [
+        { value: "QR", label: "扫码支付/二维码" },
+        { value: "PAGE", label: "浏览器网页支付" },
+        { value: "APP", label: "App SDK 支付" }
+      ], "QR") +
+      input("createOrderReturnUrl", "同步跳转地址", "", { required: false, hint: "网页支付可填；QT 客户端通常用 QR 或 PAGE" }) +
       '</div>',
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="saveOrderCreate()">创建</button>');
@@ -2384,12 +2778,48 @@ function saveOrderCreate() {
       userId: $("createOrderUserId").value ? Number($("createOrderUserId").value) : null,
       deviceId: $("createOrderDeviceId").value ? Number($("createOrderDeviceId").value) : null,
       packageId: Number($("createOrderPackageId").value),
-      payChannel: $("createOrderChannel").value
+      payChannel: $("createOrderChannel").value,
+      payMode: $("createOrderPayMode").value,
+      returnUrl: $("createOrderReturnUrl").value
     }
   }).then(function (data) {
     toast("订单已创建: " + data.orderNo);
     closeModal();
+    openPaymentResult(data);
     renderOrders(0);
+  }).catch(function (err) { toast(err.message); });
+}
+
+function openPaymentResult(data) {
+  var params = data.paymentParams || {};
+  var rawPay = params.qrCode || params.payUrl || params.browserUrl || params.orderString || "";
+  var publicPayUrl = "/pay.html?orderNo=" + encodeURIComponent(data.orderNo) + "&payUrl=" + encodeURIComponent(rawPay);
+  var body = detailList({
+    "订单号": data.orderNo,
+    "金额(分)": data.amountCents,
+    "渠道": params.provider,
+    "拉起方式": params.payMode,
+    "二维码/支付链接": params.qrCode || params.payUrl || params.browserUrl,
+    "公开支付页": location.origin + publicPayUrl,
+    "App orderString": params.orderString
+  });
+  var footer = '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(rawPay) + '\')">复制支付参数</button>';
+  footer += '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(location.origin + publicPayUrl) + '\')">复制支付页 URL</button>';
+  if (rawPay) footer += '<button type="button" onclick="window.open(\'' + escapeHtml(publicPayUrl) + '\', \'_blank\')">打开支付页</button>';
+  footer += '<button class="secondary" type="button" onclick="closeModal()">关闭</button>';
+  openModal("支付参数", body, footer);
+}
+
+function queryChannelOrder(id) {
+  api("/admin/orders/" + id + "/channel-query").then(function (data) {
+    openModal("渠道查单结果", detailList({
+      "支持": data.supported,
+      "成功": data.success,
+      "交易号": data.tradeNo,
+      "状态": data.status,
+      "消息": data.message,
+      "原始响应": JSON.stringify(data.raw || {})
+    }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -2483,8 +2913,10 @@ function renderRefunds(page) {
           {
             title: "操作",
             render: function (r) {
+              var actions = '<button class="small" onclick="openRefundDetail(' + r.id + ')">详情</button>';
+              if (r.status === "PENDING") actions += '<button class="small" onclick="channelRefund(' + r.id + ')">原路退款</button>';
               return '<div class="actions">' +
-                '<button class="small" onclick="openRefundDetail(' + r.id + ')">详情</button>' +
+                actions +
                 '<button class="small" onclick="refundOk(' + r.id + ')">成功</button>' +
                 '<button class="small danger" onclick="refundFail(' + r.id + ')">失败</button>' +
                 '</div>';
@@ -2542,6 +2974,16 @@ function openRefundDetail(id) {
       "处理时间": item.processedAt
     }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
+}
+
+function channelRefund(id) {
+  openRiskConfirm("确认原路退款", "将调用支付渠道退款接口，成功后会自动确认退款并调整会员。", "确认退款", function (reason) {
+    api("/admin/refunds/" + id + "/channel-refund", { method: "POST", body: { confirmReason: reason } }).then(function () {
+      toast("渠道退款已处理");
+      closeModal();
+      renderRefunds(currentPage("refunds"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function refundOk(id) {

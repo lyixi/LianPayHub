@@ -233,15 +233,25 @@ Content-Type: application/json
 
 `payChannel` 可用：`ALIPAY`（支付宝）、`WECHAT`（微信支付）、`AGGREGATE`（聚合支付）。创建订单不传 `payChannel` 时默认使用支付宝。
 
-当前 Provider 先支持通用 `form` / 简单 JSON 字段解析，字段兼容：
+支付宝已支持真实下单、异步通知验签、查单和原路退款。创建订单可传 `payMode`：
 
-- 订单号：`orderNo`、`order_no`、`out_trade_no`
-- 渠道交易号：`tradeNo`、`trade_no`、`transaction_id`
-- 成功状态：`verified=true`、`success=true`、`paid=true`、`status=SUCCESS`、`trade_status=TRADE_SUCCESS`
+| payMode | 用途 | 返回字段 |
+|---|---|---|
+| `QR` | 扫码支付，适合 QT/桌面客户端展示二维码或打开链接 | `qrCode` / `payUrl` |
+| `PAGE` | 电脑网站支付，适合 QT 客户端拉起系统浏览器 | `browserUrl` / `payUrl` |
+| `APP` | App SDK 支付 | `orderString` |
 
-真实接支付宝、微信或聚合支付时，先在后台 `平台配置 -> 支付配置` 为 APP 维护商户号、渠道 APP ID、回调地址、普通配置和敏感凭据；再替换对应 `PaymentProvider.parseCallback` 内部的官方验签和字段解析逻辑。`PaymentService` 的订单入账、会员开通、回调日志、幂等处理可以复用。
+支付宝配置示例：
 
-支付配置是可选的：未配置时仍使用骨架 Provider 方便本地联调；如果某个 APP 的某个渠道配置存在但被停用，创建订单会返回业务冲突。
+```json
+// configJson
+{"sandbox":true,"signType":"RSA2","returnUrl":"http://localhost:8888/console/"}
+
+// credentialJson
+{"merchantPrivateKey":"应用私钥","alipayPublicKey":"支付宝公钥"}
+```
+
+支付配置是可选的：未配置时仍使用骨架 Provider 方便本地联调；如果某个 APP 的某个渠道配置存在但被停用，创建订单会返回业务冲突。支付宝真实回调支持 `application/x-www-form-urlencoded`，回调地址为 `/api/payment/notify/ALIPAY`。
 
 管理后台 `工具 -> 模拟支付回调` 可用来本地验证订单支付成功和会员生效链路。
 

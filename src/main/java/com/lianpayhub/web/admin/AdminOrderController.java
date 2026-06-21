@@ -2,6 +2,7 @@ package com.lianpayhub.web.admin;
 
 import com.lianpayhub.common.api.ApiResponse;
 import com.lianpayhub.security.AdminPrincipal;
+import com.lianpayhub.service.payment.ChannelOrderResult;
 import com.lianpayhub.service.payment.PaymentService;
 import com.lianpayhub.service.admin.AdminAggregateService;
 import javax.validation.Valid;
@@ -28,6 +29,11 @@ public class AdminOrderController {
     @GetMapping("/{id}/timeline")
     public ApiResponse<OrderTimelineResult> timeline(@PathVariable Long id) {
         return ApiResponse.ok(adminAggregateService.orderTimeline(id));
+    }
+
+    @GetMapping("/{id}/channel-query")
+    public ApiResponse<ChannelOrderResult> channelQuery(@PathVariable Long id) {
+        return ApiResponse.ok(paymentService.queryChannelOrder(id));
     }
 
     @PostMapping("/{id}/mark-paid")
