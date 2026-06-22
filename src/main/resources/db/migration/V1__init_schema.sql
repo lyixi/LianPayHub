@@ -354,6 +354,7 @@ CREATE TABLE IF NOT EXISTS user_file (
   user_id       BIGINT NOT NULL,
   app_id        VARCHAR(64) NOT NULL,
   virtual_path  VARCHAR(1024) NOT NULL COMMENT '用户视角路径，如 /settings/config.json',
+  virtual_path_hash VARCHAR(64) NULL,
   file_name     VARCHAR(256) NOT NULL,
   storage_key   VARCHAR(512) NOT NULL COMMENT '存储后端 key，格式：sync/{appId}/{userId}/{UUID}.{ext}',
   content_type  VARCHAR(128) NULL,
@@ -366,7 +367,7 @@ CREATE TABLE IF NOT EXISTS user_file (
   updated_at    DATETIME NOT NULL,
   PRIMARY KEY (id),
   KEY idx_user_file_owner (user_id, app_id),
-  KEY idx_user_file_path (user_id, app_id, virtual_path(256)),
+  KEY idx_user_file_path_hash (user_id, app_id, virtual_path_hash(32)),
   KEY idx_user_file_updated (user_id, app_id, updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

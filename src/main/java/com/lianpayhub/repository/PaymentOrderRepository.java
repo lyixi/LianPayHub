@@ -30,6 +30,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     List<PaymentOrder> findTop10ByDeviceIdOrderByIdDesc(Long deviceId);
     List<PaymentOrder> findTop100ByPayStatusAndExpireAtBeforeOrderByExpireAtAsc(PayStatus payStatus, LocalDateTime expireAt);
     long countByAppId(String appId);
+    void deleteByAppId(String appId);
     long countByDeviceId(Long deviceId);
     long countByAppIdAndPayStatus(String appId, PayStatus payStatus);
     long countByDeviceIdAndPayStatus(Long deviceId, PayStatus payStatus);

@@ -15,6 +15,7 @@ public interface DeviceInfoRepository extends JpaRepository<DeviceInfo, Long> {
     Page<DeviceInfo> findByAppIdAndDeviceCode(String appId, String deviceCode, Pageable pageable);
     List<DeviceInfo> findTop10ByAppIdOrderByIdDesc(String appId);
     long countByAppId(String appId);
+    void deleteByAppId(String appId);
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     long countByAppIdAndCreatedAtBetween(String appId, LocalDateTime start, LocalDateTime end);
 }

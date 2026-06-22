@@ -16,6 +16,7 @@ public interface PaymentRefundRepository extends JpaRepository<PaymentRefund, Lo
     Page<PaymentRefund> findByAppId(String appId, Pageable pageable);
     Page<PaymentRefund> findByOrderId(Long orderId, Pageable pageable);
     List<PaymentRefund> findTop10ByAppIdOrderByIdDesc(String appId);
+    void deleteByAppId(String appId);
 
     @Query("select coalesce(sum(r.amountCents), 0) from PaymentRefund r where r.orderId = ?1 and r.status = ?2")
     Long sumAmountCentsByOrderIdAndStatus(Long orderId, RefundStatus status);

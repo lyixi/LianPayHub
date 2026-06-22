@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>购买页</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="page-shell">
+  <header class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">Secure Purchase</div>
+      <h1 id="title">加载中...</h1>
+      <p id="subtitle" class="subtitle"></p>
+      <div id="benefits" class="benefits hidden"></div>
+    </div>
+    <aside class="trust-card">
+      <div class="trust-title">安全支付保障</div>
+      <ul>
+        <li>官方支付渠道拉起</li>
+        <li>订单结果可回查</li>
+        <li>购买后立即生效</li>
+      </ul>
+    </aside>
+  </header>
+
+  <main class="content-grid">
+    <section class="catalog-card">
+      <div class="section-title">选择商品与方案</div>
+      <div id="products" class="products"></div>
+    </section>
+
+    <aside class="checkout-card">
+      <div class="section-title">确认支付</div>
+      <div id="contextBox" class="context-box"></div>
+      <div id="selectionBox" class="selection-box empty">请先选择一个方案</div>
+      <div id="channelBox" class="channel-box"></div>
+      <div class="pay-actions">
+        <button id="payBtn" type="button" disabled>立即支付</button>
+      </div>
+      <div id="payResult" class="pay-result hidden"></div>
+    </aside>
+  </main>
+</div>
+<script src="./app.js"></script>
+</body>
+</html>

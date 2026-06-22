@@ -7,7 +7,7 @@ var state = {
   pageByView: {},
   filtersByView: {},
   channelsTab: localStorage.getItem("lph_channels_tab") || "payment",
-  commerceTab: localStorage.getItem("lph_commerce_tab") || "packages",
+  commerceTab: localStorage.getItem("lph_commerce_tab") || "products",
   logTab: "admin-operations",
   theme: localStorage.getItem("lph_theme") || "dark",
   accent: localStorage.getItem("lph_accent") || "teal"
@@ -40,6 +40,11 @@ var displayLabels = {
   ADAPTER: "适配上报 APP",
   MEMBERSHIP: "会员套餐",
   FEATURE: "功能套餐",
+  VIP: "会员",
+  AI_CREDITS: "AI 算力",
+  MEMBERSHIP_DURATION: "会员时长",
+  CREDIT_GRANT: "算力发放",
+  MANUAL: "人工处理",
   USER: "用户",
   DEVICE: "设备",
   MOBILE: "手机号",
@@ -237,7 +242,7 @@ function init() {
   applyLegacyView();
   if (!titles[state.view]) state.view = "dashboard";
   if (["payment", "sms", "email"].indexOf(state.channelsTab) < 0) state.channelsTab = "payment";
-  if (["packages", "orders", "refunds"].indexOf(state.commerceTab) < 0) state.commerceTab = "packages";
+  if (["products", "purchasePages", "orders", "refunds", "packages"].indexOf(state.commerceTab) < 0) state.commerceTab = "products";
   if (themeOptions.indexOf(state.theme) < 0) state.theme = "dark";
   if (accentOptions.indexOf(state.accent) < 0) state.accent = "teal";
   applyTheme();
@@ -457,7 +462,18 @@ function formatMoney(cents) {
   return (Number(cents) / 100).toFixed(2);
 }
 
+function centsFromYuanInput(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return Math.round(Number(value) * 100);
+}
+
+function yuanInputFromCents(value) {
+  if (value === null || value === undefined || value === "") return "";
+  return (Number(value) / 100).toFixed(2);
+}
+
 function badge(value) {
+
   var text = escapeHtml(labelOf(value));
   var cls = "badge";
   if (["ENABLED", "ACTIVE", "PAID", "SUCCESS"].indexOf(value) >= 0) cls += " ok";
@@ -562,7 +578,7 @@ function renderPager(view, meta, reloadFn) {
 }
 
 function panel(title, body, extraClass) {
-  return '<div class="panel ' + (extraClass || "") + '"><div class="panel-title">' + title + '</div>' + body + '</div>';
+  return '<div class="panel ' + (extraClass || "") + '"><div class="panel-title"><span>' + title + '</span></div>' + body + '</div>';
 }
 
 function fieldClass(id, extraClass) {
@@ -886,16 +902,6 @@ function renderSmsConfigFields(prefix, item, providerCode, mode) {
 }
 
 function syncSmsProviderFields(prefix, providerCode) {
-  return scopedInput(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
-    scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
-    scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
-    scopedInput(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填" : "仅腾讯云短信需要" }) +
-    scopedInput(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改" : "腾讯云发送必填") : "仅腾讯云短信需要", type: "password" }) +
-    scopedInput(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填" : "仅腾讯云短信需要" }) +
-    scopedInput(prefix + "Region", "地域", item.region, visibility.isTencent, { required: false, hint: "腾讯云常用，其他通道可留空" });
-}
-
-function syncSmsProviderFields(prefix, providerCode) {
   var visibility = smsProviderVisibility(providerCode);
   [prefix + "TemplateCode", prefix + "AccessKeyId", prefix + "AccessKeySecret"].forEach(function (id) {
     var field = document.querySelector('.field-' + id);
@@ -1130,15 +1136,19 @@ function renderChannels() {
 }
 
 function renderCommerce() {
-  if (["packages", "orders", "refunds"].indexOf(state.commerceTab) < 0) {
-    state.commerceTab = "packages";
+  if (["products", "purchasePages", "orders", "refunds", "packages"].indexOf(state.commerceTab) < 0) {
+    state.commerceTab = "products";
   }
   var bodyId = state.commerceTab;
   $("commerce").innerHTML = renderTabs("commerce", state.commerceTab, [
-    { key: "packages", label: "套餐", action: "switchCommerceTab" },
+    { key: "products", label: "商品", action: "switchCommerceTab" },
+    { key: "purchasePages", label: "购买页", action: "switchCommerceTab" },
     { key: "orders", label: "订单", action: "switchCommerceTab" },
-    { key: "refunds", label: "退款", action: "switchCommerceTab" }
+    { key: "refunds", label: "退款", action: "switchCommerceTab" },
+    { key: "packages", label: "旧套餐", action: "switchCommerceTab" }
   ]) + '<div id="' + bodyId + '"></div>';
+  if (state.commerceTab === "products") return renderProducts();
+  if (state.commerceTab === "purchasePages") return renderPurchasePages();
   if (state.commerceTab === "packages") return renderPackages();
   if (state.commerceTab === "orders") return renderOrders(currentPage("orders"));
   return renderRefunds(currentPage("refunds"));
@@ -1157,10 +1167,61 @@ function openModal(title, body, footer) {
   $("modalMask").classList.remove("hidden");
 }
 
+function openSubModal(title, body, footer) {
+  $("subModalTitle").textContent = title;
+  $("subModalBody").innerHTML = body;
+  $("subModalFooter").innerHTML = footer || "";
+  $("subModalMask").classList.remove("hidden");
+}
+
+function closeSubModal() {
+  $("subModalMask").classList.add("hidden");
+  $("subModalBody").innerHTML = "";
+  $("subModalFooter").innerHTML = "";
+}
+
 function closeModal() {
   $("modalMask").classList.add("hidden");
   $("modalBody").innerHTML = "";
   $("modalFooter").innerHTML = "";
+}
+
+function closeAllModals() {
+  closeSubModal();
+  closeModal();
+}
+
+function bindSubModalClose() {
+  var btn = $("subModalCloseBtn");
+  if (btn && !btn.dataset.bound) {
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", closeSubModal);
+  }
+}
+
+bindSubModalClose();
+
+function closeSubModalToProduct(productId) {
+  closeSubModal();
+  openProductDetail(productId);
+}
+
+function openPlanEdit(planId, encoded, productId) {
+  var plan = JSON.parse(decodeURIComponent(String(encoded || "{}")));
+  openSubModal("编辑方案", editPlanBody(plan), '<button class="secondary" type="button" onclick="closeSubModal()">取消</button><button type="button" onclick="savePlanEdit(' + planId + ',' + productId + ')">保存</button>');
+}
+
+function editPlanBody(plan) {
+  return '<div class="form-grid">' +
+    input("editPlanName", "方案名", plan.planName || "") +
+    input("editPlanPrice", "价格(元)", yuanInputFromCents(plan.priceCents || 0), { required: true, type: "number", hint: "单位：元" }) +
+    input("editPlanOriginPrice", "原价(元)", yuanInputFromCents(plan.originalPriceCents || ""), { required: false, type: "number", hint: "单位：元" }) +
+    input("editPlanDays", "时长(天)", plan.durationDays || "", { required: false, type: "number" }) +
+    input("editPlanCredits", "算力量", plan.creditAmount || "", { required: false, type: "number" }) +
+    input("editPlanBadge", "标签", plan.badgeText || "", { required: false }) +
+    textarea("editPlanBenefits", "方案权益", plan.benefitsText || "", { required: false }) +
+    input("editPlanSort", "排序", plan.sortOrder || 0, "number") +
+    '</div>';
 }
 
 function openRiskConfirm(title, message, actionLabel, onConfirm, options) {
@@ -1172,7 +1233,7 @@ function openRiskConfirm(title, message, actionLabel, onConfirm, options) {
   }
   openModal(title, body,
     '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
-    '<button class="danger" type="button" onclick="confirmRiskAction(\'' + reasonId + '\')">' + escapeHtml(actionLabel || "确认") + '</button>');
+    '<button class="danger" type="button" onclick="confirmRiskAction()">' + escapeHtml(actionLabel || "确认") + '</button>');
   state.pendingRiskAction = function () {
     var reason = $(reasonId) ? $(reasonId).value.trim() : "";
     if (options.reasonRequired !== false && options.reason !== false && !reason) {
@@ -1218,6 +1279,17 @@ function renderDashboard() {
       '<button class="secondary" type="button" onclick="applyAnalyticsFilter()">生成统计</button>' +
       "</div>";
     $("dashboard").innerHTML =
+      '<div class="hero-shell">' +
+        '<div class="hero-copy">' +
+          '<div class="eyebrow">Realtime Overview</div>' +
+          '<h2 class="hero-title">今天的业务状态一眼看清</h2>' +
+          '<p class="hero-text">把支付、会员、设备和启动趋势压缩到一屏，先看健康度，再进入明细。</p>' +
+        '</div>' +
+        '<div class="hero-stat">' +
+          '<span>核心收入</span><strong>¥' + formatMoney(overview.paidAmountCents) + '</strong>' +
+          '<em>已支付订单 ' + formatValue(overview.paidOrderCount) + '</em>' +
+        '</div>' +
+      '</div>' +
       '<div class="grid metrics">' +
       metric("APP", overview.appCount) +
       metric("用户", overview.userCount) +
@@ -1229,23 +1301,22 @@ function renderDashboard() {
       metric("启动", overview.launchCount) +
       "</div>" +
       panel("统计分析", analyticsBar + renderAnalyticsChart(analytics), "analytics-panel") +
-      '<div style="height:12px"></div>' +
-      panel("近 14 天趋势", table([
-        { title: "日期", key: "date" },
-        { title: "订单", key: "orderCount" },
-        { title: "支付订单", key: "paidOrderCount" },
-        { title: "支付金额(分)", key: "paidAmountCents" },
-        { title: "登录", key: "loginCount" },
-        { title: "启动", key: "launchCount" }
-      ], trend)) +
-      '<div style="height:12px"></div>' +
-      panel("APP 收入排行", table([
-        { title: "APP", key: "dimension" },
-        { title: "订单", key: "orderCount" },
-        { title: "支付订单", key: "paidOrderCount" },
-        { title: "支付金额(元)", render: function (r) { return formatMoney(r.paidAmountCents); } }
-      ], summary.byApp || [])) +
-      '<div style="height:12px"></div>' +
+      '<div class="dashboard-pair">' +
+        panel("近 14 天趋势", table([
+          { title: "日期", key: "date" },
+          { title: "订单", key: "orderCount" },
+          { title: "支付订单", key: "paidOrderCount" },
+          { title: "支付金额(元)", render: function (r) { return formatMoney(r.paidAmountCents); } },
+          { title: "登录", key: "loginCount" },
+          { title: "启动", key: "launchCount" }
+        ], trend)) +
+        panel("APP 收入排行", table([
+          { title: "APP", key: "dimension" },
+          { title: "订单", key: "orderCount" },
+          { title: "支付订单", key: "paidOrderCount" },
+          { title: "支付金额(元)", render: function (r) { return formatMoney(r.paidAmountCents); } }
+        ], summary.byApp || [])) +
+      '</div>' +
       panel("支付渠道分布", table([
         { title: "渠道", key: "dimension" },
         { title: "订单", key: "orderCount" },
@@ -1256,7 +1327,7 @@ function renderDashboard() {
 }
 
 function metric(label, value) {
-  return '<div class="metric"><div class="label">' + label + '</div><div class="value">' + formatValue(value) + '</div></div>';
+  return '<div class="metric"><div class="label">' + label + '</div><div class="value">' + formatValue(value) + '</div><div class="metric-halo" aria-hidden="true"></div></div>';
 }
 
 function applyAnalyticsFilter() {
@@ -1368,6 +1439,7 @@ function renderApps() {
               '<button class="small" onclick="openAppEdit(' + r.id + ')">编辑</button>' +
               '<button class="small" onclick="toggleApp(' + r.id + ', \'' + r.status + '\')">启停</button>' +
               '<button class="small" onclick="resetSecret(' + r.id + ')">重置密钥</button>' +
+              '<button class="small danger" onclick="deleteApp(' + r.id + ')">删除</button>' +
               '</div>';
           }
         }
@@ -1407,8 +1479,8 @@ function createApp() {
       needDeviceVip: $("needDeviceVip").checked
     }
   }).then(function (data) {
-    toast("创建成功，secret: " + data.appSecret);
     closeModal();
+    openSecretModal("APP 已创建", data.appId, data.appSecret, data.id);
     renderApps();
   }).catch(function (err) { toast(err.message); });
 }
@@ -1427,10 +1499,10 @@ function openAppDetail(id) {
       "状态": item.status
     }) + sectionBlock("关键指标", statsGrid(data.stats)) +
       sectionBlock("套餐", compactTable([
-        { title: "ID", key: "id" }, { title: "名称", key: "packageName" }, { title: "价格(分)", key: "priceCents" }, { title: "状态", render: function (r) { return badge(r.status); } }
+        { title: "ID", key: "id" }, { title: "名称", key: "packageName" }, { title: "价格(元)", render: function (r) { return formatMoney(r.priceCents); } }, { title: "状态", render: function (r) { return badge(r.status); } }
       ], data.packages)) +
       sectionBlock("最近订单", compactTable([
-        { title: "ID", key: "id" }, { title: "订单号", key: "orderNo" }, { title: "金额(分)", key: "amountCents" }, { title: "状态", render: function (r) { return badge(r.payStatus); } }
+        { title: "ID", key: "id" }, { title: "订单号", key: "orderNo" }, { title: "金额(元)", render: function (r) { return formatMoney(r.amountCents); } }, { title: "状态", render: function (r) { return badge(r.payStatus); } }
       ], data.recentOrders)) +
       sectionBlock("最近设备", compactTable([
         { title: "ID", key: "id" }, { title: "设备码", key: "deviceCode" }, { title: "用户", key: "userId" }, { title: "最近启动", key: "lastLaunchAt" }
@@ -1484,11 +1556,31 @@ function toggleApp(id, status) {
   });
 }
 
+function openSecretModal(title, appId, secret, id) {
+  openModal(title, detailList({
+    "APP": appId,
+    "Secret": secret,
+    "提示": "该 Secret 只建议在此时复制保存，后续可再次重置生成新值"
+  }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(secret || '') + '\')">一键复制 Secret</button>' +
+    '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+}
+
 function resetSecret(id) {
   openRiskConfirm("确认重置 APP 密钥", "重置后旧密钥会失效，已接入项目需要同步更新配置。", "确认重置", function (reason) {
     api("/admin/apps/" + id + "/reset-secret", { method: "POST", body: { confirmReason: reason } }).then(function (data) {
-      toast("新 secret: " + data.appSecret);
       closeModal();
+      openSecretModal("新 Secret 已生成", data.appId, data.appSecret, id);
+      renderApps();
+    }).catch(function (err) { toast(err.message); });
+  });
+}
+
+function deleteApp(id) {
+  openRiskConfirm("确认删除 APP", "删除仅允许在 APP 下没有套餐、订单、绑定和设备数据时执行。", "确认删除", function (reason) {
+    api("/admin/apps/" + id, { method: "DELETE", body: { confirmReason: reason } }).then(function () {
+      toast("APP 已删除");
+      closeModal();
+      renderApps();
     }).catch(function (err) { toast(err.message); });
   });
 }
@@ -1673,7 +1765,6 @@ function alipayPaymentFields(prefix, item, normal, credential, mode) {
   var links = alipayOpenLinks();
   var sandbox = normal.sandbox === true;
   return noteBlock(alipayConfigHint()) +
-    alipayQuickLinksRow() +
     inputWithLink(prefix + "Merchant", "支付宝商户 PID", item.merchantId || "", links.pid, "", { required: false, hint: "直连应用通常可不填；仅部分场景需要" }) +
     checkbox(prefix + "Sandbox", "启用沙箱模式", sandbox) +
     select(prefix + "DefaultPayMode", "默认拉起方式", [
@@ -1723,7 +1814,34 @@ function bindPaymentChannelForm(prefix, item, appOptions, mode) {
   var channel = $(prefix + "Channel");
   var provider = $(prefix + "Provider");
   if (!channel) return;
+  function snapshotCurrentAlipayEnv() {
+    var sandbox = $(prefix + 'Sandbox');
+    if (!sandbox || channel.value !== 'ALIPAY') return;
+    var normal = parseJsonObject(item.configJson || '{}');
+    var credential = parseJsonObject(item.credentialJson || '{}');
+    if (sandbox.checked) {
+      normal.sandboxAppId = ($(prefix + 'EnvAppId') || {}).value || normal.sandboxAppId;
+      normal.sandboxGatewayUrl = ($(prefix + 'EnvGatewayUrl') || {}).value || '';
+      normal.sandboxNotifyUrl = ($(prefix + 'EnvNotifyUrl') || {}).value || '';
+      normal.sandboxReturnUrl = ($(prefix + 'EnvReturnUrl') || {}).value || '';
+      normal.sandboxSignType = ($(prefix + 'EnvSignType') || {}).value || 'RSA2';
+      credential.sandboxMerchantPrivateKey = ($(prefix + 'EnvPrivateKey') || {}).value || '';
+      credential.sandboxAlipayPublicKey = ($(prefix + 'EnvAlipayPublicKey') || {}).value || '';
+    } else {
+      normal.prodAppId = ($(prefix + 'EnvAppId') || {}).value || normal.prodAppId;
+      normal.prodGatewayUrl = ($(prefix + 'EnvGatewayUrl') || {}).value || '';
+      normal.prodNotifyUrl = ($(prefix + 'EnvNotifyUrl') || {}).value || '';
+      normal.prodReturnUrl = ($(prefix + 'EnvReturnUrl') || {}).value || '';
+      normal.prodSignType = ($(prefix + 'EnvSignType') || {}).value || 'RSA2';
+      credential.prodMerchantPrivateKey = ($(prefix + 'EnvPrivateKey') || {}).value || '';
+      credential.prodAlipayPublicKey = ($(prefix + 'EnvAlipayPublicKey') || {}).value || '';
+    }
+    normal.sandbox = sandbox.checked;
+    item.configJson = JSON.stringify(normal);
+    item.credentialJson = JSON.stringify(credential);
+  }
   function rerender() {
+    snapshotCurrentAlipayEnv();
     item.payChannel = channel.value;
     item.providerCode = providerDefaultFor(channel.value);
     openModal(mode === "create" ? "新建支付配置" : "编辑支付配置", renderPaymentConfigForm(prefix, item, appOptions, mode),
@@ -1733,11 +1851,9 @@ function bindPaymentChannelForm(prefix, item, appOptions, mode) {
     var app = $(prefix + 'AppId'); if (mode === 'edit' && app) app.disabled = true;
     var ch = $(prefix + 'Channel'); if (mode === 'edit' && ch) ch.disabled = true;
   }
-  if (mode === "create") {
-    channel.addEventListener("change", rerender);
-  }
+  if (mode === "create") channel.addEventListener("change", rerender);
   var sandbox = $(prefix + 'Sandbox');
-  if (sandbox) sandbox.addEventListener('change', rerender);
+  if (sandbox && channel.value === 'ALIPAY') sandbox.addEventListener('change', rerender);
   if (provider) provider.value = item.providerCode || providerDefaultFor(channel.value);
 }
 
@@ -2099,6 +2215,203 @@ function sendEmailMessage() {
   }).catch(function (err) { toast(err.message); });
 }
 
+function renderProducts() {
+  return loadApps().then(function (apps) {
+    var current = queryFilters("products").appId || (apps[0] && apps[0].appId) || "";
+    setFilters("products", { appId: current });
+    return api("/admin/products?appId=" + encodeURIComponent(current)).then(function (rows) {
+      $("products").innerHTML = panelTitleActions("商品列表",
+        '<button type="button" onclick="openProductCreate()">新建商品</button>') +
+        table([
+          { title: "APP", key: "appId" },
+          { title: "商品编码", key: "productCode" },
+          { title: "商品名", key: "productName" },
+          { title: "类型", key: "productType" },
+          { title: "履约", key: "fulfillmentType" },
+          { title: "状态", render: function (r) { return badge(r.status); } },
+          { title: "操作", render: function (r) { return '<div class="actions"><button class="small" onclick="openProductDetail(' + r.id + ')">详情</button><button class="small" onclick="openPlanCreate(' + r.id + ')">加方案</button></div>'; } }
+        ], rows || []) + '</div>';
+    });
+  });
+}
+
+function openProductCreate() {
+  loadApps().then(function (apps) {
+    openModal("新建商品", '<div class="form-grid">' +
+      select("productAppId", "APP", apps.map(function (a) { return { value: a.appId, label: a.appId + " / " + a.appName }; }), apps[0] && apps[0].appId || "") +
+      input("productCode", "商品编码", "vip") +
+      input("productName", "商品名", "会员") +
+      select("productType", "商品类型", [optionOf("VIP"), optionOf("AI_CREDITS"), optionOf("FEATURE"), optionOf("OTHER")], "VIP") +
+      select("fulfillmentType", "履约类型", [optionOf("MEMBERSHIP_DURATION"), optionOf("CREDIT_GRANT"), optionOf("MANUAL")], "MEMBERSHIP_DURATION") +
+      textarea("productDesc", "描述", "", { required: false }) +
+      textarea("productBenefits", "权益说明", "", { required: false }) +
+      input("productSort", "排序", "0", "number") +
+      '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveProductCreate()">创建</button>');
+  });
+}
+
+function saveProductCreate() {
+  api("/admin/products", { method: "POST", body: {
+    appId: $("productAppId").value,
+    productCode: $("productCode").value,
+    productName: $("productName").value,
+    productType: $("productType").value,
+    fulfillmentType: $("fulfillmentType").value,
+    description: $("productDesc").value,
+    benefitsText: $("productBenefits").value,
+    sortOrder: Number($("productSort").value || 0)
+  }}).then(function () { closeModal(); renderProducts(); }).catch(function (err) { toast(err.message); });
+}
+
+function openProductPreview(encoded) {
+  var detail = JSON.parse(decodeURIComponent(String(encoded || "{}")));
+  var product = detail.product || {};
+  var slug = encodeURIComponent(product.productCode || "preview");
+  var previewUrl = "/purchase-ui/index.html?preview=1&name=" + encodeURIComponent(product.productName || "") +
+    "&desc=" + encodeURIComponent(product.description || "") +
+    "&benefits=" + encodeURIComponent(product.benefitsText || "") +
+    "&plans=" + encodeURIComponent(JSON.stringify(detail.plans || [])) +
+    "#" + slug;
+  var win = window.open(previewUrl, "_blank", "noopener");
+  if (!win) toast("浏览器拦截了预览窗口");
+}
+
+function openProductDetail(id) {
+  api("/admin/products/" + id).then(function (data) {
+    var product = data.product || {};
+    openModal("编辑商品", '<div class="form-grid">' +
+      input("editProductCode", "商品编码", product.productCode || "", { required: false, hint: "编码当前只读展示" }) +
+      input("editProductName", "商品名", product.productName || "") +
+      input("editProductType", "商品类型", labelOf(product.productType), { required: false }) +
+      input("editFulfillmentType", "履约类型", labelOf(product.fulfillmentType), { required: false }) +
+      textarea("editProductDesc", "描述", product.description || "", { required: false }) +
+      textarea("editProductBenefits", "权益", product.benefitsText || "", { required: false }) +
+      input("editProductSort", "排序", product.sortOrder || 0, "number") +
+      '</div>' + sectionBlock("方案", compactTable([
+        { title: "方案编码", key: "planCode" },
+        { title: "名称", key: "planName" },
+        { title: "价格(元)", render: function (r) { return formatMoney(r.priceCents); } },
+        { title: "时长", key: "durationDays" },
+        { title: "算力", key: "creditAmount" },
+        { title: "状态", render: function (r) { return badge(r.status); } },
+        { title: "操作", render: function (r) { return '<div class="actions"><button class="small" onclick="openPlanEdit(' + r.id + ',\'' + encodeURIComponent(JSON.stringify(r)).replace(/'/g, "%27") + '\',' + product.id + ')">编辑</button></div>'; } }
+      ], data.plans || [])), '<button class="secondary" type="button" onclick="openProductPreview(\'' + encodeURIComponent(JSON.stringify(data)).replace(/'/g, "%27") + '\')">预览</button><button class="secondary" type="button" onclick="openPlanCreate(' + product.id + ')">新增方案</button><button type="button" onclick="saveProductEdit(' + product.id + ')">保存商品</button><button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+    var code = $("editProductCode"); if (code) code.disabled = true;
+    var type = $("editProductType"); if (type) type.disabled = true;
+    var fulfill = $("editFulfillmentType"); if (fulfill) fulfill.disabled = true;
+  }).catch(function (err) { toast(err.message); });
+}
+
+function saveProductEdit(productId) {
+  api("/admin/products/" + productId, { method: "PUT", body: {
+    productName: $("editProductName").value,
+    description: $("editProductDesc").value,
+    benefitsText: $("editProductBenefits").value,
+    sortOrder: Number($("editProductSort").value || 0)
+  }}).then(function () { toast("商品已更新"); openProductDetail(productId); }).catch(function (err) { toast(err.message); });
+}
+
+function openPlanCreate(productId) {
+  openSubModal("新建方案", '<div class="form-grid">' +
+    input("planCode", "方案编码", "vip_month") +
+    input("planName", "方案名", "月度会员") +
+    input("planPrice", "价格(元)", "9.90", { required: true, type: "number", hint: "单位：元" }) +
+    input("planOriginPrice", "原价(元)", "12.90", { required: false, type: "number", hint: "单位：元" }) +
+    input("planDays", "时长(天)", "30", { required: false, type: "number" }) +
+    input("planCredits", "算力量", "", { required: false, type: "number" }) +
+    input("planBadge", "标签", "热门", { required: false }) +
+    textarea("planBenefits", "方案权益", "", { required: false }) +
+    input("planSort", "排序", "0", "number") +
+    '</div>', '<button class="secondary" type="button" onclick="closeSubModal()">取消</button><button type="button" onclick="savePlanCreate(' + productId + ')">创建</button>');
+}
+
+function savePlanCreate(productId) {
+  api("/admin/products/" + productId + "/plans", { method: "POST", body: {
+    planCode: $("planCode").value,
+    planName: $("planName").value,
+    priceCents: centsFromYuanInput($("planPrice").value) || 0,
+    originalPriceCents: centsFromYuanInput($("planOriginPrice").value),
+    durationDays: $("planDays").value ? Number($("planDays").value) : null,
+    creditAmount: $("planCredits").value ? Number($("planCredits").value) : null,
+    badgeText: $("planBadge").value,
+    benefitsText: $("planBenefits").value,
+    sortOrder: Number($("planSort").value || 0)
+  }}).then(function () { closeSubModalToProduct(productId); }).catch(function (err) { toast(err.message); });
+}
+
+function savePlanEdit(planId, productId) {
+  api("/admin/products/plans/" + planId, { method: "PUT", body: {
+    planName: $("editPlanName").value,
+    priceCents: centsFromYuanInput($("editPlanPrice").value) || 0,
+    originalPriceCents: centsFromYuanInput($("editPlanOriginPrice").value),
+    durationDays: $("editPlanDays").value ? Number($("editPlanDays").value) : null,
+    creditAmount: $("editPlanCredits").value ? Number($("editPlanCredits").value) : null,
+    badgeText: $("editPlanBadge").value,
+    benefitsText: $("editPlanBenefits").value,
+    sortOrder: Number($("editPlanSort").value || 0)
+  }}).then(function () { closeSubModalToProduct(productId); }).catch(function (err) { toast(err.message); });
+}
+
+function renderPurchasePages() {
+  return loadApps().then(function (apps) {
+    var current = queryFilters("purchasePages").appId || (apps[0] && apps[0].appId) || "";
+    setFilters("purchasePages", { appId: current });
+    return api("/admin/purchase-pages?appId=" + encodeURIComponent(current)).then(function (rows) {
+      $("purchasePages").innerHTML = panelTitleActions("购买页列表", '<button type="button" onclick="openPurchasePageCreate()">新建购买页</button>') +
+        table([
+          { title: "APP", key: "appId" },
+          { title: "Slug", key: "pageSlug" },
+          { title: "标题", key: "title" },
+          { title: "布局", key: "layoutType" },
+          { title: "状态", render: function (r) { return badge(r.status); } },
+          { title: "操作", render: function (r) { return '<div class="actions"><button class="small" onclick="openPurchasePageDetail(' + r.id + ')">详情</button><button class="small" onclick="window.open(\'/p/' + r.pageSlug + '\', \'_blank\')">预览</button></div>'; } }
+        ], rows || []) + '</div>';
+    });
+  });
+}
+
+function openPurchasePageCreate() {
+  loadApps().then(function (apps) {
+    openModal("新建购买页", '<div class="form-grid">' +
+      select("pageAppId", "APP", apps.map(function (a) { return { value: a.appId, label: a.appId + " / " + a.appName }; }), apps[0] && apps[0].appId || "") +
+      input("pageSlug", "页面标识", "vip") +
+      input("pageTitleInput", "标题", "开通会员") +
+      input("pageSubtitle", "副标题", "选择最适合你的方案", { required: false }) +
+      select("pageLayout", "布局", [optionOf("CARD_GRID"), optionOf("SPLIT_HERO"), optionOf("COMPACT")], "CARD_GRID") +
+      textarea("pageTheme", "主题 JSON", '{"primaryColor":"#4f46e5"}', { required: false }) +
+      textarea("pageContentJson", "内容 JSON", '{"products":["vip"]}', { required: false }) +
+      '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="savePurchasePageCreate()">创建</button>');
+  });
+}
+
+function savePurchasePageCreate() {
+  api("/admin/purchase-pages", { method: "POST", body: {
+    appId: $("pageAppId").value,
+    pageSlug: $("pageSlug").value,
+    title: $("pageTitleInput").value,
+    subtitle: $("pageSubtitle").value,
+    layoutType: $("pageLayout").value,
+    themeJson: $("pageTheme").value,
+    contentJson: $("pageContentJson").value
+  }}).then(function () { closeModal(); renderPurchasePages(); }).catch(function (err) { toast(err.message); });
+}
+
+function openPurchasePageDetail(id) {
+  api("/admin/purchase-pages/" + id).then(function (item) {
+    openModal("购买页详情", detailList({
+      "APP": item.appId,
+      "Slug": item.pageSlug,
+      "标题": item.title,
+      "副标题": item.subtitle,
+      "布局": item.layoutType,
+      "状态": item.status,
+      "预览地址": "/p/" + item.pageSlug,
+      "主题": item.themeJson,
+      "内容": item.contentJson
+    }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(location.origin + '/p/' + item.pageSlug) + '\')">复制预览地址</button><button class="secondary" type="button" onclick="window.open(\'/p/' + item.pageSlug + '\', \'_blank\')">打开预览</button><button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
 function renderPackages() {
   return loadApps().then(function (apps) {
     var current = queryFilters("packages").appId || (apps[0] && apps[0].appId) || "";
@@ -2119,7 +2432,7 @@ function renderPackages() {
           { title: "APP", key: "appId" },
           { title: "名称", key: "packageName" },
           { title: "类型", key: "packageType" },
-          { title: "价格(分)", key: "priceCents" },
+          { title: "价格(元)", render: function (r) { return formatMoney(r.priceCents); } },
           { title: "天数", key: "durationDays" },
           { title: "状态", render: function (r) { return badge(r.status); } },
           {
@@ -2160,7 +2473,7 @@ function openPackageCreate() {
         optionOf("MEMBERSHIP"),
         optionOf("FEATURE")
       ], "MEMBERSHIP") +
-      input("createPkgPrice", "价格(分)", "990") +
+      input("createPkgPrice", "价格(元)", "9.90", { required: true, type: "number", hint: "单位：元" }) +
       input("createPkgDays", "天数", "30") +
       textarea("createPkgBenefits", "权益说明", "VIP 权益") +
       "</div>",
@@ -2176,7 +2489,7 @@ function savePackageCreate() {
       appId: $("createPkgAppId").value,
       packageName: $("createPkgName").value,
       packageType: $("createPkgType").value,
-      priceCents: Number($("createPkgPrice").value),
+      priceCents: centsFromYuanInput($("createPkgPrice").value) || 0,
       durationDays: Number($("createPkgDays").value),
       benefitsText: $("createPkgBenefits").value
     }
@@ -2193,7 +2506,7 @@ function openPackageEdit(id) {
     if (!item) throw new Error("套餐不存在");
     openModal("编辑套餐", '<div class="form-grid">' +
       input("editPkgName", "套餐名", item.packageName) +
-      input("editPkgPrice", "价格(分)", item.priceCents) +
+      input("editPkgPrice", "价格(元)", yuanInputFromCents(item.priceCents), { required: true, type: "number", hint: "单位：元" }) +
       input("editPkgDays", "天数", item.durationDays) +
       textarea("editPkgBenefits", "权益说明", item.benefitsText) +
       "</div>",
@@ -2207,7 +2520,7 @@ function savePackageEdit(id) {
     method: "PUT",
     body: {
       packageName: $("editPkgName").value,
-      priceCents: Number($("editPkgPrice").value),
+      priceCents: centsFromYuanInput($("editPkgPrice").value) || 0,
       durationDays: Number($("editPkgDays").value),
       benefitsText: $("editPkgBenefits").value
     }
@@ -2505,7 +2818,7 @@ function openDeviceDetail(id) {
       "平均使用时长": data.usageStats ? formatDuration(data.usageStats.averageDurationSeconds) : "-"
     }) + sectionBlock("关键指标", statsGrid(data.stats)) +
       sectionBlock("最近订单", compactTable([
-        { title: "ID", key: "id" }, { title: "订单号", key: "orderNo" }, { title: "金额(分)", key: "amountCents" }, { title: "状态", render: function (r) { return badge(r.payStatus); } }
+        { title: "ID", key: "id" }, { title: "订单号", key: "orderNo" }, { title: "金额(元)", render: function (r) { return formatMoney(r.amountCents); } }, { title: "状态", render: function (r) { return badge(r.payStatus); } }
       ], data.recentOrders)) +
       sectionBlock("最近启动", compactTable([
         { title: "ID", key: "id" }, { title: "平台", key: "platform" }, { title: "版本", key: "version" }, { title: "时长", render: function (r) { return formatDuration(r.durationSeconds); } }, { title: "时间", render: function (r) { return formatDateTime(r.createdAt); } }
@@ -2718,8 +3031,8 @@ function renderOrders(page) {
           { title: "APP", key: "appId" },
           { title: "用户", key: "userId" },
           { title: "设备", key: "deviceId" },
-          { title: "金额(分)", key: "amountCents" },
-          { title: "退款(分)", key: "refundedAmountCents" },
+          { title: "金额(元)", render: function (r) { return formatMoney(r.amountCents); } },
+          { title: "退款(元)", render: function (r) { return formatMoney(r.refundedAmountCents); } },
           { title: "渠道", render: function (r) { return formatValue(r.payChannel); } },
           { title: "状态", render: function (r) { return badge(r.payStatus); } },
           {
@@ -2796,7 +3109,7 @@ function openPaymentResult(data) {
   var publicPayUrl = "/pay.html?orderNo=" + encodeURIComponent(data.orderNo) + "&payUrl=" + encodeURIComponent(rawPay);
   var body = detailList({
     "订单号": data.orderNo,
-    "金额(分)": data.amountCents,
+    "金额(元)": yuanText(data.amountCents),
     "渠道": params.provider,
     "拉起方式": params.payMode,
     "二维码/支付链接": params.qrCode || params.payUrl || params.browserUrl,
@@ -2833,14 +3146,14 @@ function openOrderDetail(id) {
       "设备": item.deviceId,
       "套餐": item.packageId,
       "订单号": item.orderNo,
-      "金额(分)": item.amountCents,
+      "金额(元)": yuanText(item.amountCents),
       "支付渠道": item.payChannel,
       "支付提供方": item.payProvider,
       "状态": item.payStatus,
       "交易号": item.tradeNo,
       "渠道订单号": item.channelOrderNo,
       "回调次数": item.callbackCount,
-      "退款金额(分)": item.refundedAmountCents,
+      "退款金额(元)": yuanText(item.refundedAmountCents),
       "支付时间": item.paidAt,
       "过期时间": item.expireAt,
       "关闭时间": item.closedAt,
@@ -2850,7 +3163,7 @@ function openOrderDetail(id) {
       { title: "时间", key: "happenedAt" },
       { title: "事件", key: "title" },
       { title: "状态", render: function (r) { return badge(r.status); } },
-      { title: "金额(分)", key: "amountCents" },
+      { title: "金额(元)", render: function (r) { return formatMoney(r.amountCents); } },
       { title: "说明", key: "description" }
     ], data.items));
     openModal("订单详情", body,
@@ -2907,7 +3220,7 @@ function renderRefunds(page) {
           { title: "ID", key: "id" },
           { title: "退款号", key: "refundNo" },
           { title: "订单 ID", key: "orderId" },
-          { title: "金额(分)", key: "amountCents" },
+          { title: "金额(元)", render: function (r) { return formatMoney(r.amountCents); } },
           { title: "状态", render: function (r) { return badge(r.status); } },
           { title: "原因", key: "reason" },
           {
@@ -2936,7 +3249,7 @@ function applyRefundFilter() {
 function openRefundCreate() {
   openModal("申请退款", '<div class="form-grid">' +
     input("refundOrderId", "订单 ID") +
-    input("refundAmount", "金额(分)") +
+    input("refundAmount", "金额(元)", "", { required: true, type: "number", hint: "单位：元" }) +
     textarea("refundReason", "原因", "人工退款", { required: false }) +
     "</div>",
     '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
@@ -2948,7 +3261,7 @@ function saveRefundCreate() {
     method: "POST",
     body: {
       orderId: Number($("refundOrderId").value),
-      amountCents: Number($("refundAmount").value),
+      amountCents: centsFromYuanInput($("refundAmount").value) || 0,
       reason: $("refundReason").value
     }
   }).then(function () {
@@ -2967,7 +3280,7 @@ function openRefundDetail(id) {
       "APP": item.appId,
       "订单 ID": item.orderId,
       "退款号": item.refundNo,
-      "金额(分)": item.amountCents,
+      "金额(元)": yuanText(item.amountCents),
       "原因": item.reason,
       "状态": item.status,
       "渠道退款号": item.channelRefundNo,
@@ -3347,7 +3660,7 @@ function loadLogData(page) {
         { title: "订单", key: "orderId" },
         { title: "事件", key: "eventType" },
         { title: "操作方", key: "operatorType" },
-        { title: "金额(分)", key: "amountCents" },
+        { title: "金额(元)", render: function (r) { return formatMoney(r.amountCents); } },
         { title: "操作", render: function (r) { return logDetailButton("payment-events", r.id); } }
       ]
     };
@@ -3416,7 +3729,7 @@ function openLogDetail(type, id) {
       details["事件"] = item.eventType;
       details["支付渠道"] = item.payChannel;
       details["支付提供方"] = item.payProvider;
-      details["金额(分)"] = item.amountCents;
+      details["金额(元)"] = item.amountCents;
       details["交易号"] = item.tradeNo;
       details["操作方"] = item.operatorType;
       details["操作方 ID"] = item.operatorId;

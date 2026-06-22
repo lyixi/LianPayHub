@@ -79,7 +79,7 @@ public class UserFileSchemaMigration implements ApplicationRunner {
         if (indexExists("user_file", "idx_user_file_path_hash")) {
             return;
         }
-        jdbcTemplate.execute("ALTER TABLE user_file ADD INDEX idx_user_file_path_hash (user_id, app_id, virtual_path_hash)");
+        jdbcTemplate.execute("ALTER TABLE user_file ADD INDEX idx_user_file_path_hash (user_id, app_id, virtual_path_hash(32))");
         log.info("Created index idx_user_file_path_hash");
     }
 }

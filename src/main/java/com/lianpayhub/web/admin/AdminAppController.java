@@ -85,6 +85,12 @@ public class AdminAppController {
         return ApiResponse.ok(appService.changeStatus(id, new ChangeAppStatusCommand(request.status())));
     }
 
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        appService.deleteApp(id);
+        return ApiResponse.ok();
+    }
+
     @PostMapping("/{id}/reset-secret")
     public ApiResponse<ResetAppSecretResult> resetSecret(@PathVariable Long id) {
         return ApiResponse.ok(appService.resetSecret(id));

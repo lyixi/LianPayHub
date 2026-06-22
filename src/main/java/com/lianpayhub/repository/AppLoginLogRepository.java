@@ -15,6 +15,7 @@ public interface AppLoginLogRepository extends JpaRepository<AppLoginLog, Long> 
     List<AppLoginLog> findTop10ByAppIdOrderByIdDesc(String appId);
     List<AppLoginLog> findTop10ByDeviceIdOrderByIdDesc(Long deviceId);
     long countByAppId(String appId);
+    void deleteByAppId(String appId);
     long countByDeviceId(Long deviceId);
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     long countByAppIdAndCreatedAtBetween(String appId, LocalDateTime start, LocalDateTime end);

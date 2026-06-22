@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "user_file", indexes = {
         @Index(name = "idx_user_file_owner", columnList = "user_id, app_id"),
-        @Index(name = "idx_user_file_path_hash", columnList = "user_id, app_id, virtual_path_hash"),
         @Index(name = "idx_user_file_updated", columnList = "user_id, app_id, updated_at")
 })
 public class UserFile extends BaseEntity {

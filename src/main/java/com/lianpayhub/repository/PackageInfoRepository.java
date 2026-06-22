@@ -9,4 +9,5 @@ public interface PackageInfoRepository extends JpaRepository<PackageInfo, Long> 
     List<PackageInfo> findByAppId(String appId);
     List<PackageInfo> findByAppIdAndStatus(String appId, PackageStatus status);
     long countByAppId(String appId);
+    void deleteByAppId(String appId);
 }

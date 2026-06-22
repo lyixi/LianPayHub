@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PaymentEventLogRepository extends JpaRepository<PaymentEventLog, Long> {
     Page<PaymentEventLog> findByAppId(String appId, Pageable pageable);
     Page<PaymentEventLog> findByOrderId(Long orderId, Pageable pageable);
+    void deleteByAppId(String appId);
 }

@@ -18,6 +18,7 @@ public interface LaunchRecordRepository extends JpaRepository<LaunchRecord, Long
     Optional<LaunchRecord> findFirstByAppIdAndDeviceIdAndSessionIdAndEventTypeOrderByIdDesc(
             String appId, Long deviceId, String sessionId, com.lianpayhub.domain.launch.LaunchEventType eventType);
     long countByAppId(String appId);
+    void deleteByAppId(String appId);
     long countByDeviceId(Long deviceId);
 
     @Query("select coalesce(sum(r.durationSeconds), 0) from LaunchRecord r where r.deviceId = ?1")

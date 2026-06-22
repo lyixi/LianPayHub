@@ -18,6 +18,7 @@ public interface MemberInfoRepository extends JpaRepository<MemberInfo, Long> {
     Page<MemberInfo> findByAppId(String appId, Pageable pageable);
     List<MemberInfo> findTop10ByAppIdOrderByIdDesc(String appId);
     long countByAppId(String appId);
+    void deleteByAppId(String appId);
 
     Optional<MemberInfo> findByOrderId(Long orderId);
 }

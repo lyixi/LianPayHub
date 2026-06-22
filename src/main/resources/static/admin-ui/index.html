@@ -44,7 +44,8 @@
 
     <main class="main">
       <header class="topbar">
-        <div>
+        <div class="topbar-copy">
+          <span class="eyebrow">Control Center</span>
           <h1 id="pageTitle">总览</h1>
           <span id="subTitle">运营数据与接口状态</span>
         </div>
@@ -96,6 +97,16 @@
       </div>
       <div id="modalBody" class="modal-body"></div>
       <div id="modalFooter" class="modal-footer"></div>
+    </div>
+  </div>
+  <div id="subModalMask" class="modal-mask sub-modal-mask hidden">
+    <div class="modal sub-modal">
+      <div class="modal-head">
+        <h2 id="subModalTitle"></h2>
+        <button id="subModalCloseBtn" class="icon-btn" type="button" aria-label="关闭">×</button>
+      </div>
+      <div id="subModalBody" class="modal-body"></div>
+      <div id="subModalFooter" class="modal-footer"></div>
     </div>
   </div>
   <script src="./app.js"></script>
