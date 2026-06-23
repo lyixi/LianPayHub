@@ -38,6 +38,16 @@ public class PurchasePageConfig extends BaseEntity {
     @Column(name = "content_json")
     private String contentJson;
 
+    @Column(name = "default_product_code", length = 64)
+    private String defaultProductCode;
+
+    @Column(name = "default_plan_code", length = 64)
+    private String defaultPlanCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "default_pay_channel", length = 32)
+    private com.lianpayhub.domain.payment.PayChannel defaultPayChannel;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private PurchasePageStatus status = PurchasePageStatus.DRAFT;
@@ -46,7 +56,9 @@ public class PurchasePageConfig extends BaseEntity {
     }
 
     public PurchasePageConfig(String appId, String pageSlug, String title, String subtitle,
-                              PurchaseLayoutType layoutType, String themeJson, String contentJson) {
+                              PurchaseLayoutType layoutType, String themeJson, String contentJson,
+                              String defaultProductCode, String defaultPlanCode,
+                              com.lianpayhub.domain.payment.PayChannel defaultPayChannel) {
         this.appId = appId;
         this.pageSlug = pageSlug;
         this.title = title;
@@ -54,6 +66,9 @@ public class PurchasePageConfig extends BaseEntity {
         this.layoutType = layoutType;
         this.themeJson = themeJson;
         this.contentJson = contentJson;
+        this.defaultProductCode = defaultProductCode;
+        this.defaultPlanCode = defaultPlanCode;
+        this.defaultPayChannel = defaultPayChannel;
     }
 
     public Long getId() { return id; }
@@ -64,14 +79,22 @@ public class PurchasePageConfig extends BaseEntity {
     public PurchaseLayoutType getLayoutType() { return layoutType; }
     public String getThemeJson() { return themeJson; }
     public String getContentJson() { return contentJson; }
+    public String getDefaultProductCode() { return defaultProductCode; }
+    public String getDefaultPlanCode() { return defaultPlanCode; }
+    public com.lianpayhub.domain.payment.PayChannel getDefaultPayChannel() { return defaultPayChannel; }
     public PurchasePageStatus getStatus() { return status; }
 
-    public void update(String title, String subtitle, PurchaseLayoutType layoutType, String themeJson, String contentJson) {
+    public void update(String title, String subtitle, PurchaseLayoutType layoutType, String themeJson, String contentJson,
+                       String defaultProductCode, String defaultPlanCode,
+                       com.lianpayhub.domain.payment.PayChannel defaultPayChannel) {
         this.title = title;
         this.subtitle = subtitle;
         this.layoutType = layoutType;
         this.themeJson = themeJson;
         this.contentJson = contentJson;
+        this.defaultProductCode = defaultProductCode;
+        this.defaultPlanCode = defaultPlanCode;
+        this.defaultPayChannel = defaultPayChannel;
     }
 
     public void changeStatus(PurchasePageStatus status) {

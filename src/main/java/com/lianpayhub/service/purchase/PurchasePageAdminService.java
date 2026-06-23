@@ -32,9 +32,21 @@ public class PurchasePageAdminService {
 
     @Transactional
     public PurchasePageConfig create(String appId, String pageSlug, String title, String subtitle,
-                                     PurchaseLayoutType layoutType, String themeJson, String contentJson) {
+                                     PurchaseLayoutType layoutType, String themeJson, String contentJson,
+                                     String defaultProductCode, String defaultPlanCode,
+                                     com.lianpayhub.domain.payment.PayChannel defaultPayChannel) {
         if (!appInfoRepository.existsByAppId(appId)) throw new BusinessException(ErrorCode.NOT_FOUND, "APP 不存在");
         if (repository.existsByPageSlug(pageSlug)) throw new BusinessException(ErrorCode.CONFLICT, "页面标识已存在");
-        return repository.save(new PurchasePageConfig(appId, pageSlug, title, subtitle, layoutType, themeJson, contentJson));
+        return repository.save(new PurchasePageConfig(appId, pageSlug, title, subtitle, layoutType, themeJson, contentJson, defaultProductCode, defaultPlanCode, defaultPayChannel));
+    }
+
+    @Transactional
+    public PurchasePageConfig update(Long id, String title, String subtitle, PurchaseLayoutType layoutType,
+                                     String themeJson, String contentJson,
+                                     String defaultProductCode, String defaultPlanCode,
+                                     com.lianpayhub.domain.payment.PayChannel defaultPayChannel) {
+        PurchasePageConfig page = detail(id);
+        page.update(title, subtitle, layoutType, themeJson, contentJson, defaultProductCode, defaultPlanCode, defaultPayChannel);
+        return repository.save(page);
     }
 }

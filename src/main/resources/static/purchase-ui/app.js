@@ -12,6 +12,7 @@ var fixedPageSlug = qs.get('pageSlug') || '';
 var currentSlug = fixedPageSlug || location.pathname.split('/').filter(Boolean).pop();
 var filteredProducts = [];
 var filteredPlans = [];
+var pollTimer = null;
 
 if (qs.get('preview') === '1') {
   var previewPlans = JSON.parse(qs.get('plans') || '[]');
@@ -41,14 +42,22 @@ if (qs.get('preview') === '1') {
         if (fixedProductType && p.productType !== fixedProductType) return false;
         return true;
       });
+      if (!filteredProducts.length && pageData.page.defaultProductCode) {
+        filteredProducts = (pageData.products || []).filter(function (p) { return p.productCode === pageData.page.defaultProductCode; });
+      }
       var productIds = filteredProducts.map(function (p) { return Number(p.id); });
       filteredPlans = (pageData.plans || []).filter(function (plan) {
         if (productIds.indexOf(Number(plan.productId || 1)) < 0) return false;
         if (fixedPlanCode && plan.planCode !== fixedPlanCode) return false;
         return true;
       });
+      if (!fixedPlanCode && pageData.page.defaultPlanCode) {
+        var preferred = filteredPlans.filter(function (plan) { return plan.planCode === pageData.page.defaultPlanCode; });
+        if (preferred.length) filteredPlans = preferred.concat(filteredPlans.filter(function (plan) { return plan.planCode !== pageData.page.defaultPlanCode; }));
+      }
       renderProducts(filteredProducts, filteredPlans);
       renderChannels(pageData.payChannels || ['ALIPAY']);
+      if (pageData.page.defaultPayChannel) selectedChannel = pageData.page.defaultPayChannel;
     })
     .catch(function (err) {
       document.getElementById('products').innerHTML = '<div class="empty">' + escapeHtml(err.message) + '</div>';
@@ -114,10 +123,10 @@ function renderChannels(channels) {
   var box = document.getElementById('channelBox');
   var list = (channels || []).length ? channels : ['ALIPAY'];
   box.innerHTML = '<div class="hint" style="margin-bottom:10px">选择支付方式</div>' + list.map(function (channel, index) {
-    var checked = index === 0 ? ' checked' : '';
-    if (index === 0) selectedChannel = channel;
-    return '<label class="channel-option' + (index === 0 ? ' active' : '') + '">' +
-      '<input type="radio" name="payChannel" value="' + escapeHtml(channel) + '"' + checked + ' onchange="selectChannel(\'' + escapeHtml(channel) + '\',this)">' +
+    var active = selectedChannel ? selectedChannel === channel : index === 0;
+    if (active) selectedChannel = channel;
+    return '<label class="channel-option' + (active ? ' active' : '') + '">' +
+      '<input type="radio" name="payChannel" value="' + escapeHtml(channel) + '"' + (active ? ' checked' : '') + ' onchange="selectChannel(\'' + escapeHtml(channel) + '\',this)">' +
       '<span>' + channelLabel(channel) + '</span>' +
     '</label>';
   }).join('');
@@ -164,12 +173,57 @@ function renderSelection() {
   document.getElementById('payBtn').disabled = false;
 }
 
+function stopPolling() {
+  if (pollTimer) {
+    window.clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function renderFinalResult(data) {
+  var box = document.getElementById('finalResult');
+  box.classList.remove('hidden');
+  box.innerHTML = '<div><strong>支付已完成</strong></div>' +
+    '<div style="margin-top:8px">订单号：' + escapeHtml(data.orderNo || '') + '</div>' +
+    (data.tradeNo ? '<div style="margin-top:8px">交易号：' + escapeHtml(data.tradeNo) + '</div>' : '') +
+    '<div class="hint" style="margin-top:8px">权益通常会在几秒内自动生效，如未生效可返回应用刷新状态。</div>';
+}
+
+function pollOrder(orderNo, silent) {
+  var box = document.getElementById('statusResult');
+  box.classList.remove('hidden');
+  fetch('/api/payment/orders/' + encodeURIComponent(orderNo)).then(function (r) { return r.json(); }).then(function (res) {
+    if (res.code !== 0) throw new Error(res.message || '查询订单失败');
+    var data = res.data || {};
+    box.innerHTML = '<div><strong>订单状态：</strong>' + escapeHtml(data.payStatus || '-') + '</div>' +
+      (data.tradeNo ? '<div style="margin-top:8px"><strong>交易号：</strong>' + escapeHtml(data.tradeNo) + '</div>' : '') +
+      '<div style="margin-top:8px" class="hint">支付完成后会自动跳到成功状态，也可以手动刷新。</div>';
+    if (data.payStatus === 'PAID') {
+      stopPolling();
+      renderFinalResult(data);
+    }
+  }).catch(function (err) {
+    if (!silent) box.innerHTML = '<div>' + escapeHtml(err.message) + '</div>';
+  });
+}
+
+function startPolling(orderNo) {
+  stopPolling();
+  pollOrder(orderNo, true);
+  pollTimer = window.setInterval(function () { pollOrder(orderNo, true); }, 3000);
+}
+
 function submitPurchase() {
   if (!selectedPlan || !selectedProduct) return;
   var result = document.getElementById('payResult');
+  var statusBox = document.getElementById('statusResult');
+  var finalBox = document.getElementById('finalResult');
   result.classList.remove('hidden');
+  statusBox.classList.add('hidden');
+  finalBox.classList.add('hidden');
+  finalBox.innerHTML = '';
   if (qs.get('preview') === '1') {
-    result.innerHTML = '<div>预览模式下不真实下单。</div><div style="margin-top:8px">这里会展示订单号、二维码链接和打开支付页按钮。</div>';
+    result.innerHTML = '<div>预览模式下不真实下单。</div><div style="margin-top:8px">这里会展示订单号、二维码链接、打开支付页按钮和状态区域。</div>';
     return;
   }
   if (!fixedUserId && !fixedDeviceCode) {
@@ -199,7 +253,9 @@ function submitPurchase() {
       '<div style="margin-top:8px">支付链接：' + (payUrl ? '<a href="' + escapeHtml(payUrl) + '" target="_blank" rel="noopener">' + escapeHtml(payUrl) + '</a>' : '暂无') + '</div>' +
       '<div class="actions" style="margin-top:12px">' +
       (payUrl ? '<a class="secondary" href="' + escapeHtml('/pay.html?orderNo=' + encodeURIComponent(data.orderNo) + '&payUrl=' + encodeURIComponent(payUrl)) + '" target="_blank">打开支付页</a>' : '') +
+      '<button type="button" class="secondary" onclick="pollOrder(\'' + escapeHtml(data.orderNo) + '\')">刷新状态</button>' +
       '</div>';
+    startPolling(data.orderNo);
   }).catch(function (err) {
     result.innerHTML = '<div>' + escapeHtml(err.message) + '</div>';
   });

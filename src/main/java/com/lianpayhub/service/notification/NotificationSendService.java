@@ -56,8 +56,15 @@ public class NotificationSendService {
 
     public NotificationSendResult sendSmsCode(Long configId, String appId, String mobile, String code) {
         String safeCode = requireText(code, "code 不能为空");
+        String safeMobile = requireText(mobile, "mobile 不能为空");
         String paramsJson = smsCodeParams(safeCode, 5);
-        return sendSms(configId, appId, mobile, null, paramsJson);
+        NotificationChannelConfig config = resolveConfig(configId, NotificationChannelType.SMS, null, true);
+        if (config == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请先配置并启用短信通道");
+        }
+        NotificationSendResult result = sendSmsInternal(config, new SmsSendPayload(appId, safeMobile, null, config.getTemplateCode(), paramsJson), null);
+        smsSendLogService.save(config.getId(), config.getProviderCode(), appId, safeMobile, config.getTemplateCode(), paramsJson, result);
+        return result;
     }
 
     public NotificationSendResult sendSmsCode(String appId, String mobile, String code, int expireMinutes,

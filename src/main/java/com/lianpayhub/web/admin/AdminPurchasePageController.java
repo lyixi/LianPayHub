@@ -32,7 +32,15 @@ public class AdminPurchasePageController {
     @PostMapping
     public ApiResponse<PurchasePageConfig> create(@Valid @RequestBody CreatePageRequest request) {
         return ApiResponse.ok(service.create(request.appId, request.pageSlug, request.title, request.subtitle,
-                request.layoutType, request.themeJson, request.contentJson));
+                request.layoutType, request.themeJson, request.contentJson, request.defaultProductCode,
+                request.defaultPlanCode, request.defaultPayChannel));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<PurchasePageConfig> update(@PathVariable Long id, @Valid @RequestBody CreatePageRequest request) {
+        return ApiResponse.ok(service.update(id, request.title, request.subtitle, request.layoutType,
+                request.themeJson, request.contentJson, request.defaultProductCode, request.defaultPlanCode,
+                request.defaultPayChannel));
     }
 
     public static class CreatePageRequest {
@@ -43,5 +51,8 @@ public class AdminPurchasePageController {
         @NotNull public PurchaseLayoutType layoutType;
         public String themeJson;
         public String contentJson;
+        public String defaultProductCode;
+        public String defaultPlanCode;
+        public com.lianpayhub.domain.payment.PayChannel defaultPayChannel;
     }
 }

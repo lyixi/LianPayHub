@@ -2388,46 +2388,59 @@ function renderPurchasePages() {
   });
 }
 
-function openPurchasePageCreate() {
-  loadApps().then(function (apps) {
-    openModal("新建购买页", '<div class="form-grid">' +
-      select("pageAppId", "APP", apps.map(function (a) { return { value: a.appId, label: a.appId + " / " + a.appName }; }), apps[0] && apps[0].appId || "") +
-      input("pageSlug", "页面标识", "vip") +
-      input("pageTitleInput", "标题", "开通会员") +
-      input("pageSubtitle", "副标题", "选择最适合你的方案", { required: false }) +
-      select("pageLayout", "布局", [optionOf("CARD_GRID"), optionOf("SPLIT_HERO"), optionOf("COMPACT")], "CARD_GRID") +
-      textarea("pageTheme", "主题 JSON", '{"primaryColor":"#4f46e5"}', { required: false }) +
-      textarea("pageContentJson", "内容 JSON", '{"products":["vip"]}', { required: false }) +
-      '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="savePurchasePageCreate()">创建</button>');
-  });
+function purchasePageForm(item, appOptions) {
+  item = item || {};
+  return '<div class="form-grid">' +
+    select("pageAppId", "APP", appOptions, item.appId || (appOptions[0] && appOptions[0].value) || "") +
+    input("pageSlug", "页面标识", item.pageSlug || "vip") +
+    input("pageTitleInput", "标题", item.title || "开通会员") +
+    input("pageSubtitle", "副标题", item.subtitle || "选择最适合你的方案", { required: false }) +
+    select("pageLayout", "布局", [optionOf("CARD_GRID"), optionOf("SPLIT_HERO"), optionOf("COMPACT")], item.layoutType || "CARD_GRID") +
+    input("pageDefaultProductCode", "默认商品编码", item.defaultProductCode || "vip", { required: false }) +
+    input("pageDefaultPlanCode", "默认方案编码", item.defaultPlanCode || "", { required: false }) +
+    select("pageDefaultPayChannel", "默认支付方式", [optionOf("ALIPAY"), optionOf("WECHAT"), optionOf("AGGREGATE")], item.defaultPayChannel || "ALIPAY") +
+    textarea("pageTheme", "主题 JSON", item.themeJson || '{"primaryColor":"#4f46e5"}', { required: false }) +
+    textarea("pageContentJson", "内容 JSON", item.contentJson || '{"products":["vip"]}', { required: false }) +
+    '</div>';
 }
 
-function savePurchasePageCreate() {
-  api("/admin/purchase-pages", { method: "POST", body: {
+function purchasePageBody() {
+  return {
     appId: $("pageAppId").value,
     pageSlug: $("pageSlug").value,
     title: $("pageTitleInput").value,
     subtitle: $("pageSubtitle").value,
     layoutType: $("pageLayout").value,
     themeJson: $("pageTheme").value,
-    contentJson: $("pageContentJson").value
-  }}).then(function () { closeModal(); renderPurchasePages(); }).catch(function (err) { toast(err.message); });
+    contentJson: $("pageContentJson").value,
+    defaultProductCode: $("pageDefaultProductCode").value,
+    defaultPlanCode: $("pageDefaultPlanCode").value,
+    defaultPayChannel: $("pageDefaultPayChannel").value
+  };
+}
+
+function openPurchasePageCreate() {
+  loadApps().then(function (apps) {
+    var appOptions = apps.map(function (a) { return { value: a.appId, label: a.appId + " / " + a.appName }; });
+    openModal("新建购买页", purchasePageForm({}, appOptions), '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="savePurchasePageCreate()">创建</button>');
+  });
+}
+
+function savePurchasePageCreate() {
+  api("/admin/purchase-pages", { method: "POST", body: purchasePageBody() }).then(function () { closeModal(); renderPurchasePages(); }).catch(function (err) { toast(err.message); });
 }
 
 function openPurchasePageDetail(id) {
   api("/admin/purchase-pages/" + id).then(function (item) {
-    openModal("购买页详情", detailList({
-      "APP": item.appId,
-      "Slug": item.pageSlug,
-      "标题": item.title,
-      "副标题": item.subtitle,
-      "布局": item.layoutType,
-      "状态": item.status,
-      "预览地址": "/p/" + item.pageSlug,
-      "主题": item.themeJson,
-      "内容": item.contentJson
-    }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(location.origin + '/p/' + item.pageSlug) + '\')">复制预览地址</button><button class="secondary" type="button" onclick="window.open(\'/p/' + item.pageSlug + '\', \'_blank\')">打开预览</button><button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+    var appOptions = [{ value: item.appId, label: item.appId + " / 当前 APP" }];
+    openModal("编辑购买页", purchasePageForm(item, appOptions), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(location.origin + '/p/' + item.pageSlug) + '\')">复制预览地址</button><button class="secondary" type="button" onclick="window.open(\'/p/' + item.pageSlug + '\', \'_blank\')">打开预览</button><button type="button" onclick="savePurchasePageEdit(' + item.id + ')">保存</button><button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+    var app = $("pageAppId"); if (app) app.disabled = true;
+    var slug = $("pageSlug"); if (slug) slug.disabled = true;
   }).catch(function (err) { toast(err.message); });
+}
+
+function savePurchasePageEdit(id) {
+  api("/admin/purchase-pages/" + id, { method: "PUT", body: purchasePageBody() }).then(function () { toast("购买页已更新"); openPurchasePageDetail(id); }).catch(function (err) { toast(err.message); });
 }
 
 function renderPackages() {
