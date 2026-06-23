@@ -142,11 +142,20 @@ public class AdminNotificationChannelConfigController {
 
     @PostMapping("/sms/send-code")
     public ApiResponse<NotificationSendResult> sendSmsCode(@Valid @RequestBody SendSmsCodeRequest request) {
+        if (Boolean.TRUE.equals(request.realSend())) {
+            return ApiResponse.ok(sendService.sendSmsCode(
+                    request.configId(),
+                    request.appId(),
+                    request.mobile(),
+                    request.code()
+            ));
+        }
         return ApiResponse.ok(sendService.sendSmsCode(
-                request.configId(),
                 request.appId(),
                 request.mobile(),
-                request.code()
+                request.code(),
+                5,
+                "local"
         ));
     }
 

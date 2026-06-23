@@ -28,6 +28,21 @@ public class LaunchRecord {
     private String platform;
 
     @Column(length = 64)
+    private String branch;
+
+    @Column(length = 64)
+    private String channel;
+
+    @Column(name = "platform_environment", length = 64)
+    private String platformEnvironment;
+
+    @Column(name = "version_name", length = 128)
+    private String versionName;
+
+    @Column(name = "version_code", length = 64)
+    private String versionCode;
+
+    @Column(length = 64)
     private String version;
 
     @Column(name = "network_type", length = 64)
@@ -64,18 +79,19 @@ public class LaunchRecord {
 
     public LaunchRecord(String appId, Long deviceId, Long userId, String platform, String version,
                         String networkType, String ipAddress, LaunchEventType eventType, String eventData) {
-        this(appId, deviceId, userId, platform, version, networkType, ipAddress, eventType, null, null, null, null, eventData);
+        this(appId, deviceId, userId, platform, null, null, null, null, null, version, networkType, ipAddress, eventType, null, null, null, null, eventData);
     }
 
     public LaunchRecord(String appId, Long deviceId, Long userId, String platform, String version,
                         String networkType, String ipAddress, LaunchEventType eventType,
                         LocalDateTime sessionStartAt, LocalDateTime sessionEndAt,
                         Long durationSeconds, String eventData) {
-        this(appId, deviceId, userId, platform, version, networkType, ipAddress, eventType, null,
+        this(appId, deviceId, userId, platform, null, null, null, null, null, version, networkType, ipAddress, eventType, null,
                 sessionStartAt, sessionEndAt, durationSeconds, eventData);
     }
 
-    public LaunchRecord(String appId, Long deviceId, Long userId, String platform, String version,
+    public LaunchRecord(String appId, Long deviceId, Long userId, String platform, String branch, String channel,
+                        String platformEnvironment, String versionName, String versionCode, String version,
                         String networkType, String ipAddress, LaunchEventType eventType, String sessionId,
                         LocalDateTime sessionStartAt, LocalDateTime sessionEndAt,
                         Long durationSeconds, String eventData) {
@@ -83,6 +99,11 @@ public class LaunchRecord {
         this.deviceId = deviceId;
         this.userId = userId;
         this.platform = platform;
+        this.branch = branch;
+        this.channel = channel;
+        this.platformEnvironment = platformEnvironment;
+        this.versionName = versionName;
+        this.versionCode = versionCode;
         this.version = version;
         this.networkType = networkType;
         this.ipAddress = ipAddress;
@@ -118,6 +139,12 @@ public class LaunchRecord {
     public String getPlatform() {
         return platform;
     }
+
+    public String getBranch() { return branch; }
+    public String getChannel() { return channel; }
+    public String getPlatformEnvironment() { return platformEnvironment; }
+    public String getVersionName() { return versionName; }
+    public String getVersionCode() { return versionCode; }
 
     public String getVersion() {
         return version;

@@ -120,8 +120,8 @@ var notificationDefaults = {
   SMS: {
     aliyun: {
       displayName: "阿里云短信",
-      senderName: "联付中枢",
-      senderAddress: "联付中枢",
+      senderName: "",
+      senderAddress: "",
       endpoint: "dysmsapi.aliyuncs.com",
       templateCode: "SMS_123456",
       accessKeyId: "",
@@ -135,8 +135,8 @@ var notificationDefaults = {
     },
     tencent: {
       displayName: "腾讯云短信",
-      senderName: "联付中枢",
-      senderAddress: "联付中枢",
+      senderName: "",
+      senderAddress: "",
       endpoint: "sms.tencentcloudapi.com",
       templateCode: "123456",
       accessKeyId: "",
@@ -691,16 +691,31 @@ function scopedInput(id, label, value, visible, metaOrType) {
   return '<label class="' + fieldClass(id, visible ? "" : "hidden") + '">' + fieldLabel(label, meta) + '<input id="' + id + '" type="' + meta.type + '" value="' + escapeHtml(value || "") + '"></label>';
 }
 
+function providerDocLinks(providerCode) {
+  var key = String(providerCode || "").toLowerCase();
+  return {
+    smsHome: key === "aliyun" ? "https://dysms.console.aliyun.com/" : (key === "tencent" ? "https://console.cloud.tencent.com/smsv2" : ""),
+    smsAccess: key === "aliyun" ? "https://ram.console.aliyun.com/manage/ak" : (key === "tencent" ? "https://console.cloud.tencent.com/cam/capi" : ""),
+    smsTemplate: key === "aliyun" ? "https://dysms.console.aliyun.com/domestic/text/template" : (key === "tencent" ? "https://console.cloud.tencent.com/smsv2/csms-template" : "")
+  };
+}
+
+function scopedInputWithLink(id, label, value, visible, link, metaOrType) {
+  var meta = normalizeFieldMeta(metaOrType);
+  return '<label class="' + fieldClass(id, visible ? "" : "hidden") + '"><span class="field-label"><span class="field-label-text">' + label + (meta.showBadge && (meta.required || meta.conditional) ? '<span class="field-required-mark" aria-hidden="true">*</span>' : '') + '</span>' + fieldIconLink(link) + '</span>' + (meta.hint ? '<span class="field-hint">' + escapeHtml(meta.hint) + '</span>' : '') + '<input id="' + id + '" type="' + meta.type + '" value="' + escapeHtml(value || "") + '"></label>';
+}
+
 function renderSmsConfigFields(prefix, item, providerCode, mode) {
   var visibility = smsProviderVisibility(providerCode);
   var editing = mode === "edit";
-  return scopedInput(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
-    scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
-    scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
-    scopedInput(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填；也可放到附加凭据 JSON 的 secretId" : "仅腾讯云短信需要" }) +
-    scopedInput(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 secretKey" : "腾讯云发送必填；也可放到附加凭据 JSON 的 secretKey") : "仅腾讯云短信需要", type: "password" }) +
-    scopedInput(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云短信应用 ID；也可放到普通配置 JSON" : "仅腾讯云短信需要" }) +
-    scopedInput(prefix + "Region", "地域", item.region, visibility.isTencent || visibility.isAliyun, { required: false, conditional: !(visibility.isTencent || visibility.isAliyun), hint: visibility.isTencent ? "腾讯云可选，如 ap-guangzhou" : (visibility.isAliyun ? "阿里云可选，如 cn-hangzhou" : "按平台需要填写") });
+  var links = providerDocLinks(providerCode);
+  return scopedInputWithLink(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, links.smsTemplate, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
+    scopedInputWithLink(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, links.smsAccess, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
+    scopedInputWithLink(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, links.smsAccess, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
+    scopedInputWithLink(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, links.smsAccess, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填；也可放到附加凭据 JSON 的 secretId" : "仅腾讯云短信需要" }) +
+    scopedInputWithLink(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, links.smsAccess, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 secretKey" : "腾讯云发送必填；也可放到附加凭据 JSON 的 secretKey") : "仅腾讯云短信需要", type: "password" }) +
+    scopedInputWithLink(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, links.smsHome, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云短信应用 ID；也可放到普通配置 JSON" : "仅腾讯云短信需要" }) +
+    scopedInputWithLink(prefix + "Region", "地域", item.region, visibility.isTencent || visibility.isAliyun, links.smsHome, { required: false, conditional: !(visibility.isTencent || visibility.isAliyun), hint: visibility.isTencent ? "腾讯云可选，如 ap-guangzhou" : (visibility.isAliyun ? "阿里云可选，如 cn-hangzhou" : "按平台需要填写") });
 }
 
 function sectionTitle(title) {
@@ -2091,6 +2106,7 @@ function openSmsSendCodeModal(configId) {
       input("smsSendAppId", "APP ID", current && current.appId ? current.appId : "", { required: false }) +
       input("smsSendMobile", "手机号", "13800000000") +
       input("smsSendCode", "验证码", "123456") +
+      checkbox("smsSendReal", "真实发送（默认关闭，关闭时走本地日志通道）", false) +
       '</div>',
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="sendSmsCodeMessage(' + (configId ? Number(configId) : 'null') + ')">发送</button>');
@@ -2104,10 +2120,11 @@ function sendSmsCodeMessage(configId) {
       configId: configId ? Number(configId) : null,
       appId: $("smsSendAppId").value,
       mobile: $("smsSendMobile").value,
-      code: $("smsSendCode").value
+      code: $("smsSendCode").value,
+      realSend: $("smsSendReal").checked
     }
   }).then(function (data) {
-    toast(data.message || "短信已发送");
+    toast(data.message || ($("smsSendReal").checked ? "短信已发送" : "测试短信已写入本地日志"));
     closeModal();
     renderSmsConfigs(currentPage("smsConfigs"));
   }).catch(function (err) { toast(err.message); });
@@ -2159,11 +2176,12 @@ function openNotificationConfigDetail(id) {
 
 function openNotificationConfigEdit(id) {
   api("/admin/notification-configs/" + id).then(function (item) {
-    var footer = '<button class="secondary" type="button" onclick="closeModal()">取消</button>';
+    var footer = '';
     if (item.channelType === "SMS") {
-      footer += '<button class="secondary" type="button" onclick="openSmsSendCodeModal(' + id + ')">发送测试短信</button>';
+      footer += '<button class="secondary" type="button" onclick="openSmsSendCodeModal(' + id + ')">测试</button>';
     }
-    footer += '<button type="button" onclick="saveNotificationConfigEdit(' + id + ', \'' + item.channelType + '\')">保存</button>';
+    footer += '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      '<button type="button" onclick="saveNotificationConfigEdit(' + id + ', \'' + item.channelType + '\')">保存</button>';
     openModal("编辑通知配置", renderNotificationEditFields(item), footer);
     bindNotificationEditProvider(item);
   }).catch(function (err) { toast(err.message); });
@@ -3428,6 +3446,11 @@ function renderLaunches(page) {
           { title: "设备 ID", key: "deviceId" },
           { title: "用户 ID", key: "userId" },
           { title: "平台", key: "platform" },
+          { title: "分支", key: "branch" },
+          { title: "渠道", key: "channel" },
+          { title: "环境", key: "platformEnvironment" },
+          { title: "版本名", key: "versionName" },
+          { title: "版本号", key: "versionCode" },
           { title: "版本", key: "version" },
           { title: "网络", key: "networkType" },
           { title: "事件", render: function (r) { return launchEventLabel(r); } },
@@ -3466,6 +3489,11 @@ function openLaunchDetail(id) {
       "设备 ID": item.deviceId,
       "用户 ID": item.userId,
       "平台": item.platform,
+      "分支": item.branch,
+      "渠道": item.channel,
+      "环境": item.platformEnvironment,
+      "版本名": item.versionName,
+      "版本号": item.versionCode,
       "版本": item.version,
       "网络": item.networkType,
       "IP": item.ipAddress,

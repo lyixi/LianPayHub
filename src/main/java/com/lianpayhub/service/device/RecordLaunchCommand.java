@@ -7,6 +7,11 @@ public class RecordLaunchCommand {
     private final String deviceCode;
     private final Long userId;
     private final String platform;
+    private final String branch;
+    private final String channel;
+    private final String platformEnvironment;
+    private final String versionName;
+    private final String versionCode;
     private final String version;
     private final String networkType;
     private final String ipAddress;
@@ -18,7 +23,9 @@ public class RecordLaunchCommand {
     private final String eventData;
 
     public RecordLaunchCommand(String appId, String deviceCode, Long userId, String platform,
-                               String version, String networkType, String ipAddress,
+                               String branch, String channel, String platformEnvironment,
+                               String versionName, String versionCode, String version,
+                               String networkType, String ipAddress,
                                String sessionId, String previousSessionId,
                                LocalDateTime previousSessionStartAt, LocalDateTime previousSessionEndAt,
                                Long previousDurationSeconds, String eventData) {
@@ -26,6 +33,11 @@ public class RecordLaunchCommand {
         this.deviceCode = deviceCode;
         this.userId = userId;
         this.platform = platform;
+        this.branch = branch;
+        this.channel = channel;
+        this.platformEnvironment = platformEnvironment;
+        this.versionName = versionName;
+        this.versionCode = versionCode;
         this.version = version;
         this.networkType = networkType;
         this.ipAddress = ipAddress;
@@ -41,6 +53,11 @@ public class RecordLaunchCommand {
     public String deviceCode() { return deviceCode; }
     public Long userId() { return userId; }
     public String platform() { return platform; }
+    public String branch() { return branch; }
+    public String channel() { return channel; }
+    public String platformEnvironment() { return platformEnvironment; }
+    public String versionName() { return versionName; }
+    public String versionCode() { return versionCode; }
     public String version() { return version; }
     public String networkType() { return networkType; }
     public String ipAddress() { return ipAddress; }

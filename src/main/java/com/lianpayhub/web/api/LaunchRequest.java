@@ -14,8 +14,18 @@ public class LaunchRequest {
     private String deviceCode;
     @Schema(description = "关联用户 ID，可选", example = "1")
     private Long userId;
-    @Schema(description = "客户端平台", example = "ios")
+    @Schema(description = "客户端平台", example = "android")
     private String platform;
+    @Schema(description = "客户端分支，可选", example = "stable")
+    private String branch;
+    @Schema(description = "客户端渠道，可选", example = "official")
+    private String channel;
+    @Schema(description = "客户端环境，可选", example = "prod")
+    private String platformEnvironment;
+    @Schema(description = "版本名称，可选", example = "1.0.0")
+    private String versionName;
+    @Schema(description = "版本号，可选", example = "100")
+    private String versionCode;
     @Schema(description = "客户端版本", example = "1.0.0")
     private String version;
     @Schema(description = "网络类型", example = "wifi")
@@ -39,6 +49,11 @@ public class LaunchRequest {
     public String deviceCode() { return deviceCode; }
     public Long userId() { return userId; }
     public String platform() { return platform; }
+    public String branch() { return branch; }
+    public String channel() { return channel; }
+    public String platformEnvironment() { return platformEnvironment; }
+    public String versionName() { return versionName; }
+    public String versionCode() { return versionCode; }
     public String version() { return version; }
     public String networkType() { return networkType; }
     public String ipAddress() { return ipAddress; }
