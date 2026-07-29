@@ -13,11 +13,14 @@ public interface LaunchRecordRepository extends JpaRepository<LaunchRecord, Long
     Page<LaunchRecord> findByAppId(String appId, Pageable pageable);
     Page<LaunchRecord> findByAppIdAndDeviceId(String appId, Long deviceId, Pageable pageable);
     Page<LaunchRecord> findByAppIdAndUserId(String appId, Long userId, Pageable pageable);
+    Page<LaunchRecord> findByUserId(Long userId, Pageable pageable);
     List<LaunchRecord> findTop10ByAppIdOrderByIdDesc(String appId);
     List<LaunchRecord> findTop10ByDeviceIdOrderByIdDesc(Long deviceId);
+    List<LaunchRecord> findTop10ByUserIdOrderByIdDesc(Long userId);
     Optional<LaunchRecord> findFirstByAppIdAndDeviceIdAndSessionIdAndEventTypeOrderByIdDesc(
             String appId, Long deviceId, String sessionId, com.lianpayhub.domain.launch.LaunchEventType eventType);
     long countByAppId(String appId);
+    long countByUserId(Long userId);
     void deleteByAppId(String appId);
     long countByDeviceId(Long deviceId);
 
@@ -29,4 +32,5 @@ public interface LaunchRecordRepository extends JpaRepository<LaunchRecord, Long
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     long countByAppIdAndCreatedAtBetween(String appId, LocalDateTime start, LocalDateTime end);
+    long countByUserIdAndCreatedAtBetween(Long userId, LocalDateTime start, LocalDateTime end);
 }

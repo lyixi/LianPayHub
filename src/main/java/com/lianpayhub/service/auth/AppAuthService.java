@@ -17,11 +17,17 @@ import com.lianpayhub.repository.UserInfoRepository;
 import com.lianpayhub.service.ai.UserAiProvisionService;
 import com.lianpayhub.service.app.AppService;
 import com.lianpayhub.service.security.JwtService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Optional;
+import java.time.Duration;
 
 @Service
 public class AppAuthService {
+
+    private static final int MAX_PASSWORD_FAILURES = 5;
+    private static final Duration PASSWORD_LOCK_DURATION = Duration.ofMinutes(15);
 
     private final AppService appService;
     private final UserInfoRepository userInfoRepository;
@@ -31,13 +37,15 @@ public class AppAuthService {
     private final SecurityProperties securityProperties;
     private final SmsCodeService smsCodeService;
     private final UserAiProvisionService userAiProvisionService;
+    private final PasswordEncoder passwordEncoder;
 
     public AppAuthService(AppService appService, UserInfoRepository userInfoRepository,
                           UserAppBindingRepository bindingRepository, AppLoginLogRepository loginLogRepository,
                           JwtService jwtService,
                           SecurityProperties securityProperties,
                           SmsCodeService smsCodeService,
-                          UserAiProvisionService userAiProvisionService) {
+                          UserAiProvisionService userAiProvisionService,
+                          PasswordEncoder passwordEncoder) {
         this.appService = appService;
         this.userInfoRepository = userInfoRepository;
         this.bindingRepository = bindingRepository;
@@ -46,6 +54,7 @@ public class AppAuthService {
         this.securityProperties = securityProperties;
         this.smsCodeService = smsCodeService;
         this.userAiProvisionService = userAiProvisionService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -63,25 +72,80 @@ public class AppAuthService {
             UserInfo userInfo = userInfoRepository.findByMobile(command.mobile())
                     .orElseGet(() -> userInfoRepository.save(new UserInfo(command.mobile())));
             userId = userInfo.getId();
-            if (!userInfo.isEnabled()) {
-                throw new BusinessException(ErrorCode.CONFLICT, "用户已被禁用");
+            if (userInfo.isLoginBlocked() || userInfo.isTemporarilyLocked()) {
+                throw new BusinessException(ErrorCode.CONFLICT, "用户已被禁用或已锁定");
             }
 
             if (!bindingRepository.existsByUserIdAndAppId(userInfo.getId(), command.appId())) {
                 bindingRepository.save(new UserAppBinding(userInfo.getId(), command.appId(), BindType.MOBILE_LOGIN));
             }
             userAiProvisionService.ensureCredentialForBoundUser(userInfo.getId(), command.appId());
+            userInfo.markLogin();
 
-            String token = jwtService.generateUserToken(userInfo.getId(), command.appId(), userInfo.getMobile());
+            String token = jwtService.generateUserToken(userInfo.getId(), command.appId(), userInfo.getMobile(), userInfo.getTokenVersion());
             loginLogRepository.save(new AppLoginLog(command.appId(), userInfo.getId(), userInfo.getMobile(),
                     AppLoginType.MOBILE, null, null, command.ipAddress(), command.userAgent(),
                     LogResultStatus.SUCCESS, null));
-            return new AppLoginResult(token, userInfo.getId(), userInfo.getMobile(), command.appId());
+            userInfoRepository.save(userInfo);
+            return new AppLoginResult(token, userInfo.getId(), userInfo.getMobile(), command.appId(), userInfo.isMustChangePassword());
         } catch (RuntimeException ex) {
             loginLogRepository.save(new AppLoginLog(command.appId(), userId, command.mobile(),
                     AppLoginType.MOBILE, null, null, command.ipAddress(), command.userAgent(),
                     LogResultStatus.FAILED, ex.getMessage()));
             throw ex;
         }
+    }
+
+    @Transactional
+    public AppLoginResult loginByPassword(AppPasswordLoginCommand command) {
+        Long userId = null;
+        String mobile = null;
+        try {
+            AppInfo appInfo = appService.requireEnabledApp(command.appId());
+            if (!appInfo.isAllowPasswordLogin()) {
+                throw new BusinessException(ErrorCode.CONFLICT, "当前 APP 未开启密码登录");
+            }
+
+            String account = normalize(command.account());
+            Optional<UserInfo> found = userInfoRepository.findByUsername(account);
+            if (!found.isPresent()) {
+                found = userInfoRepository.findByMobile(account);
+            }
+            UserInfo userInfo = found
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "账号或密码错误"));
+            userId = userInfo.getId();
+            mobile = userInfo.getMobile();
+            if (userInfo.isLoginBlocked() || userInfo.isTemporarilyLocked()) {
+                throw new BusinessException(ErrorCode.CONFLICT, "用户已被禁用或已锁定");
+            }
+            if (userInfo.getPasswordHash() == null || !passwordEncoder.matches(command.password(), userInfo.getPasswordHash())) {
+                userInfo.recordFailedPasswordAttempt(MAX_PASSWORD_FAILURES, PASSWORD_LOCK_DURATION);
+                userInfoRepository.save(userInfo);
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "账号或密码错误");
+            }
+
+            if (!bindingRepository.existsByUserIdAndAppId(userInfo.getId(), command.appId())) {
+                bindingRepository.save(new UserAppBinding(userInfo.getId(), command.appId(), BindType.MOBILE_LOGIN));
+            }
+            userAiProvisionService.ensureCredentialForBoundUser(userInfo.getId(), command.appId());
+            userInfo.markLogin();
+            userInfo.resetPasswordFailures();
+
+            String token = jwtService.generateUserToken(userInfo.getId(), command.appId(), userInfo.getMobile(), userInfo.getTokenVersion());
+            loginLogRepository.save(new AppLoginLog(command.appId(), userInfo.getId(), userInfo.getMobile(),
+                    AppLoginType.PASSWORD, null, null, command.ipAddress(), command.userAgent(),
+                    LogResultStatus.SUCCESS, null));
+            userInfoRepository.save(userInfo);
+            return new AppLoginResult(token, userInfo.getId(), userInfo.getMobile(), command.appId(), userInfo.isMustChangePassword());
+        } catch (RuntimeException ex) {
+            loginLogRepository.save(new AppLoginLog(command.appId(), userId, mobile,
+                    AppLoginType.PASSWORD, null, null, command.ipAddress(), command.userAgent(),
+                    LogResultStatus.FAILED, ex.getMessage()));
+            throw ex;
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? null : value.trim();
     }
 }

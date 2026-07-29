@@ -25,12 +25,15 @@ import com.lianpayhub.service.report.DailyTrendItem;
 import com.lianpayhub.service.report.PaymentSummaryResult;
 import com.lianpayhub.service.report.PaymentSummaryService;
 import com.lianpayhub.service.admin.AdminAggregateService;
+import com.lianpayhub.service.admin.AdminUserProfileResult;
+import com.lianpayhub.service.admin.AdminUserProfileService;
 import com.lianpayhub.service.member.GrantMemberCommand;
 import com.lianpayhub.service.member.MemberService;
 import com.lianpayhub.service.device.DeviceService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -53,6 +56,8 @@ public class AdminDataController {
     private final MemberService memberService;
     private final DeviceService deviceService;
     private final AdminAggregateService adminAggregateService;
+    private final AdminUserProfileService adminUserProfileService;
+    private final PasswordEncoder passwordEncoder;
 
     public AdminDataController(UserInfoRepository userInfoRepository,
                                DeviceInfoRepository deviceInfoRepository,
@@ -69,7 +74,9 @@ public class AdminDataController {
                                AnalyticsReportService analyticsReportService,
                                MemberService memberService,
                                DeviceService deviceService,
-                               AdminAggregateService adminAggregateService) {
+                               AdminAggregateService adminAggregateService,
+                               AdminUserProfileService adminUserProfileService,
+                               PasswordEncoder passwordEncoder) {
         this.userInfoRepository = userInfoRepository;
         this.deviceInfoRepository = deviceInfoRepository;
         this.deviceCodeChangeLogRepository = deviceCodeChangeLogRepository;
@@ -86,16 +93,25 @@ public class AdminDataController {
         this.memberService = memberService;
         this.deviceService = deviceService;
         this.adminAggregateService = adminAggregateService;
+        this.adminUserProfileService = adminUserProfileService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("/users")
     public ApiResponse<Page<UserInfo>> users(@RequestParam(defaultValue = "0") int page,
                                              @RequestParam(required = false) String mobile,
+                                             @RequestParam(required = false) String username,
+                                             @RequestParam(required = false) String keyword,
+                                             @RequestParam(required = false) UserStatus status,
                                              @RequestParam(defaultValue = "20") int size) {
         PageRequest pageRequest = pageRequest(page, size);
-        Page<UserInfo> result = mobile == null || mobile.trim().isEmpty()
-                ? userInfoRepository.findAll(pageRequest)
-                : userInfoRepository.findByMobile(mobile, pageRequest);
+        Page<UserInfo> result = userInfoRepository.search(
+                trimToNull(keyword),
+                trimToNull(mobile),
+                trimToNull(username),
+                status,
+                pageRequest
+        );
         return ApiResponse.ok(result);
     }
 
@@ -107,6 +123,60 @@ public class AdminDataController {
         UserStatus status = request.status();
         userInfo.changeStatus(status);
         return ApiResponse.ok(userInfoRepository.save(userInfo));
+    }
+
+    @GetMapping("/users/{id}")
+    public ApiResponse<UserInfo> userDetail(@PathVariable Long id) {
+        return ApiResponse.ok(userInfoRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "用户不存在")));
+    }
+
+    @GetMapping("/users/{id}/profile")
+    public ApiResponse<AdminUserProfileResult> userProfile(@PathVariable Long id) {
+        return ApiResponse.ok(adminUserProfileService.profile(id));
+    }
+
+    @PutMapping("/users/{id}/profile")
+    public ApiResponse<UserInfo> updateUserProfile(@PathVariable Long id,
+                                                   @javax.validation.Valid @RequestBody UpdateUserProfileAdminRequest request) {
+        UserInfo userInfo = userInfoRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "用户不存在"));
+        String mobile = requireText(request.mobile(), "手机号不能为空");
+        String username = normalizeUsername(request.username());
+        String nickname = trimToNull(request.nickname());
+        userInfoRepository.findByMobile(mobile)
+                .filter(other -> !other.getId().equals(id))
+                .ifPresent(other -> {
+                    throw new BusinessException(ErrorCode.CONFLICT, "手机号已存在");
+                });
+        if (username != null) {
+            userInfoRepository.findByUsername(username)
+                    .filter(other -> !other.getId().equals(id))
+                    .ifPresent(other -> {
+                        throw new BusinessException(ErrorCode.CONFLICT, "用户名已存在");
+                    });
+        }
+        boolean mobileChanged = !mobile.equals(userInfo.getMobile());
+        userInfo.updateProfile(mobile, username, nickname);
+        if (mobileChanged) {
+            userInfo.bumpTokenVersion();
+        }
+        return ApiResponse.ok(userInfoRepository.save(userInfo));
+    }
+
+    @PostMapping("/users/{id}/reset-password")
+    public ApiResponse<Void> resetUserPassword(@PathVariable Long id,
+                                               @javax.validation.Valid @RequestBody ResetUserPasswordRequest request) {
+        UserInfo userInfo = userInfoRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "用户不存在"));
+        String password = request.password();
+        if (password.length() < 8 || password.length() > 64) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "密码长度需为 8-64 位");
+        }
+        userInfo.setPasswordHash(passwordEncoder.encode(password));
+        userInfo.requirePasswordReset();
+        userInfoRepository.save(userInfo);
+        return ApiResponse.ok();
     }
 
     @GetMapping("/devices")
@@ -373,6 +443,26 @@ public class AdminDataController {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String requireText(String value, String message) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, message);
+        }
+        return trimmed;
+    }
+
+    private String normalizeUsername(String username) {
+        String value = trimToNull(username);
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.toLowerCase(java.util.Locale.ROOT);
+        if (!normalized.matches("^[a-z0-9_][a-z0-9_.-]{2,31}$")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "用户名需为 3-32 位字母、数字、点、横线或下划线");
+        }
+        return normalized;
     }
 
     private PageRequest pageRequest(int page, int size) {

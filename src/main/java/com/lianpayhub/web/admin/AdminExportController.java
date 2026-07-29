@@ -206,18 +206,25 @@ public class AdminExportController {
 
     @GetMapping(value = "/users", produces = "text/csv;charset=UTF-8")
     public ResponseEntity<String> users(@RequestParam(required = false) String mobile,
+                                        @RequestParam(required = false) String username,
+                                        @RequestParam(required = false) String keyword,
                                         @RequestParam(defaultValue = "1000") int limit) {
-        List<UserInfo> rows = blankToNull(mobile) == null
-                ? userInfoRepository.findAll(exportPage(limit)).getContent()
-                : userInfoRepository.findByMobile(mobile, exportPage(limit)).getContent();
+        List<UserInfo> rows = userInfoRepository.search(
+                blankToNull(keyword),
+                blankToNull(mobile),
+                blankToNull(username),
+                null,
+                exportPage(limit)).getContent();
         return csv("users.csv",
-                Arrays.asList("id", "mobile", "userType", "openId", "status", "createdAt", "updatedAt"),
+                Arrays.asList("id", "mobile", "username", "nickname", "avatarUrl", "userType", "openId",
+                        "status", "lastLoginAt", "passwordSetAt", "createdAt", "updatedAt"),
                 rows,
                 new RowMapper<UserInfo>() {
                     @Override
                     public List<Object> map(UserInfo item) {
-                        return Arrays.asList(item.getId(), item.getMobile(), item.getUserType(), item.getOpenId(),
-                                item.getStatus(), item.getCreatedAt(), item.getUpdatedAt());
+                        return Arrays.asList(item.getId(), item.getMobile(), item.getUsername(), item.getNickname(),
+                                item.getAvatarUrl(), item.getUserType(), item.getOpenId(), item.getStatus(),
+                                item.getLastLoginAt(), item.getPasswordSetAt(), item.getCreatedAt(), item.getUpdatedAt());
                     }
                 });
     }

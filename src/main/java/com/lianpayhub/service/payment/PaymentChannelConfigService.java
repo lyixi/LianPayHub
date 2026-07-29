@@ -84,6 +84,11 @@ public class PaymentChannelConfigService {
         return configRepository.save(config);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        configRepository.delete(detail(id));
+    }
+
     public Optional<PaymentChannelConfig> findByAppAndChannel(String appId, PayChannel payChannel) {
         Optional<PaymentChannelConfig> appConfig = configRepository.findByAppIdAndPayChannel(appId, payChannel);
         if (appConfig.isPresent()) {

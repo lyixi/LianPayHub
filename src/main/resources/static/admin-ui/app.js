@@ -16,8 +16,8 @@ var state = {
 var titles = {
   dashboard: ["总览", ""],
   apps: ["APP 管理", ""],
-  channels: ["平台配置", ""],
-  commerce: ["交易管理", ""],
+  channels: ["平台", ""],
+  commerce: ["交易", ""],
   users: ["用户管理", ""],
   bindings: ["绑定管理", ""],
   devices: ["设备管理", ""],
@@ -328,7 +328,7 @@ function bindProviderDefault(channelId, providerId) {
 function init() {
   applyLegacyView();
   if (!titles[state.view]) state.view = "dashboard";
-  if (["payment", "sms", "email", "ai", "search"].indexOf(state.channelsTab) < 0) state.channelsTab = "payment";
+  if (["payment", "sms", "email", "ai", "search", "storage"].indexOf(state.channelsTab) < 0) state.channelsTab = "payment";
   if (["products", "purchasePages", "orders", "refunds", "packages"].indexOf(state.commerceTab) < 0) state.commerceTab = "products";
   if (themeOptions.indexOf(state.theme) < 0) state.theme = "dark";
   if (accentOptions.indexOf(state.accent) < 0) state.accent = "teal";
@@ -343,13 +343,90 @@ function init() {
   $("modalMask").addEventListener("click", function (e) {
     if (e.target === $("modalMask")) closeModal();
   });
+  document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("contextmenu", handleDocumentContextMenu);
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeRowMenu();
     if (e.key === "Escape") closeModal();
   });
   Array.prototype.forEach.call(document.querySelectorAll(".nav"), function (btn) {
     btn.addEventListener("click", function () { switchView(btn.dataset.view); });
   });
   if (state.token) showApp(); else showLogin();
+}
+
+function handleDocumentClick(event) {
+  var menu = $("rowContextMenu");
+  if (menu && !event.target.closest("#rowContextMenu")) {
+    closeRowMenu();
+  }
+  var row = event.target.closest("tr[data-row-actions]");
+  if (!row || event.target.closest("button,a,input,select,textarea,label")) return;
+  var first = rowActions(row)[0];
+  if (first && first.onclick) {
+    event.preventDefault();
+    runInlineAction(first.onclick);
+  }
+}
+
+function handleDocumentContextMenu(event) {
+  var row = event.target.closest("tr[data-row-actions]");
+  if (!row) return;
+  var actions = rowActions(row);
+  if (!actions.length) return;
+  event.preventDefault();
+  showRowMenu(event.clientX, event.clientY, actions);
+}
+
+function rowActions(row) {
+  var html = row.getAttribute("data-row-actions") || "";
+  if (!html) return [];
+  var holder = document.createElement("div");
+  holder.innerHTML = html;
+  return Array.prototype.map.call(holder.querySelectorAll("button,a"), function (el) {
+    return {
+      label: (el.textContent || "").trim() || el.getAttribute("title") || "操作",
+      onclick: el.getAttribute("onclick") || "",
+      danger: el.classList.contains("danger")
+    };
+  }).filter(function (item) { return !!item.onclick; });
+}
+
+function showRowMenu(x, y, actions) {
+  closeRowMenu();
+  var menu = document.createElement("div");
+  menu.id = "rowContextMenu";
+  menu.className = "row-context-menu";
+  menu.innerHTML = actions.map(function (action, index) {
+    return '<button type="button" class="' + (action.danger ? "danger" : "") + '" data-index="' + index + '">' +
+      escapeHtml(action.label) + '</button>';
+  }).join("");
+  document.body.appendChild(menu);
+  menu.addEventListener("click", function (event) {
+    var btn = event.target.closest("button[data-index]");
+    if (!btn) return;
+    var action = actions[Number(btn.getAttribute("data-index"))];
+    closeRowMenu();
+    if (action && action.onclick) runInlineAction(action.onclick);
+  });
+  var rect = menu.getBoundingClientRect();
+  var left = Math.min(x, window.innerWidth - rect.width - 8);
+  var top = Math.min(y, window.innerHeight - rect.height - 8);
+  menu.style.left = Math.max(8, left) + "px";
+  menu.style.top = Math.max(8, top) + "px";
+}
+
+function closeRowMenu() {
+  var menu = $("rowContextMenu");
+  if (menu) menu.remove();
+}
+
+function runInlineAction(code) {
+  try {
+    Function('"use strict";' + code)();
+  } catch (err) {
+    toast(err.message || "操作失败");
+  }
 }
 
 function applyLegacyView() {
@@ -569,6 +646,17 @@ function badge(value) {
   return '<span class="' + cls + '">' + text + '</span>';
 }
 
+function formatBytes(bytes) {
+  var value = Number(bytes || 0);
+  var units = ["B", "KB", "MB", "GB", "TB"];
+  var i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value = value / 1024;
+    i += 1;
+  }
+  return (i === 0 ? String(value) : value.toFixed(value >= 10 ? 1 : 2)) + " " + units[i];
+}
+
 function parseJsonObject(text) {
   if (!text) return {};
   try {
@@ -651,16 +739,29 @@ function pageMeta(data) {
 }
 
 function table(columns, rows) {
-  var head = columns.map(function (c) { return "<th>" + c.title + "</th>"; }).join("");
+  var actionColumnIndex = columns.findIndex(function (c) { return c.title === "操作"; });
+  var visibleColumns = columns.filter(function (c, index) { return index !== actionColumnIndex; });
+  var head = visibleColumns.map(function (c) { return "<th>" + c.title + "</th>"; }).join("");
   var body = rows.map(function (row) {
-    return "<tr>" + columns.map(function (c) {
+    var actionsHtml = actionColumnIndex >= 0 ? renderCell(columns[actionColumnIndex], row) : "";
+    var actionsAttr = actionsHtml ? ' data-row-actions="' + escapeAttr(actionsHtml) + '"' : "";
+    return "<tr" + actionsAttr + ">" + visibleColumns.map(function (c) {
       var val = typeof c.render === "function" ? c.render(row) : formatValue(row[c.key]);
       return "<td>" + val + "</td>";
     }).join("") + "</tr>";
   }).join("");
-  return '<div class="table-wrap"><table><thead><tr>' + head + "</tr></thead><tbody>" +
-    (body || '<tr><td class="empty-cell" colspan="' + columns.length + '">暂无数据</td></tr>') +
+  var tableClass = actionColumnIndex >= 0 ? " data-table interactive-table" : "data-table";
+  return '<div class="table-wrap"><table class="' + tableClass + '"><thead><tr>' + head + "</tr></thead><tbody>" +
+    (body || '<tr><td class="empty-cell" colspan="' + Math.max(visibleColumns.length, 1) + '">暂无数据</td></tr>') +
     "</tbody></table></div>";
+}
+
+function renderCell(column, row) {
+  return typeof column.render === "function" ? column.render(row) : formatValue(row[column.key]);
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;");
 }
 
 function renderPager(view, meta, reloadFn) {
@@ -1317,6 +1418,9 @@ function logout() {
 function switchView(view) {
   state.view = view;
   localStorage.setItem("lph_view", view);
+  window.scrollTo(0, 0);
+  $("pageTitle").textContent = titles[view][0];
+  $("subTitle").textContent = titles[view][1];
   Array.prototype.forEach.call(document.querySelectorAll(".nav"), function (btn) {
     var active = btn.dataset.view === view;
     btn.classList.toggle("active", active);
@@ -1325,8 +1429,6 @@ function switchView(view) {
   Array.prototype.forEach.call(document.querySelectorAll(".view"), function (el) {
     el.classList.toggle("hidden", el.id !== view);
   });
-  $("pageTitle").textContent = titles[view][0];
-  $("subTitle").textContent = titles[view][1];
   renderCurrent();
 }
 
@@ -1382,24 +1484,27 @@ function switchCommerceTab(tab) {
 }
 
 function renderChannels() {
-  if (["payment", "sms", "email", "ai", "search"].indexOf(state.channelsTab) < 0) {
+  if (["payment", "sms", "email", "ai", "search", "storage"].indexOf(state.channelsTab) < 0) {
     state.channelsTab = "payment";
   }
   var bodyId = state.channelsTab === "payment" ? "paymentConfigs" :
     state.channelsTab === "sms" ? "smsConfigs" :
     state.channelsTab === "email" ? "emailConfigs" :
-    state.channelsTab === "ai" ? "aiConfigs" : "searchPlatforms";
+    state.channelsTab === "ai" ? "aiConfigs" :
+    state.channelsTab === "storage" ? "storageConfigs" : "searchPlatforms";
   $("channels").innerHTML = renderTabs("channels", state.channelsTab, [
     { key: "payment", label: "支付配置", action: "switchChannelsTab" },
     { key: "sms", label: "短信配置", action: "switchChannelsTab" },
     { key: "email", label: "邮件配置", action: "switchChannelsTab" },
     { key: "ai", label: "AI平台", action: "switchChannelsTab" },
-    { key: "search", label: "搜索平台", action: "switchChannelsTab" }
+    { key: "search", label: "搜索平台", action: "switchChannelsTab" },
+    { key: "storage", label: "存储", action: "switchChannelsTab" }
   ]) + '<div id="' + bodyId + '"></div>';
   if (state.channelsTab === "payment") return renderPaymentConfigs(currentPage("paymentConfigs"));
   if (state.channelsTab === "sms") return renderSmsConfigs(currentPage("smsConfigs"));
   if (state.channelsTab === "email") return renderEmailConfigs(currentPage("emailConfigs"));
   if (state.channelsTab === "ai") return renderAiPlatforms();
+  if (state.channelsTab === "storage") return renderStorageConfigs();
   return renderSearchPlatforms();
 }
 
@@ -1423,7 +1528,6 @@ function renderCommerce() {
 }
 
 function setBusy(busy) {
-  document.body.classList.toggle("is-busy", !!busy);
   var refreshBtn = $("refreshBtn");
   if (refreshBtn) refreshBtn.disabled = !!busy;
 }
@@ -1685,6 +1789,7 @@ function renderApps() {
         { title: "类型", key: "appType" },
         { title: "密钥版本", key: "appSecretVersion" },
         { title: "手机号登录", render: function (r) { return badge(r.needMobileLogin ? "ENABLED" : "DISABLED"); } },
+        { title: "密码登录", render: function (r) { return badge(r.allowPasswordLogin ? "ENABLED" : "DISABLED"); } },
         { title: "设备会员", render: function (r) { return badge(r.needDeviceVip ? "ENABLED" : "DISABLED"); } },
         { title: "状态", render: function (r) { return badge(r.status); } },
         {
@@ -1719,6 +1824,8 @@ function openAppCreate() {
       optionOf("ADAPTER")
     ], "STANDARD") +
     checkbox("needMobileLogin", "手机号登录", true) +
+    checkbox("allowPasswordLogin", "密码登录", false) +
+    checkbox("allowAvatarUpload", "头像上传", true) +
     checkbox("needDeviceVip", "设备会员", false) +
     checkbox("enableUserAiKey", "启用用户AI Key", false) +
     input("defaultAiQuotaUnits", "默认AI配额", "0", { required: false, type: "number" }) +
@@ -1736,6 +1843,8 @@ function createApp() {
       appName: $("appName").value,
       appType: $("appType").value,
       needMobileLogin: $("needMobileLogin").checked,
+      allowPasswordLogin: $("allowPasswordLogin").checked,
+      allowAvatarUpload: $("allowAvatarUpload").checked,
       needDeviceVip: $("needDeviceVip").checked,
       enableUserAiKey: $("enableUserAiKey").checked,
       defaultAiQuotaUnits: $("defaultAiQuotaUnits").value ? Number($("defaultAiQuotaUnits").value) : 0,
@@ -1758,6 +1867,8 @@ function openAppDetail(id) {
       "类型": item.appType,
       "密钥版本": item.appSecretVersion,
       "手机号登录": item.needMobileLogin,
+      "密码登录": item.allowPasswordLogin,
+      "头像上传": item.allowAvatarUpload,
       "设备会员": item.needDeviceVip,
       "启用用户AI Key": item.enableUserAiKey,
       "默认AI配额": item.defaultAiQuotaUnits,
@@ -1775,6 +1886,10 @@ function openAppDetail(id) {
       ], data.recentDevices));
     openModal("APP 详情", body,
       '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(item.appId || "") + '\')">复制 APP ID</button>' +
+      '<button type="button" onclick="openAppEdit(' + item.id + ')">编辑</button>' +
+      '<button class="secondary" type="button" onclick="toggleApp(' + item.id + ', \'' + item.status + '\')">启停</button>' +
+      '<button class="secondary" type="button" onclick="resetSecret(' + item.id + ')">重置密钥</button>' +
+      '<button class="danger" type="button" onclick="deleteApp(' + item.id + ')">删除</button>' +
       '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
@@ -1786,6 +1901,8 @@ function openAppEdit(id) {
     openModal("编辑 APP", '<div class="form-grid">' +
       input("editAppName", "APP 名称", item.appName) +
       checkbox("editNeedMobileLogin", "手机号登录", !!item.needMobileLogin) +
+      checkbox("editAllowPasswordLogin", "密码登录", !!item.allowPasswordLogin) +
+      checkbox("editAllowAvatarUpload", "头像上传", item.allowAvatarUpload !== false) +
       checkbox("editNeedDeviceVip", "设备会员", !!item.needDeviceVip) +
       checkbox("editEnableUserAiKey", "启用用户AI Key", !!item.enableUserAiKey) +
       input("editDefaultAiQuotaUnits", "默认AI配额", item.defaultAiQuotaUnits || 0, { required: false, type: "number" }) +
@@ -1802,6 +1919,8 @@ function saveAppEdit(id) {
     body: {
       appName: $("editAppName").value,
       needMobileLogin: $("editNeedMobileLogin").checked,
+      allowPasswordLogin: $("editAllowPasswordLogin").checked,
+      allowAvatarUpload: $("editAllowAvatarUpload").checked,
       needDeviceVip: $("editNeedDeviceVip").checked,
       enableUserAiKey: $("editEnableUserAiKey").checked,
       defaultAiQuotaUnits: $("editDefaultAiQuotaUnits").value ? Number($("editDefaultAiQuotaUnits").value) : 0,
@@ -2002,6 +2121,7 @@ function renderPaymentConfigs(page) {
               '<button class="small" onclick="checkPaymentConfig(' + r.id + ')">检查</button>' +
               '<button class="small" onclick="openPaymentConfigEdit(' + r.id + ')">编辑</button>' +
               '<button class="small" onclick="togglePaymentConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
+              '<button class="small danger" onclick="deletePaymentConfig(' + r.id + ')">删除</button>' +
               '</div>';
           }
         }
@@ -2173,6 +2293,7 @@ function openPaymentConfigDetail(id) {
       "创建时间": item.createdAt,
       "更新时间": item.updatedAt
     }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(paymentNotifyTemplate(item.payChannel)) + '\')">复制回调路径</button>' +
+      '<button class="danger" type="button" onclick="deletePaymentConfig(' + id + ')">删除</button>' +
       '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
@@ -2192,6 +2313,7 @@ function checkPaymentConfig(id) {
 function openPaymentConfigEdit(id) {
   api("/admin/payment-configs/" + id).then(function (item) {
     openModal("编辑支付配置", renderPaymentConfigForm("payCfgEdit", item, "edit"),
+      '<button class="danger" type="button" onclick="deletePaymentConfig(' + id + ')">删除</button>' +
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="savePaymentConfigEdit(' + id + ')">保存</button>');
     bindPaymentChannelForm("payCfgEdit", item, "edit");
@@ -2217,6 +2339,15 @@ function togglePaymentConfig(id, status) {
     body: { status: status === "ENABLED" ? "DISABLED" : "ENABLED" }
   }).then(function () {
     toast("支付配置状态已更新");
+    renderPaymentConfigs(currentPage("paymentConfigs"));
+  }).catch(function (err) { toast(err.message); });
+}
+
+function deletePaymentConfig(id) {
+  if (!confirm("确定删除这个支付配置？")) return;
+  api("/admin/payment-configs/" + id, { method: "DELETE" }).then(function () {
+    toast("支付配置已删除");
+    closeModal();
     renderPaymentConfigs(currentPage("paymentConfigs"));
   }).catch(function (err) { toast(err.message); });
 }
@@ -2258,6 +2389,7 @@ function renderNotificationConfigs(type, page) {
                   '<button class="small" onclick="openNotificationConfigDetail(' + r.id + ')">详情</button>' +
                   '<button class="small" onclick="openNotificationConfigEdit(' + r.id + ')">编辑</button>' +
                   '<button class="small" onclick="toggleNotificationConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
+                  '<button class="small danger" onclick="deleteNotificationConfig(' + r.id + ', \'' + type + '\')">删除</button>' +
                   '</div>';
               }
             }
@@ -2299,6 +2431,7 @@ function renderNotificationConfigs(type, page) {
               '<button class="small" onclick="openNotificationConfigDetail(' + r.id + ')">详情</button>' +
               '<button class="small" onclick="openNotificationConfigEdit(' + r.id + ')">编辑</button>' +
               '<button class="small" onclick="toggleNotificationConfig(' + r.id + ', \'' + r.status + '\')">启停</button>' +
+              '<button class="small danger" onclick="deleteNotificationConfig(' + r.id + ', \'' + type + '\')">删除</button>' +
               '</div>';
           }
         }
@@ -2414,7 +2547,9 @@ function applyNotificationConfigFilter(type) {
 
 function openNotificationConfigDetail(id) {
   api("/admin/notification-configs/" + id).then(function (item) {
-    openModal("通知配置详情", detailList(notificationDetailFields(item)), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+    openModal("通知配置详情", detailList(notificationDetailFields(item)),
+      '<button class="danger" type="button" onclick="deleteNotificationConfig(' + id + ', \'' + item.channelType + '\')">删除</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -2424,7 +2559,8 @@ function openNotificationConfigEdit(id) {
     if (item.channelType === "SMS") {
       footer += '<button class="secondary" type="button" onclick="openSmsSendCodeModal(' + id + ')">测试</button>';
     }
-    footer += '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    footer += '<button class="danger" type="button" onclick="deleteNotificationConfig(' + id + ', \'' + item.channelType + '\')">删除</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="saveNotificationConfigEdit(' + id + ', \'' + item.channelType + '\')">保存</button>';
     openModal("编辑通知配置", renderNotificationEditFields(item), footer);
     bindNotificationEditProvider(item);
@@ -2449,6 +2585,15 @@ function toggleNotificationConfig(id, status) {
   }).then(function () {
     toast("通知配置状态已更新");
     renderCurrent();
+  }).catch(function (err) { toast(err.message); });
+}
+
+function deleteNotificationConfig(id, type) {
+  if (!confirm("确定删除这个通知配置？")) return;
+  api("/admin/notification-configs/" + id, { method: "DELETE" }).then(function () {
+    toast("通知配置已删除");
+    closeModal();
+    if (type === "SMS") renderSmsConfigs(currentPage("smsConfigs")); else renderEmailConfigs(currentPage("emailConfigs"));
   }).catch(function (err) { toast(err.message); });
 }
 
@@ -2820,13 +2965,17 @@ function renderUsers(page) {
   if (typeof page === "number") setPage("users", page);
   page = currentPage("users");
   var filters = queryFilters("users");
-  setFilters("users", { mobile: filters.mobile || "" });
+  setFilters("users", { keyword: filters.keyword || "", mobile: filters.mobile || "", username: filters.username || "" });
   var qs = ["page=" + page, "size=20"];
+  if (filters.keyword) qs.push("keyword=" + encodeURIComponent(filters.keyword));
   if (filters.mobile) qs.push("mobile=" + encodeURIComponent(filters.mobile));
+  if (filters.username) qs.push("username=" + encodeURIComponent(filters.username));
   return api("/admin/users?" + qs.join("&")).then(function (data) {
     var rows = pageContent(data);
     var filterBar = '<div class="toolbar">' +
+      input("userKeywordFilter", "关键词", filters.keyword || "") +
       input("userMobileFilter", "手机号", filters.mobile || "") +
+      input("userUsernameFilter", "用户名", filters.username || "") +
       '<button class="secondary" type="button" onclick="applyUserFilter()">筛选</button>' +
       '<button class="secondary" type="button" onclick="exportUsers()">导出</button>' +
       "</div>";
@@ -2835,13 +2984,19 @@ function renderUsers(page) {
       panel("用户列表", table([
         { title: "ID", key: "id" },
         { title: "手机号", key: "mobile" },
+        { title: "用户名", render: function (r) { return r.username || "-"; } },
+        { title: "昵称", render: function (r) { return r.nickname || "-"; } },
+        { title: "头像", render: function (r) { return r.avatarUrl ? '<a href="' + escapeHtml(r.avatarUrl) + '" target="_blank">查看</a>' : "-"; } },
         { title: "类型", key: "userType" },
+        { title: "最近登录", render: function (r) { return r.lastLoginAt || "-"; } },
         { title: "状态", render: function (r) { return badge(r.status); } },
         {
           title: "操作",
           render: function (r) {
             return '<div class="actions">' +
               '<button class="small" onclick="openUserDetail(' + r.id + ')">详情</button>' +
+              '<button class="small" onclick="openUserEdit(' + r.id + ')">编辑</button>' +
+              '<button class="small" onclick="openUserPasswordReset(' + r.id + ')">重置密码</button>' +
               '<button class="small" onclick="toggleUser(' + r.id + ', \'' + r.status + '\')">启停</button>' +
               '</div>';
           }
@@ -2852,30 +3007,164 @@ function renderUsers(page) {
 }
 
 function applyUserFilter() {
-  setFilters("users", { mobile: $("userMobileFilter").value });
+  setFilters("users", {
+    keyword: $("userKeywordFilter").value,
+    mobile: $("userMobileFilter").value,
+    username: $("userUsernameFilter").value
+  });
   renderUsers(0);
 }
 
 function openUserDetail(id) {
-  Promise.all([api("/admin/users?page=0&size=100"), api("/admin/user-ai/by-user/" + id)]).then(function (res) {
-    var item = findById(pageContent(res[0]), id);
-    if (!item) throw new Error("用户不存在");
+  Promise.all([api("/admin/users/" + id + "/profile"), api("/admin/user-ai/by-user/" + id)]).then(function (res) {
+    var profile = res[0];
     var aiKeys = res[1] || [];
-    openModal("用户详情", detailList({
-      "ID": item.id,
-      "手机号": item.mobile,
-      "类型": item.userType,
-      "状态": item.status,
-      "AI Key 数": aiKeys.length,
-      "创建时间": item.createdAt,
-      "更新时间": item.updatedAt
-    }) + sectionBlock("AI Key / 配额", compactTable([
-      { title: "APP", key: "appId" },
-      { title: "平台", key: "providerCode" },
-      { title: "Key", render: function (r) { return r.apiKey ? "已配置" : "未配置"; } },
-      { title: "配额", key: "quotaUnits" }
-    ], aiKeys)), '<button class="secondary" type="button" onclick="openUserAiUpsertForUser(' + item.id + ')">配置AI Key</button><button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+    var user = profile.user || {};
+    var stats = profile.stats || {};
+    openModal("用户画像",
+      detailList({
+        "ID": user.id,
+        "手机号": user.mobile,
+        "用户名": user.username || "-",
+        "昵称": user.nickname || "-",
+        "头像": user.avatarUrl ? '<a href="' + escapeHtml(user.avatarUrl) + '" target="_blank">查看</a>' : "-",
+        "类型": user.userType,
+        "状态": user.status,
+        "最近登录": user.lastLoginAt || "-",
+        "密码设置时间": user.passwordSetAt || "-",
+        "需改密": user.mustChangePassword ? "是" : "否",
+        "AI Key 数": aiKeys.length,
+        "创建时间": user.createdAt,
+        "更新时间": user.updatedAt
+      }) +
+      sectionBlock("画像统计", statsGrid({
+        "绑定 APP": stats.bindingCount || 0,
+        "设备数": stats.deviceCount || 0,
+        "登录数": stats.loginCount || 0,
+        "启动数": stats.launchCount || 0,
+        "订单数": stats.orderCount || 0,
+        "支付订单": stats.paidOrderCount || 0,
+        "支付金额": formatMoney(stats.paidAmountCents || 0),
+        "会员数": stats.memberCount || 0,
+        "文件数": stats.fileCount || 0,
+        "占用空间": formatBytes(stats.usedBytes || 0)
+      })) +
+      sectionBlock("绑定 APP", compactTable([
+        { title: "APP", key: "appId" },
+        { title: "绑定类型", key: "bindType" },
+        { title: "状态", render: function (r) { return badge(r.status); } },
+        { title: "绑定时间", key: "bindAt" }
+      ], profile.bindings || [])) +
+      sectionBlock("最近设备", compactTable([
+        { title: "ID", key: "id" },
+        { title: "APP", key: "appId" },
+        { title: "设备码", key: "deviceCode" },
+        { title: "状态", render: function (r) { return badge(r.bindStatus); } },
+        { title: "绑定时间", key: "bindAt" },
+        { title: "最近启动", key: "lastLaunchAt" }
+      ], profile.recentDevices || [])) +
+      sectionBlock("最近登录", compactTable([
+        { title: "时间", key: "createdAt" },
+        { title: "APP", key: "appId" },
+        { title: "手机号", key: "mobile" },
+        { title: "类型", key: "loginType" },
+        { title: "结果", render: function (r) { return badge(r.resultStatus); } }
+      ], profile.recentLogins || [])) +
+      sectionBlock("最近启动", compactTable([
+        { title: "时间", key: "createdAt" },
+        { title: "APP", key: "appId" },
+        { title: "设备", key: "deviceId" },
+        { title: "事件", key: "eventType" },
+        { title: "版本", key: "version" }
+      ], profile.recentLaunches || [])) +
+      sectionBlock("最近订单", compactTable([
+        { title: "ID", key: "id" },
+        { title: "APP", key: "appId" },
+        { title: "订单号", key: "orderNo" },
+        { title: "金额(元)", render: function (r) { return formatMoney(r.amountCents); } },
+        { title: "状态", render: function (r) { return badge(r.payStatus); } }
+      ], profile.recentOrders || [])) +
+      sectionBlock("最近会员", compactTable([
+        { title: "ID", key: "id" },
+        { title: "APP", key: "appId" },
+        { title: "主体", key: "memberSubjectType" },
+        { title: "状态", render: function (r) { return badge(r.status); } },
+        { title: "到期", key: "expireAt" }
+      ], profile.recentMembers || [])) +
+      sectionBlock("最近文件", compactTable([
+        { title: "ID", key: "id" },
+        { title: "APP", key: "appId" },
+        { title: "路径", key: "virtualPath" },
+        { title: "大小", render: function (r) { return formatBytes(r.sizeBytes); } },
+        { title: "类型", key: "fileCategory" }
+      ], profile.recentFiles || [])) +
+      sectionBlock("AI Key / 配额", compactTable([
+        { title: "APP", key: "appId" },
+        { title: "平台", key: "providerCode" },
+        { title: "Key", render: function (r) { return r.apiKey ? "已配置" : "未配置"; } },
+        { title: "配额", key: "quotaUnits" }
+      ], aiKeys)),
+      '<button class="secondary" type="button" onclick="openUserLogs(' + user.id + ', \'' + (user.mobile || "") + '\')">查看登录日志</button>' +
+      '<button class="secondary" type="button" onclick="openUserAiUpsertForUser(' + user.id + ')">配置AI Key</button>' +
+      '<button type="button" onclick="openUserEdit(' + user.id + ')">编辑</button>' +
+      '<button class="secondary" type="button" onclick="openUserPasswordReset(' + user.id + ')">重置密码</button>' +
+      '<button class="secondary" type="button" onclick="toggleUser(' + user.id + ', \'' + user.status + '\')">启停</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
+}
+
+function openUserLogs(userId, mobile) {
+  setPage("logs", 0);
+  state.logTab = "app-logins";
+  setFilters("logs", { appId: "", orderId: "", userId: userId, mobile: mobile || "", adminId: "" });
+  closeModal();
+  switchView("logs");
+}
+
+function openUserEdit(id) {
+  api("/admin/users/" + id).then(function (item) {
+    openModal("编辑用户", '<div class="form-grid">' +
+      input("editUserMobile", "手机号", item.mobile || "") +
+      input("editUserUsername", "用户名", item.username || "", { required: false }) +
+      input("editUserNickname", "昵称", item.nickname || "", { required: false }) +
+      "</div>",
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      '<button type="button" onclick="saveUserEdit(' + id + ')">保存</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
+function saveUserEdit(id) {
+  api("/admin/users/" + id + "/profile", {
+    method: "PUT",
+    body: {
+      mobile: $("editUserMobile").value,
+      username: $("editUserUsername").value,
+      nickname: $("editUserNickname").value
+    }
+  }).then(function () {
+    toast("用户已更新");
+    closeModal();
+    renderUsers(currentPage("users"));
+  }).catch(function (err) { toast(err.message); });
+}
+
+function openUserPasswordReset(id) {
+  openModal("重置用户密码", '<div class="form-grid">' +
+    input("resetUserPassword", "新密码", "", { type: "password" }) +
+    "</div>",
+    '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    '<button class="danger" type="button" onclick="resetUserPassword(' + id + ')">确认重置</button>');
+}
+
+function resetUserPassword(id) {
+    api("/admin/users/" + id + "/reset-password", {
+      method: "POST",
+      body: { password: $("resetUserPassword").value }
+    }).then(function () {
+      toast("密码已重置");
+      closeModal();
+      renderUsers(currentPage("users"));
+    }).catch(function (err) { toast(err.message); });
 }
 
 function openUserAiUpsertForUser(userId) {
@@ -4081,7 +4370,12 @@ function exportPackages() {
 
 function exportUsers() {
   var f = queryFilters("users");
-  exportCsv("/admin/exports/users" + queryString({ mobile: f.mobile, limit: 5000 }), "users.csv");
+  exportCsv("/admin/exports/users" + queryString({
+    keyword: f.keyword,
+    mobile: f.mobile,
+    username: f.username,
+    limit: 5000
+  }), "users.csv");
 }
 
 function exportBindings() {
@@ -4413,6 +4707,40 @@ function savePlatformPolicy() {
   }).catch(function (err) { toast(err.message); });
 }
 
+function renderStorageConfigs() {
+  return api("/admin/storage").then(function (data) {
+    var backend = data.backend || "local";
+    var rows = [{
+      name: "本地",
+      backend: "local",
+      status: backend === "local" ? "ENABLED" : "DISABLED",
+      path: data.localPath || "./storage",
+      resolvedPath: data.resolvedLocalPath || "",
+      baseUrl: data.localBaseUrl || ""
+    }];
+    $("storageConfigs").innerHTML =
+      panel("当前存储", detailList({
+        "当前后端": backend === "local" ? "本地" : backend,
+        "默认路径": data.localPath || "./storage",
+        "实际路径": data.resolvedLocalPath || "-",
+        "访问地址": data.localBaseUrl || "-",
+        "单个配置上限": formatBytes(data.maxConfigFileBytes),
+        "单张图片上限": formatBytes(data.maxImageFileBytes),
+        "默认用户空间": formatBytes(data.defaultQuotaBytes),
+        "默认文件数上限": data.maxFileCount
+      })) +
+      '<div style="height:12px"></div>' +
+      panel("存储后端", table([
+        { title: "名称", key: "name" },
+        { title: "后端", key: "backend" },
+        { title: "状态", render: function (r) { return badge(r.status); } },
+        { title: "配置路径", key: "path" },
+        { title: "实际路径", key: "resolvedPath" },
+        { title: "访问地址", key: "baseUrl" }
+      ], rows));
+  });
+}
+
 function renderSearchPlatforms() {
   return api("/admin/search-platforms").then(function (rows) {
     rows = rows || [];
@@ -4425,7 +4753,13 @@ function renderSearchPlatforms() {
         { title: "Base URL", key: "baseUrl" },
         { title: "后台 Base URL", key: "consoleBaseUrl" },
         { title: "状态", render: function (r) { return badge(r.enabled ? "ENABLED" : "DISABLED"); } },
-        { title: "操作", render: function (r) { return '<div class="actions"><button class="small" onclick="openSearchPlatformEdit(' + r.id + ')">配置</button></div>'; } }
+        { title: "操作", render: function (r) {
+          return '<div class="actions">' +
+            '<button class="small" onclick="openSearchPlatformEdit(' + r.id + ')">配置</button>' +
+            '<button class="small" onclick="toggleSearchPlatform(' + r.id + ', ' + (r.enabled ? "true" : "false") + ')">启停</button>' +
+            '<button class="small danger" onclick="deleteSearchPlatform(' + r.id + ')">删除</button>' +
+            '</div>';
+        } }
       ], rows) + '</div>';
   });
 }
@@ -4478,7 +4812,7 @@ function openSearchPlatformEdit(id) {
       input("searchProviderTimeoutSeconds", "超时秒数", config.timeoutSeconds || defaults.timeoutSeconds || 30, { required: false, type: "number" }) +
       input("searchProviderFreshness", "时间范围", config.freshness || "", { required: false }) +
       textarea("searchProviderApiKey", "API Key（留空不修改）", credential.apiKey || "", { required: false }) +
-      '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveSearchPlatformEdit(' + id + ')">保存</button>');
+      '</div>', '<button class="danger" type="button" onclick="deleteSearchPlatform(' + id + ')">删除</button><button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveSearchPlatformEdit(' + id + ')">保存</button>');
     var code = $("searchProviderCode"); if (code) code.disabled = true;
   }).catch(function (err) { toast(err.message); });
 }
@@ -4495,6 +4829,25 @@ function saveSearchPlatformEdit(id) {
       credentialJson: searchPlatformCredentialJson()
     }
   }).then(function () {
+    closeModal();
+    renderSearchPlatforms();
+  }).catch(function (err) { toast(err.message); });
+}
+
+function toggleSearchPlatform(id, enabled) {
+  api("/admin/search-platforms/" + id + "/status", {
+    method: "PATCH",
+    body: { enabled: !enabled }
+  }).then(function () {
+    toast("搜索平台状态已更新");
+    renderSearchPlatforms();
+  }).catch(function (err) { toast(err.message); });
+}
+
+function deleteSearchPlatform(id) {
+  if (!confirm("确定删除这个搜索平台配置？")) return;
+  api("/admin/search-platforms/" + id, { method: "DELETE" }).then(function () {
+    toast("搜索平台配置已删除");
     closeModal();
     renderSearchPlatforms();
   }).catch(function (err) { toast(err.message); });
@@ -4546,10 +4899,12 @@ function renderAiPlatforms() {
         { title: '状态', render: function (r) { return badge(r.enabled ? 'ENABLED' : 'DISABLED'); } },
         { title: '操作', render: function (r) {
           var buttons = '<button class="small" onclick="openAiPlatformEdit(' + r.id + ')">配置</button>';
+          buttons += '<button class="small" onclick="toggleAiPlatform(' + r.id + ', ' + (r.enabled ? "true" : "false") + ')">启停</button>';
           if (isMoacodeProviderCode(r.providerCode)) {
             buttons += '<button class="small secondary" onclick="openMoacodePricing(' + r.id + ')">价格</button>';
             buttons += '<button class="small secondary" onclick="openMoacodeUsage(' + r.id + ')">消耗</button>';
           }
+          buttons += '<button class="small danger" onclick="deleteAiPlatform(' + r.id + ')">删除</button>';
           return '<div class="actions">' + buttons + '</div>';
         } }
       ], platforms) +
@@ -4677,13 +5032,36 @@ function saveAiPlatformCreate() {
 
 function openAiPlatformEdit(id) {
   api('/admin/ai-platforms/' + id).then(function (item) {
-    openModal('编辑AI平台', aiPlatformForm(item), '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveAiPlatformEdit(' + id + ')">保存</button>');
+    var footer = '';
+    if (isMoacodeProviderCode(item.providerCode)) {
+      footer += '<button class="secondary" type="button" onclick="openMoacodePricing(' + id + ')">价格</button>';
+      footer += '<button class="secondary" type="button" onclick="openMoacodeUsage(' + id + ')">消耗</button>';
+    }
+    footer += '<button class="danger" type="button" onclick="deleteAiPlatform(' + id + ')">删除</button>' +
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+      '<button type="button" onclick="saveAiPlatformEdit(' + id + ')">保存</button>';
+    openModal('编辑AI平台', aiPlatformForm(item), footer);
     var code = $('aiProviderCode'); if (code) code.disabled = true;
   }).catch(function (err) { toast(err.message); });
 }
 
 function saveAiPlatformEdit(id) {
   api('/admin/ai-platforms/' + id, { method: 'PUT', body: aiPlatformBody() }).then(function () { closeModal(); renderAiPlatforms(); }).catch(function (err) { toast(err.message); });
+}
+
+function toggleAiPlatform(id, enabled) {
+  api('/admin/ai-platforms/' + id + '/status', { method: 'PATCH', body: { enabled: !enabled } })
+    .then(function () { toast('AI平台状态已更新'); renderAiPlatforms(); })
+    .catch(function (err) { toast(err.message); });
+}
+
+function deleteAiPlatform(id) {
+  if (!confirm('确定删除这个AI平台配置？')) return;
+  api('/admin/ai-platforms/' + id, { method: 'DELETE' }).then(function () {
+    toast('AI平台配置已删除');
+    closeModal();
+    renderAiPlatforms();
+  }).catch(function (err) { toast(err.message); });
 }
 
 function openMoacodePricing(id) {
@@ -4856,6 +5234,9 @@ function detailList(map) {
 function statsGrid(stats) {
   stats = stats || {};
   return '<div class="metric-grid compact">' +
+    metric("绑定APP", stats.bindingCount || 0) +
+    metric("文件数", stats.fileCount || 0) +
+    metric("空间", formatBytes(stats.usedBytes || 0)) +
     metric("套餐", stats.packageCount || 0) +
     metric("设备", stats.deviceCount || 0) +
     metric("会员", stats.memberCount || 0) +

@@ -59,6 +59,11 @@ public class SearchPlatformAdminService {
         return repository.save(config);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        repository.delete(detail(id));
+    }
+
     private String normalizeProviderCode(String providerCode) {
         if (providerCode == null || providerCode.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "搜索平台编码不能为空");

@@ -1,6 +1,7 @@
 package com.lianpayhub.security;
 
 import com.lianpayhub.service.security.JwtService;
+import com.lianpayhub.repository.UserInfoRepository;
 import io.jsonwebtoken.Claims;
 import java.io.IOException;
 import java.util.Collections;
@@ -19,9 +20,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserInfoRepository userInfoRepository;
 
-    public AppUserJwtAuthenticationFilter(JwtService jwtService) {
+    public AppUserJwtAuthenticationFilter(JwtService jwtService, UserInfoRepository userInfoRepository) {
         this.jwtService = jwtService;
+        this.userInfoRepository = userInfoRepository;
     }
 
     @Override
@@ -56,6 +59,11 @@ public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
             Long userId = Long.valueOf(claims.getSubject());
             String appId = claims.get("appId", String.class);
             String mobile = claims.get("mobile", String.class);
+            Number tokenVersionNumber = claims.get("tokenVersion", Number.class);
+            Long tokenVersion = tokenVersionNumber == null ? null : tokenVersionNumber.longValue();
+            if (!isTokenVersionValid(userId, tokenVersion)) {
+                return;
+            }
             AppUserPrincipal principal = new AppUserPrincipal(userId, appId, mobile);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
@@ -66,5 +74,11 @@ public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (RuntimeException ignored) {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    private boolean isTokenVersionValid(Long userId, Long tokenVersion) {
+        return userInfoRepository.findById(userId)
+                .map(user -> tokenVersion == null || tokenVersion.equals(user.getTokenVersion()))
+                .orElse(false);
     }
 }

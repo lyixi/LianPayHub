@@ -46,6 +46,8 @@ public class AdminAppController {
                 request.appType(),
                 request.needMobileLogin(),
                 request.needDeviceVip(),
+                request.allowPasswordLogin(),
+                request.allowAvatarUpload(),
                 request.enableUserAiKey(),
                 request.defaultAiQuotaUnits(),
                 request.defaultAiProviderCode()
@@ -80,6 +82,8 @@ public class AdminAppController {
                 request.appName(),
                 request.needMobileLogin(),
                 request.needDeviceVip(),
+                request.allowPasswordLogin(),
+                request.allowAvatarUpload(),
                 request.enableUserAiKey(),
                 request.defaultAiQuotaUnits(),
                 request.defaultAiProviderCode()

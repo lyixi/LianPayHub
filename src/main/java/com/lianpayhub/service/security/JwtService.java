@@ -34,13 +34,14 @@ public class JwtService {
                 .compact();
     }
 
-    public String generateUserToken(Long userId, String appId, String mobile) {
+    public String generateUserToken(Long userId, String appId, String mobile, Long tokenVersion) {
         Date now = new Date();
         Date expireAt = new Date(now.getTime() + securityProperties.getJwtExpireMinutes() * 60L * 1000L);
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim("appId", appId)
                 .claim("mobile", mobile)
+                .claim("tokenVersion", tokenVersion)
                 .claim("type", "USER")
                 .setIssuedAt(now)
                 .setExpiration(expireAt)

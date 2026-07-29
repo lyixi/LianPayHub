@@ -68,6 +68,11 @@ public class AiProviderAdminService {
         return repository.save(config);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        repository.delete(detail(id));
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> moacodePricing(Long id) {
         AiProviderConfig config = requireMoacode(id);

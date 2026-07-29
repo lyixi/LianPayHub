@@ -15,6 +15,7 @@ import javax.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -127,6 +128,12 @@ public class AdminNotificationChannelConfigController {
             @PathVariable Long id,
             @Valid @RequestBody ChangeNotificationChannelConfigStatusRequest request) {
         return ApiResponse.ok(configService.changeStatus(id, request.status()));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        configService.delete(id);
+        return ApiResponse.ok(null);
     }
 
     @PostMapping("/sms/send")

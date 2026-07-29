@@ -38,6 +38,12 @@ public class AdminAiPlatformController {
         return ApiResponse.ok(service.changeStatus(id, request.enabled));
     }
 
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ApiResponse.ok(null);
+    }
+
     @GetMapping("/{id}/moacode/pricing")
     public ApiResponse<java.util.Map<String, Object>> moacodePricing(@PathVariable Long id) {
         return ApiResponse.ok(service.moacodePricing(id));

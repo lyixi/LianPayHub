@@ -97,13 +97,27 @@ CREATE TABLE IF NOT EXISTS admin_user (
 CREATE TABLE IF NOT EXISTS user_info (
   id BIGINT NOT NULL AUTO_INCREMENT,
   mobile VARCHAR(32) NOT NULL,
+  username VARCHAR(64) NULL,
+  password_hash VARCHAR(128) NULL,
+  nickname VARCHAR(128) NULL,
+  avatar_storage_key VARCHAR(512) NULL,
+  avatar_url VARCHAR(1024) NULL,
+  avatar_content_type VARCHAR(128) NULL,
+  avatar_size_bytes BIGINT NULL,
+  password_set_at DATETIME NULL,
+  last_login_at DATETIME NULL,
+  failed_password_attempts INT NOT NULL DEFAULT 0,
+  locked_until DATETIME NULL,
+  token_version BIGINT NOT NULL DEFAULT 1,
+  must_change_password BIT NOT NULL DEFAULT 0,
   user_type VARCHAR(32) NOT NULL,
   open_id VARCHAR(128) NULL,
   status VARCHAR(32) NOT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_user_info_mobile (mobile)
+  UNIQUE KEY uk_user_info_mobile (mobile),
+  UNIQUE KEY uk_user_info_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS user_app_binding (
@@ -386,4 +400,33 @@ CREATE TABLE IF NOT EXISTS user_storage_quota (
   quota_bytes BIGINT NOT NULL DEFAULT 52428800 COMMENT '默认 50 MB',
   file_count  INT NOT NULL DEFAULT 0,
   PRIMARY KEY (user_id, app_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS user_config (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  app_id VARCHAR(64) NOT NULL,
+  config_key VARCHAR(128) NOT NULL,
+  content_type VARCHAR(128) NOT NULL,
+  content_text MEDIUMTEXT NOT NULL,
+  content_hash VARCHAR(64) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 1,
+  size_bytes BIGINT NOT NULL DEFAULT 0,
+  deleted_at DATETIME NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_user_config_owner_key (user_id, app_id, config_key),
+  KEY idx_user_config_owner (user_id, app_id),
+  KEY idx_user_config_version (user_id, app_id, version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS user_config_version (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  app_id VARCHAR(64) NOT NULL,
+  current_version BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_user_config_version_owner (user_id, app_id),
+  KEY idx_user_config_version_owner (user_id, app_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

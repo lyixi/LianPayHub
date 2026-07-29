@@ -35,6 +35,12 @@ public class AppInfo extends BaseEntity {
     @Column(name = "need_device_vip", nullable = false)
     private boolean needDeviceVip;
 
+    @Column(name = "allow_password_login", nullable = false)
+    private boolean allowPasswordLogin;
+
+    @Column(name = "allow_avatar_upload", nullable = false)
+    private boolean allowAvatarUpload = true;
+
     @Column(name = "enable_user_ai_key", nullable = false)
     private boolean enableUserAiKey;
 
@@ -66,12 +72,23 @@ public class AppInfo extends BaseEntity {
                    boolean needMobileLogin, boolean needDeviceVip,
                    boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,
                    String defaultAiGroupId, Long defaultAiDailyLimit) {
+        this(appId, appName, appSecretHash, appType, needMobileLogin, needDeviceVip, false, true,
+                enableUserAiKey, defaultAiQuotaUnits, defaultAiProviderCode, defaultAiGroupId, defaultAiDailyLimit);
+    }
+
+    public AppInfo(String appId, String appName, String appSecretHash, AppType appType,
+                   boolean needMobileLogin, boolean needDeviceVip,
+                   boolean allowPasswordLogin, boolean allowAvatarUpload,
+                   boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,
+                   String defaultAiGroupId, Long defaultAiDailyLimit) {
         this.appId = appId;
         this.appName = appName;
         this.appSecretHash = appSecretHash;
         this.appType = appType;
         this.needMobileLogin = needMobileLogin;
         this.needDeviceVip = needDeviceVip;
+        this.allowPasswordLogin = allowPasswordLogin;
+        this.allowAvatarUpload = allowAvatarUpload;
         this.enableUserAiKey = enableUserAiKey;
         this.defaultAiQuotaUnits = defaultAiQuotaUnits == null ? 0L : defaultAiQuotaUnits;
         this.defaultAiProviderCode = defaultAiProviderCode;
@@ -103,6 +120,14 @@ public class AppInfo extends BaseEntity {
         return needDeviceVip;
     }
 
+    public boolean isAllowPasswordLogin() {
+        return allowPasswordLogin;
+    }
+
+    public boolean isAllowAvatarUpload() {
+        return allowAvatarUpload;
+    }
+
     public boolean isEnableUserAiKey() { return enableUserAiKey; }
     public Long getDefaultAiQuotaUnits() { return defaultAiQuotaUnits; }
     public String getDefaultAiProviderCode() { return defaultAiProviderCode; }
@@ -126,9 +151,16 @@ public class AppInfo extends BaseEntity {
     }
 
     public void update(String appName, boolean needMobileLogin, boolean needDeviceVip) {
+        update(appName, needMobileLogin, needDeviceVip, allowPasswordLogin, allowAvatarUpload);
+    }
+
+    public void update(String appName, boolean needMobileLogin, boolean needDeviceVip,
+                       boolean allowPasswordLogin, boolean allowAvatarUpload) {
         this.appName = appName;
         this.needMobileLogin = needMobileLogin;
         this.needDeviceVip = needDeviceVip;
+        this.allowPasswordLogin = allowPasswordLogin;
+        this.allowAvatarUpload = allowAvatarUpload;
     }
 
     public void updateAiSettings(boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,

@@ -6,6 +6,7 @@ import com.lianpayhub.service.search.SearchPlatformAdminService;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,6 +51,12 @@ public class AdminSearchPlatformController {
     @PatchMapping("/{id}/status")
     public ApiResponse<SearchPlatformConfig> status(@PathVariable Long id, @RequestBody StatusRequest request) {
         return ApiResponse.ok(service.changeEnabled(id, request.enabled));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ApiResponse.ok(null);
     }
 
     public static class UpsertRequest {

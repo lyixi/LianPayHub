@@ -4,6 +4,7 @@ import com.lianpayhub.common.api.ApiResponse;
 import com.lianpayhub.service.auth.AppAuthService;
 import com.lianpayhub.service.auth.AppLoginCommand;
 import com.lianpayhub.service.auth.AppLoginResult;
+import com.lianpayhub.service.auth.AppPasswordLoginCommand;
 import com.lianpayhub.service.auth.SendSmsCodeResult;
 import com.lianpayhub.service.auth.SmsCodeService;
 import javax.validation.Valid;
@@ -35,6 +36,18 @@ public class AuthController {
                 request.appId(),
                 request.mobile(),
                 request.code(),
+                clientIp(httpRequest),
+                httpRequest.getHeader("User-Agent")
+        )));
+    }
+
+    @PostMapping("/password-login")
+    public ApiResponse<AppLoginResult> passwordLogin(@Valid @RequestBody AppPasswordLoginRequest request,
+                                                     HttpServletRequest httpRequest) {
+        return ApiResponse.ok(appAuthService.loginByPassword(new AppPasswordLoginCommand(
+                request.appId(),
+                request.account(),
+                request.password(),
                 clientIp(httpRequest),
                 httpRequest.getHeader("User-Agent")
         )));

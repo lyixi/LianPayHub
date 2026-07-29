@@ -106,6 +106,11 @@ public class NotificationChannelConfigService {
         return configRepository.save(config);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        configRepository.delete(detail(id));
+    }
+
     public Optional<NotificationChannelConfig> findEnabled(NotificationChannelType channelType, String providerCode) {
         NotificationChannelType safeType = requireChannelType(channelType);
         String safeProvider = normalizeProvider(providerCode);

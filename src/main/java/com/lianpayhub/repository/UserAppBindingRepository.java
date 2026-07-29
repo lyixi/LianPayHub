@@ -13,6 +13,7 @@ public interface UserAppBindingRepository extends JpaRepository<UserAppBinding, 
     boolean existsByUserIdAndAppId(Long userId, String appId);
     Optional<UserAppBinding> findByUserIdAndAppId(Long userId, String appId);
     long countByAppId(String appId);
+    long countByUserId(Long userId);
     void deleteByAppId(String appId);
 
     @Query("select b from UserAppBinding b where (:appId is null or b.appId = :appId) " +

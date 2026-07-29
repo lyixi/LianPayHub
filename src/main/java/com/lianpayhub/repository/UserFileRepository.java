@@ -21,6 +21,9 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
                                    @Param("appId") String appId,
                                    @Param("pathPrefix") String pathPrefix);
 
+    Page<UserFile> findByUserIdAndDeletedAtIsNull(Long userId, Pageable pageable);
+    Page<UserFile> findByUserIdAndAppIdAndDeletedAtIsNull(Long userId, String appId, Pageable pageable);
+
     /** 按精确虚拟路径查找（含已删除，用于覆盖写入判断） */
     Optional<UserFile> findByUserIdAndAppIdAndVirtualPathHashAndVirtualPath(Long userId,
                                                                             String appId,
@@ -36,4 +39,12 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
 
     /** 统计活跃文件数量（不含软删除） */
     int countByUserIdAndAppIdAndDeletedAtIsNull(Long userId, String appId);
+    int countByUserIdAndDeletedAtIsNull(Long userId);
+    long countByUserIdAndAppId(Long userId, String appId);
+
+    @Query("select coalesce(sum(f.sizeBytes), 0) from UserFile f where f.userId = :userId and f.deletedAt is null")
+    Long sumSizeBytesByUserId(@Param("userId") Long userId);
+
+    @Query("select coalesce(sum(f.sizeBytes), 0) from UserFile f where f.userId = :userId and f.appId = :appId and f.deletedAt is null")
+    Long sumSizeBytesByUserIdAndAppId(@Param("userId") Long userId, @Param("appId") String appId);
 }

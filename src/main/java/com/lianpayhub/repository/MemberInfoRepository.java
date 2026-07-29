@@ -16,9 +16,15 @@ public interface MemberInfoRepository extends JpaRepository<MemberInfo, Long> {
             String appId, MemberSubjectType subjectType, Long deviceId);
 
     Page<MemberInfo> findByAppId(String appId, Pageable pageable);
+    Page<MemberInfo> findByUserId(Long userId, Pageable pageable);
+    Page<MemberInfo> findByUserIdAndAppId(Long userId, String appId, Pageable pageable);
     List<MemberInfo> findTop10ByAppIdOrderByIdDesc(String appId);
+    List<MemberInfo> findTop10ByUserIdOrderByIdDesc(Long userId);
     long countByAppId(String appId);
+    long countByUserId(Long userId);
+    long countByUserIdAndAppId(Long userId, String appId);
     void deleteByAppId(String appId);
+    void deleteByUserId(Long userId);
 
     Optional<MemberInfo> findByOrderId(Long orderId);
 }
