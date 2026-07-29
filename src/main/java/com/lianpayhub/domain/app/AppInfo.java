@@ -35,6 +35,21 @@ public class AppInfo extends BaseEntity {
     @Column(name = "need_device_vip", nullable = false)
     private boolean needDeviceVip;
 
+    @Column(name = "enable_user_ai_key", nullable = false)
+    private boolean enableUserAiKey;
+
+    @Column(name = "default_ai_quota_units", nullable = false)
+    private Long defaultAiQuotaUnits = 0L;
+
+    @Column(name = "default_ai_provider_code", length = 64)
+    private String defaultAiProviderCode;
+
+    @Column(name = "default_ai_group_id", length = 128)
+    private String defaultAiGroupId;
+
+    @Column(name = "default_ai_daily_limit", nullable = false)
+    private Long defaultAiDailyLimit = 0L;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private AppStatus status = AppStatus.ENABLED;
@@ -44,12 +59,24 @@ public class AppInfo extends BaseEntity {
 
     public AppInfo(String appId, String appName, String appSecretHash, AppType appType,
                    boolean needMobileLogin, boolean needDeviceVip) {
+        this(appId, appName, appSecretHash, appType, needMobileLogin, needDeviceVip, false, 0L, null, null, 0L);
+    }
+
+    public AppInfo(String appId, String appName, String appSecretHash, AppType appType,
+                   boolean needMobileLogin, boolean needDeviceVip,
+                   boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,
+                   String defaultAiGroupId, Long defaultAiDailyLimit) {
         this.appId = appId;
         this.appName = appName;
         this.appSecretHash = appSecretHash;
         this.appType = appType;
         this.needMobileLogin = needMobileLogin;
         this.needDeviceVip = needDeviceVip;
+        this.enableUserAiKey = enableUserAiKey;
+        this.defaultAiQuotaUnits = defaultAiQuotaUnits == null ? 0L : defaultAiQuotaUnits;
+        this.defaultAiProviderCode = defaultAiProviderCode;
+        this.defaultAiGroupId = defaultAiGroupId;
+        this.defaultAiDailyLimit = defaultAiDailyLimit == null ? 0L : defaultAiDailyLimit;
     }
 
     public Long getId() {
@@ -76,6 +103,12 @@ public class AppInfo extends BaseEntity {
         return needDeviceVip;
     }
 
+    public boolean isEnableUserAiKey() { return enableUserAiKey; }
+    public Long getDefaultAiQuotaUnits() { return defaultAiQuotaUnits; }
+    public String getDefaultAiProviderCode() { return defaultAiProviderCode; }
+    public String getDefaultAiGroupId() { return defaultAiGroupId; }
+    public Long getDefaultAiDailyLimit() { return defaultAiDailyLimit; }
+
     public AppStatus getStatus() {
         return status;
     }
@@ -96,6 +129,15 @@ public class AppInfo extends BaseEntity {
         this.appName = appName;
         this.needMobileLogin = needMobileLogin;
         this.needDeviceVip = needDeviceVip;
+    }
+
+    public void updateAiSettings(boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,
+                                 String defaultAiGroupId, Long defaultAiDailyLimit) {
+        this.enableUserAiKey = enableUserAiKey;
+        this.defaultAiQuotaUnits = defaultAiQuotaUnits == null ? 0L : defaultAiQuotaUnits;
+        this.defaultAiProviderCode = defaultAiProviderCode;
+        this.defaultAiGroupId = defaultAiGroupId;
+        this.defaultAiDailyLimit = defaultAiDailyLimit == null ? 0L : defaultAiDailyLimit;
     }
 
     public void changeStatus(AppStatus status) {

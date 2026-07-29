@@ -8,6 +8,7 @@ import com.lianpayhub.domain.user.UserAppBinding;
 import com.lianpayhub.repository.AppInfoRepository;
 import com.lianpayhub.repository.UserAppBindingRepository;
 import com.lianpayhub.repository.UserInfoRepository;
+import com.lianpayhub.service.ai.UserAiProvisionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,16 @@ public class UserAppBindingService {
     private final UserAppBindingRepository bindingRepository;
     private final UserInfoRepository userInfoRepository;
     private final AppInfoRepository appInfoRepository;
+    private final UserAiProvisionService userAiProvisionService;
 
     public UserAppBindingService(UserAppBindingRepository bindingRepository,
                                  UserInfoRepository userInfoRepository,
-                                 AppInfoRepository appInfoRepository) {
+                                 AppInfoRepository appInfoRepository,
+                                 UserAiProvisionService userAiProvisionService) {
         this.bindingRepository = bindingRepository;
         this.userInfoRepository = userInfoRepository;
         this.appInfoRepository = appInfoRepository;
+        this.userAiProvisionService = userAiProvisionService;
     }
 
     public Page<UserAppBinding> search(String appId, Long userId, BindingStatus status, Pageable pageable) {
@@ -55,7 +59,9 @@ public class UserAppBindingService {
             throw new BusinessException(ErrorCode.CONFLICT, "用户已绑定该 APP");
         }
         BindType safeBindType = bindType == null ? BindType.MOBILE_LOGIN : bindType;
-        return bindingRepository.save(new UserAppBinding(userId, normalizedAppId, safeBindType));
+        UserAppBinding binding = bindingRepository.save(new UserAppBinding(userId, normalizedAppId, safeBindType));
+        userAiProvisionService.ensureCredentialForBoundUser(userId, normalizedAppId);
+        return binding;
     }
 
     @Transactional

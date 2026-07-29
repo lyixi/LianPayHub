@@ -45,7 +45,10 @@ public class AdminAppController {
                 request.appName(),
                 request.appType(),
                 request.needMobileLogin(),
-                request.needDeviceVip()
+                request.needDeviceVip(),
+                request.enableUserAiKey(),
+                request.defaultAiQuotaUnits(),
+                request.defaultAiProviderCode()
         )));
     }
 
@@ -76,7 +79,10 @@ public class AdminAppController {
         return ApiResponse.ok(appService.updateApp(id, new UpdateAppCommand(
                 request.appName(),
                 request.needMobileLogin(),
-                request.needDeviceVip()
+                request.needDeviceVip(),
+                request.enableUserAiKey(),
+                request.defaultAiQuotaUnits(),
+                request.defaultAiProviderCode()
         )));
     }
 

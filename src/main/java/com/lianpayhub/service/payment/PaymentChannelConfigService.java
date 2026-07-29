@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PaymentChannelConfigService {
 
+    public static final String PLATFORM_APP_ID = "__PLATFORM__";
+
     private final PaymentChannelConfigRepository configRepository;
     private final AppInfoRepository appInfoRepository;
 
@@ -39,7 +41,7 @@ public class PaymentChannelConfigService {
     public PaymentChannelConfig create(String appId, PayChannel payChannel, String providerCode, String merchantId,
                                        String channelAppId, String notifyUrl, String configJson,
                                        String credentialJson) {
-        String safeAppId = requireAppId(appId);
+        String safeAppId = platformAppId(appId);
         PayChannel safePayChannel = requirePayChannel(payChannel);
         String safeProviderCode = requireText(providerCode, "providerCode 不能为空");
         if (configRepository.existsByAppIdAndPayChannel(safeAppId, safePayChannel)) {
@@ -83,7 +85,20 @@ public class PaymentChannelConfigService {
     }
 
     public Optional<PaymentChannelConfig> findByAppAndChannel(String appId, PayChannel payChannel) {
-        return configRepository.findByAppIdAndPayChannel(appId, payChannel);
+        Optional<PaymentChannelConfig> appConfig = configRepository.findByAppIdAndPayChannel(appId, payChannel);
+        if (appConfig.isPresent()) {
+            return appConfig;
+        }
+        return configRepository.findByAppIdAndPayChannel(PLATFORM_APP_ID, payChannel);
+    }
+
+    public java.util.List<PayChannel> listEnabledChannels() {
+        java.util.List<PayChannel> channels = new java.util.ArrayList<PayChannel>();
+        for (PaymentChannelConfig config : configRepository.findByAppIdAndStatus(
+                PLATFORM_APP_ID, PaymentChannelConfigStatus.ENABLED)) {
+            channels.add(config.getPayChannel());
+        }
+        return channels;
     }
 
     private String requireAppId(String appId) {
@@ -92,6 +107,14 @@ public class PaymentChannelConfigService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "APP 不存在");
         }
         return safeAppId;
+    }
+
+    private String platformAppId(String appId) {
+        String safeAppId = normalize(appId);
+        if (safeAppId == null || PLATFORM_APP_ID.equals(safeAppId)) {
+            return PLATFORM_APP_ID;
+        }
+        return requireAppId(safeAppId);
     }
 
     private PayChannel requirePayChannel(PayChannel payChannel) {

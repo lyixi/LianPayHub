@@ -9,7 +9,6 @@ import com.lianpayhub.domain.payment.PayChannel;
 import com.lianpayhub.domain.product.ProductInfo;
 import com.lianpayhub.domain.product.ProductPlan;
 import com.lianpayhub.domain.purchase.PurchasePageConfig;
-import com.lianpayhub.repository.PaymentChannelConfigRepository;
 import com.lianpayhub.repository.ProductInfoRepository;
 import com.lianpayhub.repository.ProductPlanRepository;
 import com.lianpayhub.repository.PurchasePageConfigRepository;
@@ -27,7 +26,6 @@ public class PublicPurchasePageController {
     private final PurchasePageConfigRepository purchasePageConfigRepository;
     private final ProductInfoRepository productInfoRepository;
     private final ProductPlanRepository productPlanRepository;
-    private final PaymentChannelConfigRepository paymentChannelConfigRepository;
     private final AppService appService;
     private final PaymentService paymentService;
     private final DeviceService deviceService;
@@ -35,13 +33,11 @@ public class PublicPurchasePageController {
     public PublicPurchasePageController(PurchasePageConfigRepository purchasePageConfigRepository,
                                         ProductInfoRepository productInfoRepository,
                                         ProductPlanRepository productPlanRepository,
-                                        PaymentChannelConfigRepository paymentChannelConfigRepository,
                                         AppService appService, PaymentService paymentService,
                                         DeviceService deviceService) {
         this.purchasePageConfigRepository = purchasePageConfigRepository;
         this.productInfoRepository = productInfoRepository;
         this.productPlanRepository = productPlanRepository;
-        this.paymentChannelConfigRepository = paymentChannelConfigRepository;
         this.appService = appService;
         this.paymentService = paymentService;
         this.deviceService = deviceService;
@@ -60,7 +56,7 @@ public class PublicPurchasePageController {
         AppInfo app = appService.requireEnabledApp(page.getAppId());
         List<ProductInfo> products = productInfoRepository.findByAppIdOrderBySortOrderAscIdAsc(page.getAppId());
         List<ProductPlan> plans = productPlanRepository.findByAppIdOrderBySortOrderAscIdAsc(page.getAppId());
-        java.util.List<PayChannel> payChannels = paymentChannelConfigRepository.search(page.getAppId(), null, com.lianpayhub.domain.payment.PaymentChannelConfigStatus.ENABLED, org.springframework.data.domain.PageRequest.of(0, 20)).map(c -> c.getPayChannel()).getContent();
+        java.util.List<PayChannel> payChannels = paymentService.listEnabledPayChannels();
         return ApiResponse.ok(new PublicPurchasePageResult(page, app, products, plans, payChannels));
     }
 

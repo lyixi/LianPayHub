@@ -13,10 +13,16 @@ public class CreateAppRequest {
     private AppType appType;
     private boolean needMobileLogin;
     private boolean needDeviceVip;
+    private boolean enableUserAiKey;
+    private Long defaultAiQuotaUnits;
+    private String defaultAiProviderCode;
 
     public String appId() { return appId; }
     public String appName() { return appName; }
     public AppType appType() { return appType; }
     public boolean needMobileLogin() { return needMobileLogin; }
     public boolean needDeviceVip() { return needDeviceVip; }
+    public boolean enableUserAiKey() { return enableUserAiKey; }
+    public Long defaultAiQuotaUnits() { return defaultAiQuotaUnits; }
+    public String defaultAiProviderCode() { return defaultAiProviderCode; }
 }

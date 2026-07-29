@@ -42,13 +42,12 @@ public class PaymentController {
         rateLimitService.requireWithinLimit("payment:create:" + request.appId() + ":" + subject,
                 20, Duration.ofMinutes(1));
         appUserAccessService.requireUserAccessWhenNeeded(request.appId(), request.userId(), principal);
-        PayChannel payChannel = request.payChannel() == null ? PayChannel.ALIPAY : request.payChannel();
         return ApiResponse.ok(paymentService.createOrder(new CreateOrderCommand(
                 request.appId(),
                 request.userId(),
                 request.deviceId(),
                 request.packageId(),
-                payChannel,
+                request.payChannel(),
                 request.payMode(),
                 request.returnUrl()
         )));

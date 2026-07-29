@@ -26,6 +26,7 @@
 ## 目录结构
 
 - `docs/`：设计文档
+  - `docs/backend-platform-app-design.md`：后台统一平台配置与多 APP 覆盖设计
   - `docs/admin-roadmap.md`：后台功能优化路线图与优先队列
 - `src/main/java/`：后端服务代码
 - `src/main/resources/`：配置文件
@@ -129,7 +130,7 @@ http://localhost:8888/console/
 admin / admin123456
 ```
 
-当前页面已包含总览、统计图、APP、平台配置、交易管理、用户、绑定、设备、会员、回调、启动、适配、日志、管理员和调试工具。平台配置内含支付、短信、邮件三个 tab；交易管理内含套餐、订单、退款三个 tab，避免侧边栏过长。页面直接调用现有后端 API，适合先看效果和做本地运营联调。控制台采用轻量 Material 操作台布局，带深色/浅色模式、主题色切换和加载反馈，主题偏好会保存在浏览器本地。
+当前页面已包含总览、统计图、APP、平台配置、交易管理、用户、绑定、设备、会员、回调、启动、适配、日志、管理员和调试工具。平台配置内含支付、短信、邮件、AI、APP覆盖、搜索平台 tab；交易管理内含套餐、订单、退款三个 tab，避免侧边栏过长。页面直接调用现有后端 API，适合先看效果和做本地运营联调。控制台采用轻量 Material 操作台布局，带深色/浅色模式、主题色切换和加载反馈，主题偏好会保存在浏览器本地。
 
 常用后台查询接口：
 
@@ -139,6 +140,9 @@ admin / admin123456
 - `GET /admin/payment-configs/{id}`
 - `GET /admin/notification-configs`
 - `GET /admin/notification-configs/{id}`
+- `GET /admin/app-platform-policies?appId=xxx`
+- `GET /admin/search-platforms`
+- `GET /admin/platform-search?appId=xxx&keyword=xxx`
 - `GET /admin/user-bindings`
 - `GET /admin/user-bindings/{id}`
 - `GET /admin/devices`
@@ -216,14 +220,14 @@ APP 侧常用接口：
 - `GET /api/member/status?appId=demo-app&userId=1`
 - `GET /api/member/status?appId=demo-app&deviceCode=device-001`
 - `POST /api/payment/create-order`
-- `POST /api/payment/notify/{payChannel}`
+- `POST ${domain}/api/payment/notify/{payChannel}`
 
 ## 支付回调
 
 统一回调入口：
 
 ```http
-POST /api/payment/notify/ALIPAY
+POST ${domain}/api/payment/notify/ALIPAY
 Content-Type: application/json
 
 {
@@ -245,13 +249,13 @@ Content-Type: application/json
 
 ```json
 // configJson
-{"sandbox":true,"signType":"RSA2","returnUrl":"http://localhost:8888/console/"}
+{"sandbox":true,"gatewayUrl":"https://openapi-sandbox.dl.alipaydev.com/gateway.do","signType":"RSA2","returnUrl":"${domain}/pay.html"}
 
 // credentialJson
 {"merchantPrivateKey":"应用私钥","alipayPublicKey":"支付宝公钥"}
 ```
 
-支付配置是可选的：未配置时仍使用骨架 Provider 方便本地联调；如果某个 APP 的某个渠道配置存在但被停用，创建订单会返回业务冲突。支付宝真实回调支持 `application/x-www-form-urlencoded`，回调地址为 `/api/payment/notify/ALIPAY`。
+支付配置是可选的：未配置时仍使用骨架 Provider 方便本地联调；如果某个 APP 的某个渠道配置存在但被停用，创建订单会返回业务冲突。支付宝真实回调支持 `application/x-www-form-urlencoded`，回调地址默认使用 `${domain}/api/payment/notify/ALIPAY`，同步跳转默认使用 `${domain}/pay.html`；下单时会按当前请求域名与端口替换 `${domain}`。
 
 管理后台 `工具 -> 模拟支付回调` 可用来本地验证订单支付成功和会员生效链路。
 
@@ -275,8 +279,8 @@ lianpayhub:
 项目已接入 Flyway。默认本地开发仍使用 `spring.jpa.hibernate.ddl-auto=update` 并关闭 Flyway，生产配置 `application-prod.yml` 启用 Flyway 且使用 `ddl-auto=validate`。
 
 - 初始化脚本：`docs/sql/mysql-5.7-init.sql`
-- Flyway 迁移：`src/main/resources/db/migration/V1__init_schema.sql`
-- 生产升级建议：后续表结构变化新增 `V2__*.sql`，不要直接修改已发布迁移。
+- Flyway 迁移：`src/main/resources/db/migration/V1__init_schema.sql`、`src/main/resources/db/migration/V2__app_platform_policy.sql`
+- 生产升级建议：后续表结构变化新增递增版本迁移，例如 `V3__*.sql`，不要直接修改已发布迁移。
 
 相关配置：
 
@@ -288,7 +292,15 @@ lianpayhub:
 
 短信发送已抽象为通知通道，默认 `sms-provider: aliyun`。后台 `平台配置 -> 短信配置` 可以维护阿里云、腾讯云、HTTP 聚合短信或本地日志通道，并支持测试发送。阿里云短信和腾讯云短信已接入官方 Java SDK，填好密钥、签名、模板 ID 后即可真实提交发送；`local` 仅用于本地日志调试。
 
+APP 级覆盖策略可在 `平台配置 -> APP覆盖` 中配置：
+
+- `SMS`：`providerCode` 覆盖短信供应商，`policyJson.cooldownSeconds/expireMinutes` 覆盖发送冷却和有效期。
+- `CAPTCHA`：`policyJson.ttlSeconds/length/maxAttempts/debugReturnCode` 控制独立验证码挑战。
+- `PAYMENT`：`policyJson.defaultPayChannel` 控制未传支付渠道时的 APP 默认支付渠道。
+- `AI`：`providerCode` 可作为 APP 默认 AI 供应商，`enabled=false` 会禁用该 APP 的 AI 网关和自动 Key 发放。
 常用短信配置字段：
+
+搜索平台如博查等第三方检索服务，统一放在 `平台配置 -> 搜索平台`。
 
 - 阿里云 `aliyun`：`credentialJson` 填 `accessKeyId/accessKeySecret`，`configJson` 填 `templateCode`，签名可填 `senderName` 或 `configJson.signName`。
 - 腾讯云 `tencent`：`credentialJson` 填 `secretId/secretKey`，`configJson` 填 `sdkAppId/templateId/region/templateParamKeys`，签名可填 `senderName` 或 `configJson.signName`。

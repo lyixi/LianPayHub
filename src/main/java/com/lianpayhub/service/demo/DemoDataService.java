@@ -56,7 +56,10 @@ public class DemoDataService {
                     "演示设备码 APP",
                     AppType.DEVICE_ONLY,
                     false,
-                    true
+                    true,
+                    false,
+                    0L,
+                    null
             ));
         }
 

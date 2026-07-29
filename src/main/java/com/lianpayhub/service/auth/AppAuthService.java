@@ -14,6 +14,7 @@ import com.lianpayhub.domain.user.UserInfo;
 import com.lianpayhub.repository.AppLoginLogRepository;
 import com.lianpayhub.repository.UserAppBindingRepository;
 import com.lianpayhub.repository.UserInfoRepository;
+import com.lianpayhub.service.ai.UserAiProvisionService;
 import com.lianpayhub.service.app.AppService;
 import com.lianpayhub.service.security.JwtService;
 import org.springframework.stereotype.Service;
@@ -29,12 +30,14 @@ public class AppAuthService {
     private final JwtService jwtService;
     private final SecurityProperties securityProperties;
     private final SmsCodeService smsCodeService;
+    private final UserAiProvisionService userAiProvisionService;
 
     public AppAuthService(AppService appService, UserInfoRepository userInfoRepository,
                           UserAppBindingRepository bindingRepository, AppLoginLogRepository loginLogRepository,
                           JwtService jwtService,
                           SecurityProperties securityProperties,
-                          SmsCodeService smsCodeService) {
+                          SmsCodeService smsCodeService,
+                          UserAiProvisionService userAiProvisionService) {
         this.appService = appService;
         this.userInfoRepository = userInfoRepository;
         this.bindingRepository = bindingRepository;
@@ -42,6 +45,7 @@ public class AppAuthService {
         this.jwtService = jwtService;
         this.securityProperties = securityProperties;
         this.smsCodeService = smsCodeService;
+        this.userAiProvisionService = userAiProvisionService;
     }
 
     @Transactional
@@ -66,6 +70,7 @@ public class AppAuthService {
             if (!bindingRepository.existsByUserIdAndAppId(userInfo.getId(), command.appId())) {
                 bindingRepository.save(new UserAppBinding(userInfo.getId(), command.appId(), BindType.MOBILE_LOGIN));
             }
+            userAiProvisionService.ensureCredentialForBoundUser(userInfo.getId(), command.appId());
 
             String token = jwtService.generateUserToken(userInfo.getId(), command.appId(), userInfo.getMobile());
             loginLogRepository.save(new AppLoginLog(command.appId(), userInfo.getId(), userInfo.getMobile(),

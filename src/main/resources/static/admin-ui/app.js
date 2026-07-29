@@ -14,20 +14,20 @@ var state = {
 };
 
 var titles = {
-  dashboard: ["总览", "运营数据与接口状态"],
-  apps: ["APP 管理", "创建、编辑、启停与密钥重置"],
-  channels: ["平台配置", "支付、短信与邮件平台配置"],
-  commerce: ["交易管理", "套餐、订单与退款集中处理"],
-  users: ["用户管理", "统一账号和状态管理"],
-  bindings: ["绑定管理", "用户与 APP 的绑定关系"],
-  devices: ["设备管理", "设备码、绑定和最近启动记录"],
-  members: ["会员管理", "查询、赠送和取消会员"],
-  callbacks: ["回调日志", "支付渠道回调验签与处理记录"],
-  launches: ["启动记录", "APP 启动、登录与支付事件记录"],
-  adapter: ["适配上报", "第三方 APP 运行状态与事件上报"],
-  logs: ["日志审计", "后台、登录、启动和支付事件日志"],
-  admins: ["管理员", "后台账号、状态和密码管理"],
-  tools: ["调试工具", "演示数据和常用入口"]
+  dashboard: ["总览", ""],
+  apps: ["APP 管理", ""],
+  channels: ["平台配置", ""],
+  commerce: ["交易管理", ""],
+  users: ["用户管理", ""],
+  bindings: ["绑定管理", ""],
+  devices: ["设备管理", ""],
+  members: ["会员管理", ""],
+  callbacks: ["回调日志", ""],
+  launches: ["启动记录", ""],
+  adapter: ["适配上报", ""],
+  logs: ["日志审计", ""],
+  admins: ["管理员", ""],
+  tools: ["调试工具", ""]
 };
 
 var displayLabels = {
@@ -79,6 +79,12 @@ var displayLabels = {
   CHANNEL: "支付渠道",
   SMS: "短信",
   EMAIL: "邮件",
+  AI: "AI",
+  PAYMENT: "支付",
+  CAPTCHA: "验证码",
+  SEARCH: "搜索",
+  PACKAGE: "套餐",
+  ORDER: "订单",
   "aliyun": "阿里云",
   "tencent": "腾讯云",
   "aggregate": "HTTP 聚合平台",
@@ -87,7 +93,12 @@ var displayLabels = {
   "aliyun-dm": "阿里云邮件推送",
   "tencent-ses": "腾讯云 SES",
   "sendcloud": "SendCloud",
-  "mailgun": "Mailgun"
+  "mailgun": "Mailgun",
+  "api2d": "API2D",
+  "deepseek": "DeepSeek",
+  "moacode": "MoaCode",
+  "moacode-team": "MoaCode Team",
+  "bocha": "博查搜索"
 };
 
 var analyticsMetricLabels = {
@@ -114,6 +125,82 @@ var paymentProviderDefaults = {
   WECHAT: "wechat",
   AGGREGATE: "aggregate",
   OTHER: "other"
+};
+
+var aiPlatformDefaults = {
+  api2d: {
+    displayName: "API2D",
+    baseUrl: "https://openai.api2d.net",
+    consoleBaseUrl: "https://api2d.com",
+    publicId: "official-1",
+    publicName: "API2D",
+    publicFamily: "OpenAI",
+    defaultModel: "gpt-5-mini",
+    authScheme: "bearer",
+    billingMode: "provider_balance",
+    supportsChatCompletions: true,
+    supportsStreaming: true,
+    supportsImages: true,
+    docs: "https://api2d-doc.apifox.cn/api-84804178"
+  },
+  deepseek: {
+    displayName: "DeepSeek",
+    baseUrl: "https://api.deepseek.com/v1",
+    consoleBaseUrl: "https://platform.deepseek.com/",
+    publicId: "official-deepseek",
+    publicName: "DeepSeek",
+    publicFamily: "DeepSeek",
+    defaultModel: "deepseek-chat",
+    authScheme: "bearer",
+    billingMode: "provider_balance",
+    supportsChatCompletions: true,
+    supportsStreaming: false,
+    supportsImages: false,
+    docs: "https://api-docs.deepseek.com"
+  },
+  moacode: {
+    displayName: "MoaCode",
+    baseUrl: "https://api.moacode.com/v1",
+    consoleBaseUrl: "",
+    publicId: "moacode",
+    publicName: "MoaCode",
+    publicFamily: "MoaCode",
+    defaultModel: "gpt-5.3-codex",
+    authScheme: "bearer",
+    billingMode: "internal_ledger",
+    supportsChatCompletions: true,
+    supportsStreaming: false,
+    supportsImages: true,
+    docs: ""
+  },
+  "moacode-team": {
+    displayName: "MoaCode Team",
+    baseUrl: "https://api.moacode.com/v1",
+    consoleBaseUrl: "",
+    publicId: "moacode-team",
+    publicName: "MoaCode Team",
+    publicFamily: "MoaCode",
+    defaultModel: "gpt-5.3-codex",
+    authScheme: "bearer",
+    billingMode: "internal_ledger",
+    supportsChatCompletions: true,
+    supportsStreaming: false,
+    supportsImages: true,
+    docs: ""
+  }
+};
+
+var searchPlatformDefaults = {
+  bocha: {
+    displayName: "博查搜索",
+    baseUrl: "https://api.bochaai.com",
+    consoleBaseUrl: "",
+    endpointPath: "/v1/web-search",
+    defaultCount: 10,
+    timeoutSeconds: 30,
+    freshness: "",
+    credentialJson: "{}"
+  }
 };
 
 var notificationDefaults = {
@@ -241,7 +328,7 @@ function bindProviderDefault(channelId, providerId) {
 function init() {
   applyLegacyView();
   if (!titles[state.view]) state.view = "dashboard";
-  if (["payment", "sms", "email"].indexOf(state.channelsTab) < 0) state.channelsTab = "payment";
+  if (["payment", "sms", "email", "ai", "search"].indexOf(state.channelsTab) < 0) state.channelsTab = "payment";
   if (["products", "purchasePages", "orders", "refunds", "packages"].indexOf(state.commerceTab) < 0) state.commerceTab = "products";
   if (themeOptions.indexOf(state.theme) < 0) state.theme = "dark";
   if (accentOptions.indexOf(state.accent) < 0) state.accent = "teal";
@@ -523,16 +610,27 @@ function paymentConfigBody(prefix, includeCredential) {
     merchantId: $(prefix + "Merchant").value,
     channelAppId: channel === "ALIPAY" ? "" : $(prefix + "ChannelApp").value,
     notifyUrl: channel === "ALIPAY" ? "" : $(prefix + "Notify").value,
-    configJson: mergeJsonText($(prefix + "Config").value, configPatch)
+    configJson: JSON.stringify(configPatch)
   };
-  var credentialText = $(prefix + "Credential").value;
   var hasCredentialInput = Object.keys(credentialPatch).some(function (key) { return !!credentialPatch[key]; });
-  if (includeCredential || hasCredentialInput || credentialText.trim()) {
-    body.credentialJson = mergeJsonText(credentialText, credentialPatch);
+  if (includeCredential || hasCredentialInput) {
+    body.credentialJson = JSON.stringify(credentialPatch);
   } else {
     body.credentialJson = "";
   }
   return body;
+}
+
+function paymentNotifyTemplate(channel) {
+  return "${domain}/api/payment/notify/" + channel;
+}
+
+function paymentReturnTemplate() {
+  return "${domain}/pay.html";
+}
+
+function alipayGatewayDefault(sandbox) {
+  return sandbox ? "https://openapi-sandbox.dl.alipaydev.com/gateway.do" : "https://openapi.alipay.com/gateway.do";
 }
 
 function pageContent(data) {
@@ -710,11 +808,11 @@ function renderSmsConfigFields(prefix, item, providerCode, mode) {
   var editing = mode === "edit";
   var links = providerDocLinks(providerCode);
   return scopedInputWithLink(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, links.smsTemplate, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
-    scopedInputWithLink(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, links.smsAccess, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
-    scopedInputWithLink(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, links.smsAccess, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
-    scopedInputWithLink(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, links.smsAccess, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填；也可放到附加凭据 JSON 的 secretId" : "仅腾讯云短信需要" }) +
-    scopedInputWithLink(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, links.smsAccess, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 secretKey" : "腾讯云发送必填；也可放到附加凭据 JSON 的 secretKey") : "仅腾讯云短信需要", type: "password" }) +
-    scopedInputWithLink(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, links.smsHome, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云短信应用 ID；也可放到普通配置 JSON" : "仅腾讯云短信需要" }) +
+    scopedInputWithLink(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, links.smsAccess, { required: visibility.isAliyun, conditional: !visibility.isAliyun }) +
+    scopedInputWithLink(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, links.smsAccess, { required: visibility.isAliyun && !editing, conditional: !visibility.isAliyun, type: "password" }) +
+    scopedInputWithLink(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, links.smsAccess, { required: visibility.isTencent, conditional: !visibility.isTencent }) +
+    scopedInputWithLink(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, links.smsAccess, { required: visibility.isTencent && !editing, conditional: !visibility.isTencent, type: "password" }) +
+    scopedInputWithLink(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, links.smsHome, { required: visibility.isTencent, conditional: !visibility.isTencent }) +
     scopedInputWithLink(prefix + "Region", "地域", item.region, visibility.isTencent || visibility.isAliyun, links.smsHome, { required: false, conditional: !(visibility.isTencent || visibility.isAliyun), hint: visibility.isTencent ? "腾讯云可选，如 ap-guangzhou" : (visibility.isAliyun ? "阿里云可选，如 cn-hangzhou" : "按平台需要填写") });
 }
 
@@ -908,11 +1006,11 @@ function renderSmsConfigFields(prefix, item, providerCode, mode) {
   var visibility = smsProviderVisibility(providerCode);
   var editing = mode === "edit";
   return scopedInput(prefix + "TemplateCode", "模板编码", item.templateCode, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可通过测试发送时单独传入" : "按通道需要填写" }) +
-    scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeyId" : "仅阿里云短信需要" }) +
-    scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun, hint: visibility.isAliyun ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 accessKeySecret" : "阿里云发送必填；也可放到附加凭据 JSON 的 accessKeySecret") : "仅阿里云短信需要", type: "password" }) +
-    scopedInput(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云发送必填；也可放到附加凭据 JSON 的 secretId" : "仅腾讯云短信需要" }) +
-    scopedInput(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? (editing ? "留空不修改；也可放到附加凭据 JSON 的 secretKey" : "腾讯云发送必填；也可放到附加凭据 JSON 的 secretKey") : "仅腾讯云短信需要", type: "password" }) +
-    scopedInput(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent, hint: visibility.isTencent ? "腾讯云短信应用 ID；也可放到普通配置 JSON" : "仅腾讯云短信需要" }) +
+    scopedInput(prefix + "AccessKeyId", "AccessKey ID", item.accessKeyId, visibility.isAliyun, { required: visibility.isAliyun, conditional: !visibility.isAliyun }) +
+    scopedInput(prefix + "AccessKeySecret", "AccessKey Secret", item.accessKeySecret, visibility.isAliyun, { required: visibility.isAliyun && !editing, conditional: !visibility.isAliyun, type: "password" }) +
+    scopedInput(prefix + "SecretId", "SecretId", item.secretId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent }) +
+    scopedInput(prefix + "SecretKey", "SecretKey", item.secretKey, visibility.isTencent, { required: visibility.isTencent && !editing, conditional: !visibility.isTencent, type: "password" }) +
+    scopedInput(prefix + "SdkAppId", "SDK App ID", item.sdkAppId, visibility.isTencent, { required: visibility.isTencent, conditional: !visibility.isTencent }) +
     scopedInput(prefix + "Region", "地域", item.region, visibility.isTencent || visibility.isAliyun, { required: false, conditional: !(visibility.isTencent || visibility.isAliyun), hint: visibility.isTencent ? "腾讯云可选，如 ap-guangzhou" : (visibility.isAliyun ? "阿里云可选，如 cn-hangzhou" : "按平台需要填写") });
 }
 
@@ -928,15 +1026,110 @@ function syncSmsProviderFields(prefix, providerCode) {
   });
 }
 
+function notificationExtraVisibility(type, providerCode) {
+  var provider = String(providerCode || "").toLowerCase();
+  return {
+    isSmsAggregate: type === "SMS" && provider === "aggregate",
+    isSmsTencent: type === "SMS" && provider === "tencent",
+    isSmtp: type === "EMAIL" && provider === "smtp",
+    isAliyunDm: type === "EMAIL" && provider === "aliyun-dm",
+    isTencentSes: type === "EMAIL" && provider === "tencent-ses",
+    isCloudEmail: type === "EMAIL" && provider !== "smtp" && provider !== "local"
+  };
+}
+
+function renderSmsExtraFields(prefix, providerCode, config, credential, mode) {
+  var visibility = notificationExtraVisibility("SMS", providerCode);
+  return scopedInput(prefix + "TemplateParamKeys", "模板参数名", (config.templateParamKeys || []).join(","), visibility.isSmsTencent, { required: false, conditional: !visibility.isSmsTencent }) +
+    scopedInput(prefix + "ApiKeyHeader", "API Key Header", config.apiKeyHeader || "X-API-Key", visibility.isSmsAggregate, { required: false, conditional: !visibility.isSmsAggregate }) +
+    scopedInput(prefix + "SmsApiKey", mode === "edit" ? "聚合平台 API Key（留空不修改）" : "聚合平台 API Key", credential.apiKey || "", visibility.isSmsAggregate, { required: false, conditional: !visibility.isSmsAggregate, type: "password" });
+}
+
+function renderEmailExtraFields(prefix, providerCode, config, credential, mode) {
+  var visibility = notificationExtraVisibility("EMAIL", providerCode);
+  return scopedInput(prefix + "SmtpHost", "SMTP Host", config.host || "", visibility.isSmtp, { required: visibility.isSmtp, conditional: !visibility.isSmtp }) +
+    scopedInput(prefix + "SmtpPort", "SMTP 端口", config.port || 465, visibility.isSmtp, { required: false, conditional: !visibility.isSmtp, type: "number" }) +
+    scopedCheckbox(prefix + "SmtpSsl", "SSL", config.ssl !== false, visibility.isSmtp) +
+    scopedCheckbox(prefix + "SmtpAuth", "SMTP Auth", config.smtpAuth !== false, visibility.isSmtp) +
+    scopedInput(prefix + "SmtpUsername", "SMTP 用户名", credential.username || "", visibility.isSmtp, { required: false, conditional: !visibility.isSmtp }) +
+    scopedInput(prefix + "SmtpPassword", mode === "edit" ? "SMTP 密码（留空不修改）" : "SMTP 密码", credential.password || "", visibility.isSmtp, { required: false, conditional: !visibility.isSmtp, type: "password" }) +
+    scopedInput(prefix + "EmailRegion", "地域", config.region || config.regionId || "", visibility.isCloudEmail, { required: false, conditional: !visibility.isCloudEmail }) +
+    scopedInput(prefix + "EmailAccountName", "发信地址/账号名", config.accountName || "", visibility.isAliyunDm, { required: false, conditional: !visibility.isAliyunDm }) +
+    scopedInput(prefix + "EmailAccessKeyId", mode === "edit" ? "AccessKey ID（留空不修改）" : "AccessKey ID", credential.accessKeyId || "", visibility.isAliyunDm, { required: false, conditional: !visibility.isAliyunDm }) +
+    scopedInput(prefix + "EmailAccessKeySecret", mode === "edit" ? "AccessKey Secret（留空不修改）" : "AccessKey Secret", credential.accessKeySecret || "", visibility.isAliyunDm, { required: false, conditional: !visibility.isAliyunDm, type: "password" }) +
+    scopedInput(prefix + "EmailSecretId", mode === "edit" ? "SecretId（留空不修改）" : "SecretId", credential.secretId || "", visibility.isTencentSes, { required: false, conditional: !visibility.isTencentSes }) +
+    scopedInput(prefix + "EmailSecretKey", mode === "edit" ? "SecretKey（留空不修改）" : "SecretKey", credential.secretKey || "", visibility.isTencentSes, { required: false, conditional: !visibility.isTencentSes, type: "password" });
+}
+
+function syncNotificationExtraFields(type, prefix, providerCode) {
+  var visibility = notificationExtraVisibility(type, providerCode);
+  [prefix + "TemplateParamKeys"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isSmsTencent);
+  });
+  [prefix + "ApiKeyHeader", prefix + "SmsApiKey"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isSmsAggregate);
+  });
+  [prefix + "SmtpHost", prefix + "SmtpPort", prefix + "SmtpUsername", prefix + "SmtpPassword"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isSmtp);
+  });
+  [prefix + "SmtpSsl", prefix + "SmtpAuth"].forEach(function (id) {
+    var inputEl = $(id);
+    var field = inputEl ? inputEl.closest("label") : null;
+    if (field) field.classList.toggle("hidden", !visibility.isSmtp);
+  });
+  [prefix + "EmailRegion"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isCloudEmail);
+  });
+  [prefix + "EmailAccountName", prefix + "EmailAccessKeyId", prefix + "EmailAccessKeySecret"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isAliyunDm);
+  });
+  [prefix + "EmailSecretId", prefix + "EmailSecretKey"].forEach(function (id) {
+    var field = document.querySelector('.field-' + id);
+    if (field) field.classList.toggle("hidden", !visibility.isTencentSes);
+  });
+}
+
+function setNotificationExtraDefaults(type, prefix, providerCode, config, credential) {
+  var ids = {
+    TemplateParamKeys: (config.templateParamKeys || []).join(","),
+    ApiKeyHeader: config.apiKeyHeader || "X-API-Key",
+    SmsApiKey: credential.apiKey || "",
+    SmtpHost: config.host || "",
+    SmtpPort: config.port || 465,
+    SmtpUsername: credential.username || "",
+    SmtpPassword: credential.password || "",
+    EmailRegion: config.region || config.regionId || "",
+    EmailAccountName: config.accountName || "",
+    EmailAccessKeyId: credential.accessKeyId || "",
+    EmailAccessKeySecret: credential.accessKeySecret || "",
+    EmailSecretId: credential.secretId || "",
+    EmailSecretKey: credential.secretKey || ""
+  };
+  Object.keys(ids).forEach(function (suffix) {
+    var el = $(prefix + suffix);
+    if (el) el.value = ids[suffix];
+  });
+  var ssl = $(prefix + "SmtpSsl");
+  if (ssl) ssl.checked = config.ssl !== false;
+  var auth = $(prefix + "SmtpAuth");
+  if (auth) auth.checked = config.smtpAuth !== false;
+}
+
 function notificationBody(type, prefix) {
+  var providerCode = $(prefix + "Provider").value;
   var body = {
-    providerCode: $(prefix + "Provider").value,
+    providerCode: providerCode,
     displayName: $(prefix + "Name").value,
     senderName: $(prefix + "SenderName").value,
     senderAddress: $(prefix + "SenderAddress").value,
     endpoint: $(prefix + "Endpoint").value,
-    configJson: $(prefix + "Config").value,
-    credentialJson: $(prefix + "Credential").value
+    configJson: notificationConfigJson(type, prefix, providerCode),
+    credentialJson: notificationCredentialJson(type, prefix, providerCode)
   };
   if (type === "SMS") {
     body.templateCode = $(prefix + "TemplateCode").value;
@@ -948,6 +1141,56 @@ function notificationBody(type, prefix) {
     body.region = $(prefix + "Region").value;
   }
   return body;
+}
+
+function notificationConfigJson(type, prefix, providerCode) {
+  if (type === "SMS") {
+    if (String(providerCode).toLowerCase() === "tencent") {
+      return JSON.stringify({ templateParamKeys: splitCsv($(prefix + "TemplateParamKeys").value) });
+    }
+    if (String(providerCode).toLowerCase() === "aggregate") {
+      return JSON.stringify({ apiKeyHeader: $(prefix + "ApiKeyHeader").value });
+    }
+    return "{}";
+  }
+  if (String(providerCode).toLowerCase() === "smtp") {
+    return JSON.stringify({
+      host: $(prefix + "SmtpHost").value,
+      port: $(prefix + "SmtpPort").value ? Number($(prefix + "SmtpPort").value) : 465,
+      ssl: $(prefix + "SmtpSsl").checked,
+      smtpAuth: $(prefix + "SmtpAuth").checked
+    });
+  }
+  return JSON.stringify({
+    region: $(prefix + "EmailRegion").value,
+    accountName: $(prefix + "EmailAccountName").value
+  });
+}
+
+function notificationCredentialJson(type, prefix, providerCode) {
+  if (type === "SMS" && String(providerCode).toLowerCase() === "aggregate") {
+    var smsApiKey = $(prefix + "SmsApiKey").value;
+    return smsApiKey && smsApiKey.trim() ? JSON.stringify({ apiKey: smsApiKey }) : "";
+  }
+  if (type === "EMAIL") {
+    if (String(providerCode).toLowerCase() === "smtp") {
+      var username = $(prefix + "SmtpUsername").value;
+      var password = $(prefix + "SmtpPassword").value;
+      return (username || password) ? JSON.stringify({ username: username, password: password }) : "";
+    }
+    var accessKeyId = $(prefix + "EmailAccessKeyId").value;
+    var accessKeySecret = $(prefix + "EmailAccessKeySecret").value;
+    var secretId = $(prefix + "EmailSecretId").value;
+    var secretKey = $(prefix + "EmailSecretKey").value;
+    return (accessKeyId || accessKeySecret || secretId || secretKey)
+      ? JSON.stringify({ accessKeyId: accessKeyId, accessKeySecret: accessKeySecret, secretId: secretId, secretKey: secretKey })
+      : "";
+  }
+  return "";
+}
+
+function splitCsv(value) {
+  return String(value || "").split(",").map(function (item) { return item.trim(); }).filter(Boolean);
 }
 
 function notificationDetailFields(item) {
@@ -967,7 +1210,6 @@ function notificationDetailFields(item) {
     fields["SDK App ID"] = item.sdkAppId;
     fields["地域"] = item.region;
   }
-  fields["普通配置"] = item.configJson;
   fields["敏感凭据"] = item.credentialConfigured ? "已配置" : "未配置";
   fields["状态"] = item.status;
   fields["创建时间"] = item.createdAt;
@@ -976,25 +1218,26 @@ function notificationDetailFields(item) {
 }
 
 function renderNotificationEditFields(item) {
+  var config = parseJsonObject(item.configJson || "{}");
+  var credential = parseJsonObject(item.credentialJson || "{}");
   return '<div class="form-grid notification-config-form">' +
     select("notifyEditProvider", "平台", notificationProviderOptions(item.channelType, false), item.providerCode) +
     input("notifyEditName", "配置名称", item.displayName) +
     input("notifyEditSenderName", item.channelType === "SMS" ? "短信签名" : "发件名称", item.senderName) +
     input("notifyEditSenderAddress", item.channelType === "SMS" ? "发送签名/扩展码" : "发件邮箱", item.senderAddress, { required: false }) +
     input("notifyEditEndpoint", "服务地址", item.endpoint, { required: false }) +
-    (item.channelType === "SMS" ? renderSmsConfigFields("notifyEdit", item, item.providerCode, "edit") : "") +
-    textarea("notifyEditConfig", item.channelType === "SMS" ? "附加配置 JSON" : "普通配置 JSON", item.configJson || "{}", { required: false }) +
-    textarea("notifyEditCredential", item.channelType === "SMS" ? "附加凭据 JSON（留空不修改）" : "敏感凭据 JSON（留空不修改）", "", { required: false }) +
+    (item.channelType === "SMS" ? renderSmsConfigFields("notifyEdit", item, item.providerCode, "edit") + renderSmsExtraFields("notifyEdit", item.providerCode, config, credential, "edit") : renderEmailExtraFields("notifyEdit", item.providerCode, config, credential, "edit")) +
     '</div>';
 }
 
 function bindNotificationEditProvider(item) {
-  if (item.channelType !== "SMS") return;
   var provider = $("notifyEditProvider");
   if (!provider) return;
-  syncSmsProviderFields("notifyEdit", provider.value);
+  if (item.channelType === "SMS") syncSmsProviderFields("notifyEdit", provider.value);
+  syncNotificationExtraFields(item.channelType, "notifyEdit", provider.value);
   provider.addEventListener("change", function () {
-    syncSmsProviderFields("notifyEdit", provider.value);
+    if (item.channelType === "SMS") syncSmsProviderFields("notifyEdit", provider.value);
+    syncNotificationExtraFields(item.channelType, "notifyEdit", provider.value);
   });
 }
 
@@ -1013,6 +1256,10 @@ function select(id, label, values, value, meta) {
 
 function checkbox(id, label, checked) {
   return '<label class="inline-check"><input id="' + id + '" type="checkbox"' + (checked ? " checked" : "") + '> ' + label + '</label>';
+}
+
+function scopedCheckbox(id, label, checked, visible) {
+  return '<label class="inline-check field-' + id + (visible ? '' : ' hidden') + '"><input id="' + id + '" type="checkbox"' + (checked ? " checked" : "") + '> ' + label + '</label>';
 }
 
 function queryFilters(view) {
@@ -1135,19 +1382,25 @@ function switchCommerceTab(tab) {
 }
 
 function renderChannels() {
-  if (["payment", "sms", "email"].indexOf(state.channelsTab) < 0) {
+  if (["payment", "sms", "email", "ai", "search"].indexOf(state.channelsTab) < 0) {
     state.channelsTab = "payment";
   }
   var bodyId = state.channelsTab === "payment" ? "paymentConfigs" :
-    state.channelsTab === "sms" ? "smsConfigs" : "emailConfigs";
+    state.channelsTab === "sms" ? "smsConfigs" :
+    state.channelsTab === "email" ? "emailConfigs" :
+    state.channelsTab === "ai" ? "aiConfigs" : "searchPlatforms";
   $("channels").innerHTML = renderTabs("channels", state.channelsTab, [
     { key: "payment", label: "支付配置", action: "switchChannelsTab" },
     { key: "sms", label: "短信配置", action: "switchChannelsTab" },
-    { key: "email", label: "邮件配置", action: "switchChannelsTab" }
+    { key: "email", label: "邮件配置", action: "switchChannelsTab" },
+    { key: "ai", label: "AI平台", action: "switchChannelsTab" },
+    { key: "search", label: "搜索平台", action: "switchChannelsTab" }
   ]) + '<div id="' + bodyId + '"></div>';
   if (state.channelsTab === "payment") return renderPaymentConfigs(currentPage("paymentConfigs"));
   if (state.channelsTab === "sms") return renderSmsConfigs(currentPage("smsConfigs"));
-  return renderEmailConfigs(currentPage("emailConfigs"));
+  if (state.channelsTab === "email") return renderEmailConfigs(currentPage("emailConfigs"));
+  if (state.channelsTab === "ai") return renderAiPlatforms();
+  return renderSearchPlatforms();
 }
 
 function renderCommerce() {
@@ -1294,17 +1547,6 @@ function renderDashboard() {
       '<button class="secondary" type="button" onclick="applyAnalyticsFilter()">生成统计</button>' +
       "</div>";
     $("dashboard").innerHTML =
-      '<div class="hero-shell">' +
-        '<div class="hero-copy">' +
-          '<div class="eyebrow">Realtime Overview</div>' +
-          '<h2 class="hero-title">今天的业务状态一眼看清</h2>' +
-          '<p class="hero-text">把支付、会员、设备和启动趋势压缩到一屏，先看健康度，再进入明细。</p>' +
-        '</div>' +
-        '<div class="hero-stat">' +
-          '<span>核心收入</span><strong>¥' + formatMoney(overview.paidAmountCents) + '</strong>' +
-          '<em>已支付订单 ' + formatValue(overview.paidOrderCount) + '</em>' +
-        '</div>' +
-      '</div>' +
       '<div class="grid metrics">' +
       metric("APP", overview.appCount) +
       metric("用户", overview.userCount) +
@@ -1478,6 +1720,9 @@ function openAppCreate() {
     ], "STANDARD") +
     checkbox("needMobileLogin", "手机号登录", true) +
     checkbox("needDeviceVip", "设备会员", false) +
+    checkbox("enableUserAiKey", "启用用户AI Key", false) +
+    input("defaultAiQuotaUnits", "默认AI配额", "0", { required: false, type: "number" }) +
+    input("defaultAiProviderCode", "默认AI平台", "api2d", { required: false }) +
     "</div>",
     '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
     '<button type="button" onclick="createApp()">创建</button>');
@@ -1491,7 +1736,10 @@ function createApp() {
       appName: $("appName").value,
       appType: $("appType").value,
       needMobileLogin: $("needMobileLogin").checked,
-      needDeviceVip: $("needDeviceVip").checked
+      needDeviceVip: $("needDeviceVip").checked,
+      enableUserAiKey: $("enableUserAiKey").checked,
+      defaultAiQuotaUnits: $("defaultAiQuotaUnits").value ? Number($("defaultAiQuotaUnits").value) : 0,
+      defaultAiProviderCode: $("defaultAiProviderCode").value
     }
   }).then(function (data) {
     closeModal();
@@ -1511,6 +1759,9 @@ function openAppDetail(id) {
       "密钥版本": item.appSecretVersion,
       "手机号登录": item.needMobileLogin,
       "设备会员": item.needDeviceVip,
+      "启用用户AI Key": item.enableUserAiKey,
+      "默认AI配额": item.defaultAiQuotaUnits,
+      "默认AI平台": item.defaultAiProviderCode,
       "状态": item.status
     }) + sectionBlock("关键指标", statsGrid(data.stats)) +
       sectionBlock("套餐", compactTable([
@@ -1536,6 +1787,9 @@ function openAppEdit(id) {
       input("editAppName", "APP 名称", item.appName) +
       checkbox("editNeedMobileLogin", "手机号登录", !!item.needMobileLogin) +
       checkbox("editNeedDeviceVip", "设备会员", !!item.needDeviceVip) +
+      checkbox("editEnableUserAiKey", "启用用户AI Key", !!item.enableUserAiKey) +
+      input("editDefaultAiQuotaUnits", "默认AI配额", item.defaultAiQuotaUnits || 0, { required: false, type: "number" }) +
+      input("editDefaultAiProviderCode", "默认AI平台", item.defaultAiProviderCode || "api2d", { required: false }) +
       "</div>",
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="saveAppEdit(' + id + ')">保存</button>');
@@ -1548,7 +1802,10 @@ function saveAppEdit(id) {
     body: {
       appName: $("editAppName").value,
       needMobileLogin: $("editNeedMobileLogin").checked,
-      needDeviceVip: $("editNeedDeviceVip").checked
+      needDeviceVip: $("editNeedDeviceVip").checked,
+      enableUserAiKey: $("editEnableUserAiKey").checked,
+      defaultAiQuotaUnits: $("editDefaultAiQuotaUnits").value ? Number($("editDefaultAiQuotaUnits").value) : 0,
+      defaultAiProviderCode: $("editDefaultAiProviderCode").value
     }
   }).then(function () {
     toast("APP 已更新");
@@ -1692,8 +1949,11 @@ function bindNotificationProviderDefault(type) {
   var provider = $(prefix + "CreateProvider");
   if (!provider) return;
   if (type === "SMS") syncSmsProviderFields(prefix + "Create", provider.value);
+  syncNotificationExtraFields(type, prefix + "Create", provider.value);
   provider.addEventListener("change", function () {
     var d = notificationDefault(type, provider.value);
+    var config = parseJsonObject(d.configJson || "{}");
+    var credential = parseJsonObject(d.credentialJson || "{}");
     $(prefix + "CreateName").value = d.displayName || "";
     $(prefix + "CreateSenderName").value = d.senderName || "";
     $(prefix + "CreateSenderAddress").value = d.senderAddress || "";
@@ -1712,9 +1972,9 @@ function bindNotificationProviderDefault(type) {
     if (sdkAppId) sdkAppId.value = d.sdkAppId || "";
     var region = $(prefix + "CreateRegion");
     if (region) region.value = d.region || "";
-    $(prefix + "CreateConfig").value = d.configJson || "{}";
-    $(prefix + "CreateCredential").value = d.credentialJson || "";
+    setNotificationExtraDefaults(type, prefix + "Create", provider.value, config, credential);
     if (type === "SMS") syncSmsProviderFields(prefix + "Create", provider.value);
+    syncNotificationExtraFields(type, prefix + "Create", provider.value);
   });
 }
 
@@ -1729,7 +1989,6 @@ function renderPaymentConfigs(page) {
         '<button class="secondary" type="button" onclick="exportPaymentConfigs()">导出</button>') +
       table([
         { title: "ID", key: "id" },
-        { title: "APP", key: "appId" },
         { title: "渠道", render: function (r) { return formatValue(r.payChannel); } },
         { title: "提供方", key: "providerCode" },
         { title: "商户号", key: "merchantId" },
@@ -1756,17 +2015,14 @@ function applyPaymentConfigFilter() {
   renderPaymentConfigs(0);
 }
 
-function renderPaymentConfigForm(prefix, item, appOptions, mode) {
+function renderPaymentConfigForm(prefix, item, mode) {
   var normal = parseJsonObject(item.configJson || "{}");
   var credential = parseJsonObject(mode === "edit" ? "{}" : (item.credentialJson || "{}"));
   var channel = item.payChannel || "ALIPAY";
   return '<div class="form-grid payment-config-form">' +
-    select(prefix + "AppId", "APP", appOptions, item.appId || "") +
     select(prefix + "Channel", "支付渠道", paymentChannelOptions(false), channel) +
     input(prefix + "Provider", "提供方编码", item.providerCode || providerDefaultFor(channel)) +
     paymentChannelFields(prefix, channel, item, normal, credential, mode) +
-    textarea(prefix + "Config", "高级普通配置 JSON", item.configJson || "{}", { required: false }) +
-    textarea(prefix + "Credential", "高级敏感凭据 JSON", mode === "edit" ? "" : (item.credentialJson || ""), { required: false }) +
     '</div>';
 }
 
@@ -1789,9 +2045,9 @@ function alipayPaymentFields(prefix, item, normal, credential, mode) {
     ], normal.defaultPayMode || "PAGE") +
     sectionTitle(envTitle(sandbox)) +
     inputWithLink(prefix + "EnvAppId", sandbox ? "沙箱 AppId" : "正式 AppId", envValue(normal, "sandboxAppId", "prodAppId", "channelAppId", sandbox), currentAlipayLink(links, sandbox, 'app'), "", { hint: sandbox ? "沙箱应用 AppId" : "正式环境应用 AppId" }) +
-    input(prefix + "EnvGatewayUrl", sandbox ? "沙箱网关" : "正式网关", envValue(normal, "sandboxGatewayUrl", "prodGatewayUrl", "gatewayUrl", sandbox), { required: false, hint: sandbox ? "留空自动使用支付宝沙箱网关" : "留空自动使用正式网关" }) +
-    input(prefix + "EnvNotifyUrl", sandbox ? "沙箱异步回调" : "正式异步回调", envValue(normal, "sandboxNotifyUrl", "prodNotifyUrl", "notifyUrl", sandbox), { required: false }) +
-    input(prefix + "EnvReturnUrl", sandbox ? "沙箱同步跳转" : "正式同步跳转", envValue(normal, "sandboxReturnUrl", "prodReturnUrl", "returnUrl", sandbox), { required: false }) +
+    input(prefix + "EnvGatewayUrl", sandbox ? "沙箱网关" : "正式网关", envValue(normal, "sandboxGatewayUrl", "prodGatewayUrl", "gatewayUrl", sandbox) || alipayGatewayDefault(sandbox), { required: false }) +
+    input(prefix + "EnvNotifyUrl", sandbox ? "沙箱异步回调" : "正式异步回调", envValue(normal, "sandboxNotifyUrl", "prodNotifyUrl", "notifyUrl", sandbox) || paymentNotifyTemplate("ALIPAY"), { required: false }) +
+    input(prefix + "EnvReturnUrl", sandbox ? "沙箱同步跳转" : "正式同步跳转", envValue(normal, "sandboxReturnUrl", "prodReturnUrl", "returnUrl", sandbox) || paymentReturnTemplate(), { required: false }) +
     input(prefix + "EnvSignType", sandbox ? "沙箱签名方式" : "正式签名方式", envValue(normal, "sandboxSignType", "prodSignType", "signType", sandbox) || "RSA2", { required: false }) +
     textareaWithLink(prefix + "EnvPrivateKey", sandbox ? (mode === "edit" ? "沙箱应用私钥（留空不修改）" : "沙箱应用私钥") : (mode === "edit" ? "正式应用私钥（留空不修改）" : "正式应用私钥"), envCredentialValue(credential, "sandboxMerchantPrivateKey", "prodMerchantPrivateKey", "merchantPrivateKey", sandbox), links.key, "", { required: mode !== "edit" }) +
     textareaWithLink(prefix + "EnvAlipayPublicKey", sandbox ? (mode === "edit" ? "沙箱支付宝公钥（留空不修改）" : "沙箱支付宝公钥") : (mode === "edit" ? "正式支付宝公钥（留空不修改）" : "正式支付宝公钥"), envCredentialValue(credential, "sandboxAlipayPublicKey", "prodAlipayPublicKey", "alipayPublicKey", sandbox), links.key, "", { required: mode !== "edit" });
@@ -1800,7 +2056,7 @@ function alipayPaymentFields(prefix, item, normal, credential, mode) {
 function wechatPaymentFields(prefix, item, normal, credential, mode) {
   return input(prefix + "Merchant", "微信商户号 mchId", item.merchantId || "") +
     input(prefix + "ChannelApp", "微信 AppId", item.channelAppId || "") +
-    input(prefix + "Notify", "支付通知地址", item.notifyUrl || "", { required: false }) +
+    input(prefix + "Notify", "支付通知地址", item.notifyUrl || paymentNotifyTemplate("WECHAT"), { required: false }) +
     select(prefix + "DefaultPayMode", "默认拉起方式", [
       { value: "QR", label: "Native 扫码支付" },
       { value: "PAGE", label: "H5/浏览器支付" },
@@ -1814,7 +2070,7 @@ function wechatPaymentFields(prefix, item, normal, credential, mode) {
 function aggregatePaymentFields(prefix, item, normal, credential, mode) {
   return input(prefix + "Merchant", "聚合商户号", item.merchantId || "") +
     input(prefix + "ChannelApp", "渠道应用 ID", item.channelAppId || "", { required: false }) +
-    input(prefix + "Notify", "回调地址", item.notifyUrl || "", { required: false }) +
+    input(prefix + "Notify", "回调地址", item.notifyUrl || paymentNotifyTemplate("AGGREGATE"), { required: false }) +
     input(prefix + "GatewayUrl", "聚合支付网关", normal.gatewayUrl || "") +
     select(prefix + "DefaultPayMode", "默认拉起方式", [
       { value: "QR", label: "二维码/收银台链接" },
@@ -1825,7 +2081,7 @@ function aggregatePaymentFields(prefix, item, normal, credential, mode) {
     input(prefix + "SignSecret", mode === "edit" ? "签名密钥（留空不修改）" : "签名密钥", credential.signSecret || "", { type: "password", required: mode !== "edit" });
 }
 
-function bindPaymentChannelForm(prefix, item, appOptions, mode) {
+function bindPaymentChannelForm(prefix, item, mode) {
   var channel = $(prefix + "Channel");
   var provider = $(prefix + "Provider");
   if (!channel) return;
@@ -1859,11 +2115,10 @@ function bindPaymentChannelForm(prefix, item, appOptions, mode) {
     snapshotCurrentAlipayEnv();
     item.payChannel = channel.value;
     item.providerCode = providerDefaultFor(channel.value);
-    openModal(mode === "create" ? "新建支付配置" : "编辑支付配置", renderPaymentConfigForm(prefix, item, appOptions, mode),
+    openModal(mode === "create" ? "新建支付配置" : "编辑支付配置", renderPaymentConfigForm(prefix, item, mode),
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       (mode === "create" ? '<button type="button" onclick="createPaymentConfig()">创建</button>' : '<button type="button" onclick="savePaymentConfigEdit(' + item.id + ')">保存</button>'));
-    bindPaymentChannelForm(prefix, item, appOptions, mode);
-    var app = $(prefix + 'AppId'); if (mode === 'edit' && app) app.disabled = true;
+    bindPaymentChannelForm(prefix, item, mode);
     var ch = $(prefix + 'Channel'); if (mode === 'edit' && ch) ch.disabled = true;
   }
   if (mode === "create") channel.addEventListener("change", rerender);
@@ -1873,33 +2128,27 @@ function bindPaymentChannelForm(prefix, item, appOptions, mode) {
 }
 
 function openPaymentConfigCreate() {
-  loadApps().then(function (apps) {
-    if (!apps.length) throw new Error("请先创建 APP");
-    var appOptions = apps.map(function (a) {
-      return { value: a.appId, label: a.appId + " / " + a.appName };
-    });
-    var item = {
-      appId: queryFilters("paymentConfigs").appId || apps[0].appId,
-      payChannel: "ALIPAY",
-      providerCode: providerDefaultFor("ALIPAY"),
-      merchantId: "",
-      channelAppId: "",
-      notifyUrl: "",
-      configJson: "{}",
-      credentialJson: ""
-    };
-    openModal("新建支付配置", renderPaymentConfigForm("payCfgCreate", item, appOptions, "create"),
-      '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
-      '<button type="button" onclick="createPaymentConfig()">创建</button>');
-    bindPaymentChannelForm("payCfgCreate", item, appOptions, "create");
-  }).catch(function (err) { toast(err.message); });
+  var item = {
+    appId: "__PLATFORM__",
+    payChannel: "ALIPAY",
+    providerCode: providerDefaultFor("ALIPAY"),
+    merchantId: "",
+    channelAppId: "",
+    notifyUrl: "",
+    configJson: "{}",
+    credentialJson: ""
+  };
+  openModal("新建支付配置", renderPaymentConfigForm("payCfgCreate", item, "create"),
+    '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
+    '<button type="button" onclick="createPaymentConfig()">创建</button>');
+  bindPaymentChannelForm("payCfgCreate", item, "create");
 }
 
 function createPaymentConfig() {
   api("/admin/payment-configs", {
     method: "POST",
     body: Object.assign({
-      appId: $("payCfgCreateAppId").value,
+      appId: "__PLATFORM__",
       payChannel: $("payCfgCreateChannel").value
     }, paymentConfigBody("payCfgCreate", true))
   }).then(function () {
@@ -1913,19 +2162,17 @@ function openPaymentConfigDetail(id) {
   api("/admin/payment-configs/" + id).then(function (item) {
     openModal("支付配置详情", detailList({
       "ID": item.id,
-      "APP": item.appId,
       "渠道": item.payChannel,
       "提供方": item.providerCode,
       "商户号": item.merchantId,
       "渠道 APP ID": item.channelAppId,
       "回调地址": item.notifyUrl,
-      "建议回调路径": "/api/payment/notify/" + item.payChannel,
-      "普通配置": item.configJson,
+      "建议回调路径": paymentNotifyTemplate(item.payChannel),
       "敏感凭据": item.credentialConfigured ? "已配置" : "未配置",
       "状态": item.status,
       "创建时间": item.createdAt,
       "更新时间": item.updatedAt
-    }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent('/api/payment/notify/' + item.payChannel) + '\')">复制回调路径</button>' +
+    }), '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(paymentNotifyTemplate(item.payChannel)) + '\')">复制回调路径</button>' +
       '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
@@ -1944,13 +2191,10 @@ function checkPaymentConfig(id) {
 
 function openPaymentConfigEdit(id) {
   api("/admin/payment-configs/" + id).then(function (item) {
-    var appOptions = [{ value: item.appId, label: item.appId + " / 当前 APP" }];
-    openModal("编辑支付配置", renderPaymentConfigForm("payCfgEdit", item, appOptions, "edit"),
+    openModal("编辑支付配置", renderPaymentConfigForm("payCfgEdit", item, "edit"),
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="savePaymentConfigEdit(' + id + ')">保存</button>');
-    bindPaymentChannelForm("payCfgEdit", item, appOptions, "edit");
-    var app = $("payCfgEditAppId");
-    if (app) app.disabled = true;
+    bindPaymentChannelForm("payCfgEdit", item, "edit");
     var channel = $("payCfgEditChannel");
     if (channel) channel.disabled = true;
   }).catch(function (err) { toast(err.message); });
@@ -2074,15 +2318,15 @@ function panelTitleActions(title, actions) {
 }
 
 function renderNotificationConfigForm(type, prefix, item, mode) {
+  var config = parseJsonObject(item.configJson || "{}");
+  var credential = parseJsonObject(mode === "edit" ? "{}" : (item.credentialJson || "{}"));
   return '<div class="form-grid notification-config-form">' +
     select(prefix + "Provider", "平台", notificationProviderOptions(type, false), item.providerCode) +
     input(prefix + "Name", "配置名称", item.displayName) +
     input(prefix + "SenderName", type === "SMS" ? "短信签名" : "发件名称", item.senderName) +
     input(prefix + "SenderAddress", type === "SMS" ? "发送签名/扩展码" : "发件邮箱", item.senderAddress, { required: false }) +
     input(prefix + "Endpoint", "服务地址", item.endpoint, { required: false }) +
-    (type === "SMS" ? renderSmsConfigFields(prefix, item, item.providerCode, mode) : "") +
-    textarea(prefix + "Config", type === "SMS" ? "附加配置 JSON" : "普通配置 JSON", item.configJson || "{}", { required: false }) +
-    textarea(prefix + "Credential", mode === "edit" ? (type === "SMS" ? "附加凭据 JSON（留空不修改）" : "敏感凭据 JSON（留空不修改）") : (type === "SMS" ? "附加凭据 JSON" : "敏感凭据 JSON"), mode === "edit" ? "" : (item.credentialJson || ""), { required: false }) +
+    (type === "SMS" ? renderSmsConfigFields(prefix, item, item.providerCode, mode) + renderSmsExtraFields(prefix, item.providerCode, config, credential, mode) : renderEmailExtraFields(prefix, item.providerCode, config, credential, mode)) +
     '</div>';
 }
 
@@ -2613,18 +2857,47 @@ function applyUserFilter() {
 }
 
 function openUserDetail(id) {
-  api("/admin/users?page=0&size=100").then(function (data) {
-    var item = findById(pageContent(data), id);
+  Promise.all([api("/admin/users?page=0&size=100"), api("/admin/user-ai/by-user/" + id)]).then(function (res) {
+    var item = findById(pageContent(res[0]), id);
     if (!item) throw new Error("用户不存在");
+    var aiKeys = res[1] || [];
     openModal("用户详情", detailList({
       "ID": item.id,
       "手机号": item.mobile,
       "类型": item.userType,
       "状态": item.status,
+      "AI Key 数": aiKeys.length,
       "创建时间": item.createdAt,
       "更新时间": item.updatedAt
-    }), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+    }) + sectionBlock("AI Key / 配额", compactTable([
+      { title: "APP", key: "appId" },
+      { title: "平台", key: "providerCode" },
+      { title: "Key", render: function (r) { return r.apiKey ? "已配置" : "未配置"; } },
+      { title: "配额", key: "quotaUnits" }
+    ], aiKeys)), '<button class="secondary" type="button" onclick="openUserAiUpsertForUser(' + item.id + ')">配置AI Key</button><button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
+}
+
+function openUserAiUpsertForUser(userId) {
+  loadApps().then(function (apps) {
+    openSubModal('配置用户AI Key', '<div class="form-grid">' +
+      input('userAiUserId', '用户 ID', userId) +
+      select('userAiAppId', 'APP', apps.map(function (a) { return { value: a.appId, label: a.appId + ' / ' + a.appName }; }), apps[0] && apps[0].appId || '') +
+      input('userAiProviderCode', 'AI平台', 'api2d') +
+      input('userAiQuota', '转入配额', '0', 'number') +
+      textarea('userAiKey', '用户 Key', '', { required: false }) +
+      '</div>', '<button class="secondary" type="button" onclick="closeSubModal()">取消</button><button type="button" onclick="saveUserAiUpsertAndReturn(' + userId + ')">保存</button>');
+  });
+}
+
+function saveUserAiUpsertAndReturn(userId) {
+  api('/admin/user-ai', { method: 'POST', body: {
+    userId: $("userAiUserId").value ? Number($("userAiUserId").value) : null,
+    appId: $("userAiAppId").value,
+    providerCode: $("userAiProviderCode").value,
+    apiKey: $("userAiKey").value,
+    quotaUnits: $("userAiQuota").value ? Number($("userAiQuota").value) : 0
+  }}).then(function () { closeSubModal(); openUserDetail(userId); }).catch(function (err) { toast(err.message); });
 }
 
 function toggleUser(id, status) {
@@ -3107,7 +3380,7 @@ function openOrderCreate() {
         { value: "PAGE", label: "浏览器网页支付" },
         { value: "APP", label: "App SDK 支付" }
       ], "QR") +
-      input("createOrderReturnUrl", "同步跳转地址", "", { required: false, hint: "网页支付可填；QT 客户端通常用 QR 或 PAGE" }) +
+      input("createOrderReturnUrl", "同步跳转地址", paymentReturnTemplate(), { required: false }) +
       '</div>',
       '<button class="secondary" type="button" onclick="closeModal()">取消</button>' +
       '<button type="button" onclick="saveOrderCreate()">创建</button>');
@@ -4049,14 +4322,484 @@ function changeOwnPassword() {
   }).catch(function (err) { toast(err.message); });
 }
 
+var platformPolicyCategories = ["AI", "PAYMENT", "SMS", "EMAIL", "CAPTCHA"];
+
+function policyDefaultJson(category) {
+  if (category === "PAYMENT") return '{"defaultPayChannel":"ALIPAY"}';
+  if (category === "SMS") return '{"cooldownSeconds":60,"expireMinutes":5}';
+  if (category === "CAPTCHA") return '{"ttlSeconds":300,"length":6,"maxAttempts":5,"debugReturnCode":false}';
+  if (category === "AI") return '{"defaultModel":"","dailyLimitUnits":0}';
+  return '{}';
+}
+
+function renderPlatformPolicies() {
+  return loadApps().then(function (apps) {
+    var currentApp = queryFilters("platformPolicies").appId || (apps[0] && apps[0].appId) || "";
+    setFilters("platformPolicies", { appId: currentApp });
+    if (!currentApp) {
+      $("platformPolicies").innerHTML = panel("APP 覆盖策略", '<p class="muted">请先创建 APP。</p>');
+      return;
+    }
+    return api("/admin/app-platform-policies?appId=" + encodeURIComponent(currentApp)).then(function (rows) {
+      rows = rows || [];
+      $("platformPolicies").innerHTML =
+        panelTitleActions("APP 覆盖策略",
+          '<button type="button" onclick="openPlatformPolicyUpsert()">配置策略</button>') +
+        '<div class="toolbar">' +
+        select("platformPolicyAppId", "APP", apps.map(function (a) {
+          return { value: a.appId, label: a.appId + " / " + a.appName };
+        }), currentApp) +
+        '<button class="secondary" type="button" onclick="applyPlatformPolicyApp()">切换</button>' +
+        '</div>' +
+        table([
+          { title: "类别", render: function (r) { return labelOf(r.category); } },
+          { title: "供应商/默认项", key: "providerCode" },
+          { title: "策略", key: "policyJson" },
+          { title: "普通配置", key: "configJson" },
+          { title: "敏感配置", render: function (r) { return r.credentialConfigured ? "已配置" : "未配置"; } },
+          { title: "状态", render: function (r) { return badge(r.enabled ? "ENABLED" : "DISABLED"); } },
+          { title: "操作", render: function (r) { return '<div class="actions"><button class="small" onclick="openPlatformPolicyUpsert(\'' + r.category + '\')">编辑</button></div>'; } }
+        ], rows) + '</div>';
+    });
+  }).catch(function (err) { toast(err.message); });
+}
+
+function applyPlatformPolicyApp() {
+  setFilters("platformPolicies", { appId: $("platformPolicyAppId").value });
+  renderPlatformPolicies();
+}
+
+function openPlatformPolicyUpsert(category) {
+  loadApps().then(function (apps) {
+    var currentApp = queryFilters("platformPolicies").appId || (apps[0] && apps[0].appId) || "";
+    return api("/admin/app-platform-policies?appId=" + encodeURIComponent(currentApp)).then(function (rows) {
+      var item = (rows || []).filter(function (r) { return !category || r.category === category; })[0] || {};
+      var safeCategory = category || item.category || "SMS";
+      openModal("配置 APP 覆盖策略", '<div class="form-grid">' +
+        select("policyAppId", "APP", apps.map(function (a) { return { value: a.appId, label: a.appId + " / " + a.appName }; }), currentApp) +
+        select("policyCategory", "类别", platformPolicyCategories.map(optionOf), safeCategory) +
+        checkbox("policyEnabled", "启用", item.enabled !== false) +
+        input("policyProvider", "供应商/默认提供方", item.providerCode || "", { required: false }) +
+        textarea("policyPolicyJson", "策略 JSON", item.policyJson || policyDefaultJson(safeCategory), { required: false }) +
+        textarea("policyConfigJson", "普通配置 JSON", item.configJson || "{}", { required: false }) +
+        textarea("policyCredentialJson", "敏感配置 JSON（留空不修改）", "", { required: false }) +
+        '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="savePlatformPolicy()">保存</button>');
+      $("policyCategory").addEventListener("change", function () {
+        if (!$("policyPolicyJson").value || $("policyPolicyJson").value === "{}") {
+          $("policyPolicyJson").value = policyDefaultJson($("policyCategory").value);
+        }
+      });
+    });
+  }).catch(function (err) { toast(err.message); });
+}
+
+function savePlatformPolicy() {
+  api("/admin/app-platform-policies", {
+    method: "POST",
+    body: {
+      appId: $("policyAppId").value,
+      category: $("policyCategory").value,
+      enabled: $("policyEnabled").checked,
+      providerCode: $("policyProvider").value,
+      policyJson: $("policyPolicyJson").value,
+      configJson: $("policyConfigJson").value,
+      credentialJson: $("policyCredentialJson").value
+    }
+  }).then(function () {
+    toast("APP 覆盖策略已保存");
+    closeModal();
+    setFilters("platformPolicies", { appId: $("policyAppId").value });
+    renderPlatformPolicies();
+  }).catch(function (err) { toast(err.message); });
+}
+
+function renderSearchPlatforms() {
+  return api("/admin/search-platforms").then(function (rows) {
+    rows = rows || [];
+    $("searchPlatforms").innerHTML =
+      panelTitleActions("搜索平台列表",
+        '<button type="button" onclick="openSearchPlatformCreate()">新建平台</button>') +
+      table([
+        { title: "编码", key: "providerCode" },
+        { title: "名称", key: "displayName" },
+        { title: "Base URL", key: "baseUrl" },
+        { title: "后台 Base URL", key: "consoleBaseUrl" },
+        { title: "状态", render: function (r) { return badge(r.enabled ? "ENABLED" : "DISABLED"); } },
+        { title: "操作", render: function (r) { return '<div class="actions"><button class="small" onclick="openSearchPlatformEdit(' + r.id + ')">配置</button></div>'; } }
+      ], rows) + '</div>';
+  });
+}
+
+function openSearchPlatformCreate() {
+  var defaults = searchPlatformDefaults.bocha;
+  openModal("新建搜索平台", '<div class="form-grid">' +
+    select("searchProviderCode", "支持的平台", Object.keys(searchPlatformDefaults).map(optionOf), "bocha") +
+    input("searchProviderName", "显示名称", defaults.displayName) +
+    input("searchProviderBaseUrl", "API Base URL", defaults.baseUrl, { required: false }) +
+    input("searchProviderConsoleBaseUrl", "控制台 Base URL", defaults.consoleBaseUrl, { required: false }) +
+    input("searchProviderEndpointPath", "接口路径", defaults.endpointPath, { required: false }) +
+    input("searchProviderDefaultCount", "默认条数", defaults.defaultCount, { required: false, type: "number" }) +
+    input("searchProviderTimeoutSeconds", "超时秒数", defaults.timeoutSeconds, { required: false, type: "number" }) +
+    input("searchProviderFreshness", "时间范围", defaults.freshness, { required: false }) +
+    textarea("searchProviderApiKey", "API Key", "", { required: false }) +
+    '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveSearchPlatformCreate()">保存</button>');
+  bindSearchPlatformDefault();
+}
+
+function saveSearchPlatformCreate() {
+  api("/admin/search-platforms", {
+    method: "POST",
+    body: {
+      providerCode: $("searchProviderCode").value,
+      displayName: $("searchProviderName").value,
+      baseUrl: $("searchProviderBaseUrl").value,
+      consoleBaseUrl: $("searchProviderConsoleBaseUrl").value,
+      configJson: searchPlatformConfigJson(),
+      credentialJson: searchPlatformCredentialJson()
+    }
+  }).then(function () {
+    closeModal();
+    renderSearchPlatforms();
+  }).catch(function (err) { toast(err.message); });
+}
+
+function openSearchPlatformEdit(id) {
+  api("/admin/search-platforms/" + id).then(function (item) {
+    var config = parseJsonObject(item.configJson || "{}");
+    var credential = parseJsonObject(item.credentialJson || "{}");
+    var defaults = searchPlatformDefaults[item.providerCode] || searchPlatformDefaults.bocha;
+    openModal("编辑搜索平台", '<div class="form-grid">' +
+      input("searchProviderCode", "平台编码", item.providerCode) +
+      input("searchProviderName", "显示名称", item.displayName) +
+      input("searchProviderBaseUrl", "API Base URL", item.baseUrl || "", { required: false }) +
+      input("searchProviderConsoleBaseUrl", "控制台 Base URL", item.consoleBaseUrl || "", { required: false }) +
+      input("searchProviderEndpointPath", "接口路径", config.endpointPath || defaults.endpointPath || "", { required: false }) +
+      input("searchProviderDefaultCount", "默认条数", config.defaultCount || defaults.defaultCount || 10, { required: false, type: "number" }) +
+      input("searchProviderTimeoutSeconds", "超时秒数", config.timeoutSeconds || defaults.timeoutSeconds || 30, { required: false, type: "number" }) +
+      input("searchProviderFreshness", "时间范围", config.freshness || "", { required: false }) +
+      textarea("searchProviderApiKey", "API Key（留空不修改）", credential.apiKey || "", { required: false }) +
+      '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveSearchPlatformEdit(' + id + ')">保存</button>');
+    var code = $("searchProviderCode"); if (code) code.disabled = true;
+  }).catch(function (err) { toast(err.message); });
+}
+
+function saveSearchPlatformEdit(id) {
+  api("/admin/search-platforms/" + id, {
+    method: "PUT",
+    body: {
+      providerCode: $("searchProviderCode").value,
+      displayName: $("searchProviderName").value,
+      baseUrl: $("searchProviderBaseUrl").value,
+      consoleBaseUrl: $("searchProviderConsoleBaseUrl").value,
+      configJson: searchPlatformConfigJson(),
+      credentialJson: searchPlatformCredentialJson()
+    }
+  }).then(function () {
+    closeModal();
+    renderSearchPlatforms();
+  }).catch(function (err) { toast(err.message); });
+}
+
+function bindSearchPlatformDefault() {
+  var provider = $("searchProviderCode");
+  if (!provider) return;
+  provider.addEventListener("change", function () {
+    var d = searchPlatformDefaults[provider.value] || {};
+    $("searchProviderName").value = d.displayName || labelOf(provider.value);
+    $("searchProviderBaseUrl").value = d.baseUrl || "";
+    $("searchProviderConsoleBaseUrl").value = d.consoleBaseUrl || "";
+    $("searchProviderEndpointPath").value = d.endpointPath || "";
+    $("searchProviderDefaultCount").value = d.defaultCount || 10;
+    $("searchProviderTimeoutSeconds").value = d.timeoutSeconds || 30;
+    $("searchProviderFreshness").value = d.freshness || "";
+    $("searchProviderApiKey").value = "";
+  });
+}
+
+function searchPlatformConfigJson() {
+  return JSON.stringify({
+    endpointPath: $("searchProviderEndpointPath").value,
+    defaultCount: $("searchProviderDefaultCount").value ? Number($("searchProviderDefaultCount").value) : 10,
+    timeoutSeconds: $("searchProviderTimeoutSeconds").value ? Number($("searchProviderTimeoutSeconds").value) : 30,
+    freshness: $("searchProviderFreshness").value
+  });
+}
+
+function searchPlatformCredentialJson() {
+  var apiKey = $("searchProviderApiKey").value;
+  return apiKey && apiKey.trim() ? JSON.stringify({ apiKey: apiKey }) : "";
+}
+
+function renderAiPlatforms() {
+  return Promise.all([api('/admin/ai-platforms'), api('/admin/user-ai?page=0&size=20'), loadApps()]).then(function (res) {
+    var platforms = res[0] || [];
+    var keys = pageContent(res[1]);
+    var apps = res[2] || [];
+    var currentApp = queryFilters('aiPlatforms').appId || (apps[0] && apps[0].appId) || '';
+    setFilters('aiPlatforms', { appId: currentApp });
+    $('aiConfigs').innerHTML = panelTitleActions('AI平台列表', '<button type="button" onclick="openAiPlatformCreate()">新建平台</button>') +
+      table([
+        { title: '编码', key: 'providerCode' },
+        { title: '名称', key: 'displayName' },
+        { title: '模型Base URL', key: 'baseUrl' },
+        { title: '后台Base URL', key: 'consoleBaseUrl' },
+        { title: '状态', render: function (r) { return badge(r.enabled ? 'ENABLED' : 'DISABLED'); } },
+        { title: '操作', render: function (r) {
+          var buttons = '<button class="small" onclick="openAiPlatformEdit(' + r.id + ')">配置</button>';
+          if (isMoacodeProviderCode(r.providerCode)) {
+            buttons += '<button class="small secondary" onclick="openMoacodePricing(' + r.id + ')">价格</button>';
+            buttons += '<button class="small secondary" onclick="openMoacodeUsage(' + r.id + ')">消耗</button>';
+          }
+          return '<div class="actions">' + buttons + '</div>';
+        } }
+      ], platforms) +
+      '<div style="height:12px"></div>' +
+      panel('APP 平台参数', '<div class="toolbar">' +
+        select('aiAppFilter', 'APP', apps.map(function (a) { return { value: a.appId, label: a.appId + ' / ' + a.appName }; }), currentApp) +
+        '<button class="secondary" type="button" onclick="openAppAiProviderSetting()">配置APP平台参数</button>' +
+      '</div>') +
+      '<div style="height:12px"></div>' +
+      panelTitleActions('用户AI Key / 配额', '<button type="button" onclick="openUserAiUpsert()">配置用户Key</button>') +
+      table([
+        { title: '用户ID', key: 'userId' },
+        { title: 'APP', key: 'appId' },
+        { title: '平台', key: 'providerCode' },
+        { title: 'Key', render: function (r) { return r.apiKey ? '已配置' : '未配置'; } },
+        { title: '配额', key: 'quotaUnits' }
+      ], keys) + '</div>';
+  });
+}
+
+function aiPlatformForm(item) {
+  item = item || {};
+  var config = parseJsonObject(item.configJson || '{}');
+  var credential = parseJsonObject(item.credentialJson || '{}');
+  var isCreate = !item.id;
+  var defaultCode = item.providerCode || 'api2d';
+  var defaults = aiPlatformDefaults[defaultCode] || aiPlatformDefaults.api2d;
+  var isApi2d = defaultCode === "api2d";
+  var isMoacode = isMoacodeProviderCode(defaultCode);
+  return '<div class="form-grid">' +
+    (isCreate
+      ? select('aiProviderCode', '支持的平台', Object.keys(aiPlatformDefaults).map(optionOf), defaultCode)
+      : input('aiProviderCode', '平台编码', defaultCode)) +
+    input('aiProviderName', '名称', item.displayName || defaults.displayName) +
+    input('aiPublicSortOrder', '排序', config.publicSortOrder || 100, { required: false, type: 'number' }) +
+    checkbox('aiPublicHidden', '用户侧隐藏', !!config.publicHidden) +
+    input('aiPublicId', '用户侧公开 ID', config.publicId || defaults.publicId || '') +
+    input('aiPublicName', '用户侧显示名', config.publicName || defaults.publicName || '') +
+    input('aiPublicFamily', '用户侧分组名', config.publicFamily || defaults.publicFamily || '') +
+    input('aiDefaultModel', '默认模型', config.defaultModel || defaults.defaultModel || '') +
+    input('aiModelBaseUrl', 'AI 调用 Base URL', item.baseUrl || defaults.baseUrl) +
+    (isApi2d || isMoacode ? input('aiConsoleBaseUrl', isMoacode ? '余额/用量 Base URL' : '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false }) : input('aiConsoleBaseUrl', '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false })) +
+    textarea('aiAdminApiKey', isApi2d ? 'API2D 主账号管理 Token' : (isMoacode ? 'MoaCode 主账号 API Key' : 'DeepSeek 主账号 API Key'), credential.adminApiKey || '', { required: false }) +
+    textarea('aiModelApiKey', '大模型 API Key', credential.modelApiKey || '', { required: false }) +
+    (isApi2d || isMoacode ? textarea('aiUsageCookie', isMoacode ? 'MoaCode Cookie' : 'API2D ForwardKey', credential.usageCookie || credential.forwardKey || credential.cookie || '', { required: false }) : '') +
+    (isApi2d ? sectionTitle('Key 分配参数') +
+      input('aiDefaultKeyTypeId', '默认 Key 分组 ID', config.defaultKeyTypeId || '', { required: false }) +
+      input('aiQuotaTransferPath', '额度转入路径', config.quotaTransferPath || '', { required: false }) +
+      select('aiQuotaTransferMethod', '额度转入方法', [{ value: 'POST', label: 'POST' }, { value: 'PUT', label: 'PUT' }], config.quotaTransferMethod || 'POST') : '') +
+    input('aiDocsUrl', '文档地址', config.docs || defaults.docs || '', { required: false }) +
+    '</div>';
+}
+
+function aiPlatformBody() {
+  return {
+    providerCode: $('aiProviderCode').value,
+    displayName: $('aiProviderName').value,
+    baseUrl: $('aiModelBaseUrl').value,
+    consoleBaseUrl: $('aiConsoleBaseUrl').value,
+    configJson: aiPlatformConfigJson(),
+    credentialJson: JSON.stringify({
+      adminApiKey: $('aiAdminApiKey').value,
+      modelApiKey: $('aiModelApiKey').value,
+      usageCookie: $('aiUsageCookie') ? $('aiUsageCookie').value : ''
+    })
+  };
+}
+
+function bindAiPlatformDefault(mode) {
+  var provider = $("aiProviderCode");
+  if (!provider) return;
+  provider.addEventListener("change", function () {
+    if (mode === "create") {
+      openModal('AI平台配置', aiPlatformForm({ providerCode: provider.value }), '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveAiPlatformCreate()">保存</button>');
+      bindAiPlatformDefault("create");
+      return;
+    }
+    var d = aiPlatformDefaults[provider.value] || {};
+    $("aiProviderName").value = d.displayName || labelOf(provider.value);
+    $("aiModelBaseUrl").value = d.baseUrl || "";
+    if ($("aiConsoleBaseUrl")) $("aiConsoleBaseUrl").value = d.consoleBaseUrl || "";
+    if ($("aiPublicId")) $("aiPublicId").value = d.publicId || "";
+    $("aiPublicName").value = d.publicName || "";
+    $("aiPublicFamily").value = d.publicFamily || "";
+    $("aiDefaultModel").value = d.defaultModel || "";
+    $("aiDocsUrl").value = d.docs || "";
+  });
+}
+
+function aiPlatformConfigJson() {
+  var provider = $('aiProviderCode').value;
+  var defaults = aiPlatformDefaults[provider] || {};
+  return JSON.stringify({
+    publicId: $('aiPublicId').value,
+    publicName: $('aiPublicName').value,
+    publicFamily: $('aiPublicFamily').value,
+    defaultModel: $('aiDefaultModel').value,
+    publicSortOrder: $('aiPublicSortOrder').value ? Number($('aiPublicSortOrder').value) : 100,
+    publicHidden: $('aiPublicHidden').checked,
+    authScheme: defaults.authScheme || 'bearer',
+    billingMode: defaults.billingMode || 'provider_balance',
+    defaultKeyTypeId: $('aiDefaultKeyTypeId') ? $('aiDefaultKeyTypeId').value : '',
+    quotaTransferPath: $('aiQuotaTransferPath') ? $('aiQuotaTransferPath').value : '',
+    quotaTransferMethod: $('aiQuotaTransferMethod') ? $('aiQuotaTransferMethod').value : 'POST',
+    supportsChatCompletions: defaults.supportsChatCompletions !== false,
+    supportsStreaming: !!defaults.supportsStreaming,
+    supportsImages: !!defaults.supportsImages,
+    docs: $('aiDocsUrl').value
+  });
+}
+
+function isMoacodeProviderCode(providerCode) {
+  var code = String(providerCode || "").toLowerCase();
+  return code === "moacode" || code === "moacode-team";
+}
+
+function openAiPlatformCreate() {
+  openModal('AI平台配置', aiPlatformForm({}), '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveAiPlatformCreate()">保存</button>');
+  bindAiPlatformDefault("create");
+}
+
+function saveAiPlatformCreate() {
+  api('/admin/ai-platforms', { method: 'POST', body: aiPlatformBody() }).then(function () { closeModal(); renderAiPlatforms(); }).catch(function (err) { toast(err.message); });
+}
+
+function openAiPlatformEdit(id) {
+  api('/admin/ai-platforms/' + id).then(function (item) {
+    openModal('编辑AI平台', aiPlatformForm(item), '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveAiPlatformEdit(' + id + ')">保存</button>');
+    var code = $('aiProviderCode'); if (code) code.disabled = true;
+  }).catch(function (err) { toast(err.message); });
+}
+
+function saveAiPlatformEdit(id) {
+  api('/admin/ai-platforms/' + id, { method: 'PUT', body: aiPlatformBody() }).then(function () { closeModal(); renderAiPlatforms(); }).catch(function (err) { toast(err.message); });
+}
+
+function openMoacodePricing(id) {
+  api('/admin/ai-platforms/' + id + '/moacode/pricing').then(function (data) {
+    var rows = data.models || [];
+    openModal('MoaCode 价格表',
+      compactTable([
+        { title: '模型', key: 'modelName' },
+        { title: '供应商', render: function (r) { return formatValue(r.providerDisplay || r.providerName); } },
+        { title: '倍率', key: 'rateMultiplier' },
+        { title: '输入', key: 'inputTokenPrice' },
+        { title: '输出', key: 'outputTokenPrice' },
+        { title: '缓存写', key: 'cacheCreationTokenPrice' },
+        { title: '缓存读', key: 'cacheReadTokenPrice' },
+        { title: '请求', key: 'requestPrice' }
+      ], rows),
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
+function openMoacodeUsage(id) {
+  api('/admin/ai-platforms/' + id + '/moacode/usage').then(function (data) {
+    var balance = data.balanceSummary || {};
+    var usage = data.usageSummary || {};
+    openModal('MoaCode 消耗',
+      detailList({
+        '余额': balance.balance,
+        '总余额': balance.totalBalance,
+        '订阅余额': balance.subscriptionBalance,
+        '按量余额': balance.payAsYouGoBalance,
+        '团队': balance.teamName,
+        '团队日剩余额度': balance.teamDailyRemainingBalance,
+        '用户日剩余额度': balance.userDailyRemainingBalance,
+        '团队周消耗': balance.teamWeekSpend,
+        '团队月消耗': balance.teamMonthSpend,
+        '有效可用额度': balance.effectiveAvailableBalance,
+        '周额度': balance.weeklyLimit,
+        '周消耗': balance.weeklySpentBalance,
+        '成员数': usage.memberCount,
+        '请求数': usage.totalRequests,
+        '输入 tokens': usage.totalInputTokens,
+        '输出 tokens': usage.totalOutputTokens,
+        '缓存写 tokens': usage.totalCacheCreationTokens,
+        '缓存读 tokens': usage.totalCacheReadTokens,
+        '总成本': usage.totalCost,
+        '首次请求': usage.firstRequestAt,
+        '最近请求': usage.lastRequestAt
+      }) + sectionBlock('模型消耗', compactTable([
+        { title: '模型', key: 'model' },
+        { title: '请求数', key: 'requests' },
+        { title: '输入', key: 'inputTokens' },
+        { title: '输出', key: 'outputTokens' },
+        { title: '缓存写', key: 'cacheCreationTokens' },
+        { title: '缓存读', key: 'cacheReadTokens' },
+        { title: '成本', key: 'cost' }
+      ], usage.models || [])),
+      '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+  }).catch(function (err) { toast(err.message); });
+}
+
+function openUserAiUpsert() {
+  loadApps().then(function (apps) {
+    openModal('配置用户AI Key', '<div class="form-grid">' +
+      input('userAiUserId', '用户 ID', '') +
+      select('userAiAppId', 'APP', apps.map(function (a) { return { value: a.appId, label: a.appId + ' / ' + a.appName }; }), apps[0] && apps[0].appId || '') +
+      input('userAiProviderCode', 'AI平台', 'api2d') +
+      input('userAiQuota', '转入配额', '0', 'number') +
+      textarea('userAiKey', '用户 Key', '', { required: false }) +
+      '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveUserAiUpsert()">保存</button>');
+  });
+}
+
+function saveUserAiUpsert() {
+  api('/admin/user-ai', { method: 'POST', body: {
+    userId: $('userAiUserId').value ? Number($('userAiUserId').value) : null,
+    appId: $('userAiAppId').value,
+    providerCode: $('userAiProviderCode').value,
+    apiKey: $('userAiKey').value,
+    quotaUnits: $('userAiQuota').value ? Number($('userAiQuota').value) : 0
+  }}).then(function () { closeModal(); renderAiPlatforms(); }).catch(function (err) { toast(err.message); });
+}
+
+function openAppAiProviderSetting() {
+  loadApps().then(function (apps) {
+    var currentApp = $('aiAppFilter') ? $('aiAppFilter').value : (apps[0] && apps[0].appId) || '';
+    openModal('APP AI 平台参数', '<div class="form-grid">' +
+      select('appAiAppId', 'APP', apps.map(function (a) { return { value: a.appId, label: a.appId + ' / ' + a.appName }; }), currentApp) +
+      input('appAiProviderCode', '平台编码', 'api2d') +
+      checkbox('appAiEnabled', '启用该平台', true) +
+      checkbox('appAiAutoProvision', '自动创建用户Key', true) +
+      input('appAiGroupId', 'Key分组ID', '', { required: false }) +
+      input('appAiDefaultQuota', '默认配额', '0', 'number') +
+      input('appAiDailyLimit', '每日上限', '0', 'number') +
+      '</div>', '<button class="secondary" type="button" onclick="closeModal()">取消</button><button type="button" onclick="saveAppAiProviderSetting()">保存</button>');
+  });
+}
+
+function saveAppAiProviderSetting() {
+  api('/admin/app-ai-providers', { method: 'POST', body: {
+    appId: $('appAiAppId').value,
+    providerCode: $('appAiProviderCode').value,
+    enabled: $('appAiEnabled').checked,
+    autoProvisionUserKey: $('appAiAutoProvision').checked,
+    defaultQuotaUnits: $('appAiDefaultQuota').value ? Number($('appAiDefaultQuota').value) : 0,
+    dailyLimitUnits: $('appAiDailyLimit').value ? Number($('appAiDailyLimit').value) : 0,
+    keyGroupId: $('appAiGroupId').value
+  }}).then(function () { closeModal(); renderAiPlatforms(); }).catch(function (err) { toast(err.message); });
+}
+
 function renderTools() {
   var launchCurl = "curl -X POST http://localhost:8888/api/device/launch -H 'Content-Type: application/json' -d '{\"appId\":\"<appId>\",\"deviceCode\":\"<deviceCode>\",\"platform\":\"ios\",\"version\":\"1.0.0\"}'";
   var payCurl = "curl -X POST http://localhost:8888/api/payment/create-order -H 'Content-Type: application/json' -d '{\"appId\":\"<appId>\",\"deviceId\":1,\"packageId\":1,\"payChannel\":\"ALIPAY\"}'";
   $("tools").innerHTML =
-    panel("演示数据", '<p class="muted">创建演示设备码 APP、套餐、设备、订单，并标记支付成功。</p><button type="button" onclick="createDemo()">创建演示数据</button>') +
+    panel("演示数据", '<button type="button" onclick="createDemo()">创建演示数据</button>') +
     '<div style="height:12px"></div>' +
-    panel("设备码支付接入向导", '<p class="muted">外部项目接入时，按顺序调用：注册设备 → 上报启动 → 查询会员 → 创建支付宝订单。</p>' +
-      '<div class="actions"><button type="button" onclick="copyEncodedText(\'' + encodeURIComponent(launchCurl) + '\')">复制启动上报 curl</button>' +
+    panel("设备码支付接入", '<div class="actions"><button type="button" onclick="copyEncodedText(\'' + encodeURIComponent(launchCurl) + '\')">复制启动上报 curl</button>' +
       '<button type="button" onclick="copyEncodedText(\'' + encodeURIComponent(payCurl) + '\')">复制支付宝下单 curl</button>' +
       '<button class="secondary" type="button" onclick="downloadOpenApi()">下载 OpenAPI</button></div>') +
     '<div style="height:12px"></div>' +

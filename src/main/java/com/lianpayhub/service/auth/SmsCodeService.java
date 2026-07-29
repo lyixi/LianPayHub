@@ -5,8 +5,12 @@ import com.lianpayhub.common.error.ErrorCode;
 import com.lianpayhub.config.SecurityProperties;
 import com.lianpayhub.domain.app.AppInfo;
 import com.lianpayhub.domain.app.AppType;
+import com.lianpayhub.domain.platform.AppPlatformPolicy;
+import com.lianpayhub.domain.platform.PlatformConfigCategory;
 import com.lianpayhub.service.app.AppService;
+import com.lianpayhub.service.platform.AppPlatformPolicyService;
 import com.lianpayhub.service.rate.RateLimitService;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,24 +28,34 @@ public class SmsCodeService {
     private final RateLimitService rateLimitService;
     private final SecurityProperties securityProperties;
     private final SmsSender smsSender;
+    private final AppPlatformPolicyService appPlatformPolicyService;
 
     public SmsCodeService(AppService appService, RateLimitService rateLimitService,
-                          SecurityProperties securityProperties, SmsSender smsSender) {
+                          SecurityProperties securityProperties, SmsSender smsSender,
+                          AppPlatformPolicyService appPlatformPolicyService) {
         this.appService = appService;
         this.rateLimitService = rateLimitService;
         this.securityProperties = securityProperties;
         this.smsSender = smsSender;
+        this.appPlatformPolicyService = appPlatformPolicyService;
     }
 
     public SendSmsCodeResult sendCode(String appId, String mobile, String ipAddress) {
         AppInfo appInfo = appService.requireEnabledApp(appId);
         requireMobileLoginSupported(appInfo);
+        AppPlatformPolicy smsPolicy = requireEnabledPolicy(appId, PlatformConfigCategory.SMS, "APP 短信策略已停用");
+        AppPlatformPolicy captchaPolicy = requireEnabledPolicy(appId, PlatformConfigCategory.CAPTCHA, "APP 验证码策略已停用");
+        JsonNode smsPolicyJson = appPlatformPolicyService.policyJson(smsPolicy);
+        JsonNode captchaPolicyJson = appPlatformPolicyService.policyJson(captchaPolicy);
         cleanupExpiredCodes();
 
         Instant now = Instant.now();
         String key = key(appId, mobile);
         SmsCodeEntry current = codes.get(key);
-        int cooldownSeconds = positiveOrDefault(securityProperties.getSmsCodeCooldownSeconds(), 60);
+        int cooldownSeconds = positiveOrDefault(
+                appPlatformPolicyService.intValue(smsPolicyJson, "cooldownSeconds",
+                        securityProperties.getSmsCodeCooldownSeconds() == null ? 60 : securityProperties.getSmsCodeCooldownSeconds()),
+                60);
         if (current != null && current.lastSentAt.plusSeconds(cooldownSeconds).isAfter(now)) {
             throw new BusinessException(ErrorCode.RATE_LIMITED,
                     "验证码发送过于频繁，请稍后再试");
@@ -52,7 +66,11 @@ public class SmsCodeService {
             rateLimitService.requireWithinLimit("sms:ip:" + ipAddress.trim(), 30, Duration.ofMinutes(10));
         }
 
-        int expireMinutes = positiveOrDefault(securityProperties.getSmsCodeExpireMinutes(), 5);
+        int expireMinutes = positiveOrDefault(
+                appPlatformPolicyService.intValue(captchaPolicyJson, "expireMinutes",
+                        appPlatformPolicyService.intValue(smsPolicyJson, "expireMinutes",
+                                securityProperties.getSmsCodeExpireMinutes() == null ? 5 : securityProperties.getSmsCodeExpireMinutes())),
+                5);
         String code = generateCode();
         codes.put(key, new SmsCodeEntry(code, now.plus(Duration.ofMinutes(expireMinutes)), now));
         smsSender.send(appId, mobile, code, expireMinutes);
@@ -73,7 +91,12 @@ public class SmsCodeService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "验证码不存在或已过期");
         }
 
-        int maxAttempts = positiveOrDefault(securityProperties.getSmsCodeMaxAttempts(), 5);
+        AppPlatformPolicy captchaPolicy = appPlatformPolicyService.find(appId, PlatformConfigCategory.CAPTCHA).orElse(null);
+        JsonNode captchaPolicyJson = appPlatformPolicyService.policyJson(captchaPolicy);
+        int maxAttempts = positiveOrDefault(
+                appPlatformPolicyService.intValue(captchaPolicyJson, "maxAttempts",
+                        securityProperties.getSmsCodeMaxAttempts() == null ? 5 : securityProperties.getSmsCodeMaxAttempts()),
+                5);
         if (entry.attempts >= maxAttempts) {
             codes.remove(key);
             throw new BusinessException(ErrorCode.RATE_LIMITED, "验证码错误次数过多，请重新获取");
@@ -118,6 +141,14 @@ public class SmsCodeService {
 
     private int positiveOrDefault(Integer value, int defaultValue) {
         return value == null || value <= 0 ? defaultValue : value;
+    }
+
+    private AppPlatformPolicy requireEnabledPolicy(String appId, PlatformConfigCategory category, String disabledMessage) {
+        AppPlatformPolicy policy = appPlatformPolicyService.find(appId, category).orElse(null);
+        if (policy != null && !policy.isEnabled()) {
+            throw new BusinessException(ErrorCode.CONFLICT, disabledMessage);
+        }
+        return policy;
     }
 
     private boolean isBlank(String value) {

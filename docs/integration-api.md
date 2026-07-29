@@ -514,14 +514,14 @@ Content-Type: application/json
 | 项目 | 内容 |
 |---|---|
 | 方法 | `POST` |
-| 路径 | `/api/payment/notify/{payChannel}` |
+| 路径 | `${domain}/api/payment/notify/{payChannel}` |
 | 用途 | 接收第三方支付回调 |
 | 鉴权 | 不走 APP Secret/签名鉴权，应由支付渠道验签保障 |
 
 请求示例：
 
 ```http
-POST /api/payment/notify/ALIPAY
+POST ${domain}/api/payment/notify/ALIPAY
 Content-Type: application/json
 
 {

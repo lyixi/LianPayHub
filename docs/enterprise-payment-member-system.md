@@ -9,6 +9,7 @@
 - APP 统一接口：登录认证、设备码 VIP 判定、会员查询、支付发起；
 - 适配层支持：对于不使用统一登录/支付服务的 APP，也能接入运行数据与状态监控；
 - 支付渠道：支持支付宝、微信、聚合支付，通过统一支付适配层扩展；
+- 后台配置分层：平台层统一管理 AI、支付、短信、邮件、验证码、搜索，APP 层允许各 APP 覆盖会员权益、默认通道和风控策略；
 - 技术栈：Java 8 + Spring Boot 2.7，MySQL 5.7，Redis 可选，前端可选 Vue/React。
 
 ---
@@ -57,6 +58,17 @@
    - 日志审计
    - 异常与监控
    - 配置中心
+
+### 2.3 后台配置分层
+
+后台配置建议拆成两层，避免把“平台能力”和“APP 业务策略”混在同一张表里：
+
+- 平台层：统一维护 AI、支付、短信、邮件、验证码、搜索 provider 的基础配置、密钥、默认值和测试能力；
+- APP 层：按 `app_id` 覆盖会员套餐、默认权益、支付通道可用范围、AI 额度、验证码策略和搜索扣点；
+- 继承规则：先读 APP 层覆盖，再读平台默认 provider，最后走系统内置 fallback；
+- 审计规则：敏感配置只回显掩码，平台层和 APP 层的变更都写后台操作日志。
+
+设计细节见 `docs/backend-platform-app-design.md`。
 
 ---
 
@@ -219,6 +231,8 @@
 3. 配置停用：返回业务冲突，禁止继续创建订单；
 4. 敏感凭据仅保存在服务端，后续接入支付宝、微信或聚合支付 SDK 时由 Provider 内部读取使用。
 
+支付配置中的回调地址默认使用 `${domain}/api/payment/notify/{PAY_CHANNEL}`，同步跳转地址默认使用 `${domain}/pay.html`。创建订单时服务端会按当前请求的协议、域名和端口替换 `${domain}`，支持反向代理场景下的 `X-Forwarded-Proto` / `X-Forwarded-Host`。
+
 ### 4.6.3 `notification_channel_config`
 
 - id
@@ -304,7 +318,7 @@
 
 统一回调入口：
 
-- `POST /api/payment/notify/{payChannel}`
+- `POST ${domain}/api/payment/notify/{payChannel}`
 - `payChannel`: `ALIPAY`（支付宝，默认）、`WECHAT`（微信支付）、`AGGREGATE`（聚合支付）
 
 请求体：

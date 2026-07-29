@@ -540,6 +540,10 @@ h1 {
   line-height: 1.5;
 }
 
+#subTitle:empty {
+  display: none;
+}
+
 .top-actions {
   display: flex;
   flex-wrap: wrap;

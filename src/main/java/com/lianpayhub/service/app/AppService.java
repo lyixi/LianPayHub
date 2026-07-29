@@ -47,7 +47,12 @@ public class AppService {
                 appSecretService.hashSecret(secret),
                 command.appType(),
                 command.needMobileLogin(),
-                command.needDeviceVip()
+                command.needDeviceVip(),
+                command.enableUserAiKey(),
+                command.defaultAiQuotaUnits(),
+                command.defaultAiProviderCode(),
+                null,
+                0L
         );
         AppInfo saved = appInfoRepository.save(appInfo);
         return new CreateAppResult(saved.getId(), saved.getAppId(), secret);
@@ -58,6 +63,7 @@ public class AppService {
         AppInfo appInfo = appInfoRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "APP 不存在"));
         appInfo.update(command.appName(), command.needMobileLogin(), command.needDeviceVip());
+        appInfo.updateAiSettings(command.enableUserAiKey(), command.defaultAiQuotaUnits(), command.defaultAiProviderCode(), null, 0L);
         return appInfo;
     }
 

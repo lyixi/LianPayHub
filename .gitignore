@@ -9,6 +9,7 @@ build/
 *.war
 *.ear
 .mvn/
+.m2/
 
 # Logs and runtime files
 *.log
@@ -18,6 +19,7 @@ hs_err_pid*
 replay_pid*
 logs/
 uploads/
+data/
 
 # Local environment
 .env

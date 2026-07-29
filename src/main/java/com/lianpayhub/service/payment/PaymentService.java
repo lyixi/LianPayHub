@@ -25,8 +25,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 public class PaymentService {
@@ -81,9 +84,10 @@ public class PaymentService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "账号会员订单必须提供 userId");
         }
 
-        PaymentProvider provider = providerRegistry.require(command.payChannel());
+        PayChannel payChannel = resolvePayChannel(command.appId(), command.payChannel());
+        PaymentProvider provider = providerRegistry.require(payChannel);
         PaymentChannelConfig channelConfig = paymentChannelConfigService
-                .findByAppAndChannel(command.appId(), command.payChannel())
+                .findByAppAndChannel(command.appId(), payChannel)
                 .orElse(null);
         if (channelConfig != null && !channelConfig.isEnabled()) {
             throw new BusinessException(ErrorCode.CONFLICT, "支付渠道配置已停用");
@@ -106,16 +110,31 @@ public class PaymentService {
                 payProvider, order.getAmountCents(), null, PaymentEventOperatorType.SYSTEM,
                 null, "{\"orderNo\":\"" + order.getOrderNo() + "\",\"expireAt\":\"" + order.getExpireAt() + "\"}"
         ));
+        String runtimeDomain = currentDomain();
+        PaymentChannelConfig runtimeChannelConfig = resolveRuntimeDomain(channelConfig, runtimeDomain);
+        String runtimeReturnUrl = replaceDomain(command.returnUrl(), runtimeDomain);
         PaymentCreateResult payment = provider.createPayment(new PaymentCreateContext(
                 order.getOrderNo(),
                 order.getAmountCents(),
                 packageInfo.getPackageName(),
                 command.payMode(),
-                command.returnUrl(),
-                channelConfig
+                runtimeReturnUrl,
+                runtimeChannelConfig
         ));
         return new CreateOrderResult(order.getOrderNo(), order.getAmountCents(),
-                enrichPaymentParams(payment.paymentParams(), channelConfig, payProvider));
+                enrichPaymentParams(payment.paymentParams(), runtimeChannelConfig, payProvider));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PayChannel> listEnabledPayChannels() {
+        return paymentChannelConfigService.listEnabledChannels();
+    }
+
+    private PayChannel resolvePayChannel(String appId, PayChannel requested) {
+        if (requested != null) {
+            return requested;
+        }
+        return PayChannel.ALIPAY;
     }
 
     private Map<String, Object> enrichPaymentParams(Map<String, Object> paymentParams,
@@ -134,6 +153,61 @@ public class PaymentService {
             params.put("configJson", channelConfig.getConfigJson());
         }
         return params;
+    }
+
+    private PaymentChannelConfig resolveRuntimeDomain(PaymentChannelConfig config, String domain) {
+        if (config == null) {
+            return null;
+        }
+        if (domain == null) {
+            return config;
+        }
+        return new PaymentChannelConfig(
+                config.getAppId(),
+                config.getPayChannel(),
+                config.getProviderCode(),
+                config.getMerchantId(),
+                config.getChannelAppId(),
+                replaceDomain(config.getNotifyUrl(), domain),
+                replaceDomain(config.getConfigJson(), domain),
+                config.getCredentialJson()
+        );
+    }
+
+    private String replaceDomain(String value, String domain) {
+        if (value == null || domain == null) {
+            return value;
+        }
+        return value.replace("${domain}", domain);
+    }
+
+    private String currentDomain() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        HttpServletRequest request = attributes.getRequest();
+        String forwardedHost = firstHeader(request, "X-Forwarded-Host", "X-Original-Host");
+        String forwardedProto = firstHeader(request, "X-Forwarded-Proto");
+        if (forwardedHost != null) {
+            return (forwardedProto == null ? request.getScheme() : forwardedProto.split(",")[0].trim()) + "://" + forwardedHost.split(",")[0].trim();
+        }
+        String scheme = request.getScheme();
+        String host = request.getServerName();
+        int port = request.getServerPort();
+        boolean defaultPort = ("http".equalsIgnoreCase(scheme) && port == 80)
+                || ("https".equalsIgnoreCase(scheme) && port == 443);
+        return scheme + "://" + host + (defaultPort ? "" : ":" + port);
+    }
+
+    private String firstHeader(HttpServletRequest request, String... names) {
+        for (String name : names) {
+            String value = request.getHeader(name);
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     @Transactional

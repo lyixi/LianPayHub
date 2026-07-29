@@ -7,8 +7,11 @@ import com.lianpayhub.common.error.BusinessException;
 import com.lianpayhub.common.error.ErrorCode;
 import com.lianpayhub.domain.notification.NotificationChannelConfig;
 import com.lianpayhub.domain.notification.NotificationChannelType;
+import com.lianpayhub.domain.platform.AppPlatformPolicy;
+import com.lianpayhub.domain.platform.PlatformConfigCategory;
 import com.lianpayhub.service.notification.sms.SmsGateway;
 import com.lianpayhub.service.notification.sms.SmsSendPayload;
+import com.lianpayhub.service.platform.AppPlatformPolicyService;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
@@ -33,19 +36,23 @@ public class NotificationSendService {
     private final ObjectMapper objectMapper;
     private final List<SmsGateway> smsGateways;
     private final SmsSendLogService smsSendLogService;
+    private final AppPlatformPolicyService appPlatformPolicyService;
 
     public NotificationSendService(NotificationChannelConfigService configService, ObjectMapper objectMapper,
-                                   List<SmsGateway> smsGateways, SmsSendLogService smsSendLogService) {
+                                   List<SmsGateway> smsGateways, SmsSendLogService smsSendLogService,
+                                   AppPlatformPolicyService appPlatformPolicyService) {
         this.configService = configService;
         this.objectMapper = objectMapper;
         this.smsGateways = smsGateways;
         this.smsSendLogService = smsSendLogService;
+        this.appPlatformPolicyService = appPlatformPolicyService;
     }
 
     public NotificationSendResult sendSms(Long configId, String appId, String mobile,
                                           String templateCode, String paramsJson) {
         String safeMobile = requireText(mobile, "mobile 不能为空");
-        NotificationChannelConfig config = resolveConfig(configId, NotificationChannelType.SMS, null, true);
+        String preferredProvider = preferredProvider(appId, PlatformConfigCategory.SMS, null);
+        NotificationChannelConfig config = resolveConfig(configId, NotificationChannelType.SMS, preferredProvider, true);
         if (config == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "请先配置并启用短信通道");
         }
@@ -58,7 +65,8 @@ public class NotificationSendService {
         String safeCode = requireText(code, "code 不能为空");
         String safeMobile = requireText(mobile, "mobile 不能为空");
         String paramsJson = smsCodeParams(safeCode, 5);
-        NotificationChannelConfig config = resolveConfig(configId, NotificationChannelType.SMS, null, true);
+        String preferredProvider = preferredProvider(appId, PlatformConfigCategory.SMS, null);
+        NotificationChannelConfig config = resolveConfig(configId, NotificationChannelType.SMS, preferredProvider, true);
         if (config == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "请先配置并启用短信通道");
         }
@@ -70,13 +78,14 @@ public class NotificationSendService {
     public NotificationSendResult sendSmsCode(String appId, String mobile, String code, int expireMinutes,
                                               String preferredProvider) {
         String content = "验证码 " + code + "，" + expireMinutes + " 分钟内有效";
-        NotificationChannelConfig config = resolveConfig(null, NotificationChannelType.SMS, preferredProvider, false);
+        String safePreferredProvider = preferredProvider(appId, PlatformConfigCategory.SMS, preferredProvider);
+        NotificationChannelConfig config = resolveConfig(null, NotificationChannelType.SMS, safePreferredProvider, false);
         if (config == null && configService.hasAny(NotificationChannelType.SMS)) {
             throw new BusinessException(ErrorCode.CONFLICT, "短信通道未启用");
         }
         return sendSmsInternal(config, new SmsSendPayload(
                 appId, mobile, content, null, smsCodeParams(code, expireMinutes)),
-                config == null ? "local" : preferredProvider);
+                config == null ? "local" : safePreferredProvider);
     }
 
     public NotificationSendResult sendEmail(Long configId, String to, String subject, String content, boolean html) {
@@ -217,6 +226,14 @@ public class NotificationSendService {
             return config;
         }
         return configService.findEnabled(type, preferredProvider).orElse(null);
+    }
+
+    private String preferredProvider(String appId, PlatformConfigCategory category, String fallback) {
+        AppPlatformPolicy policy = appPlatformPolicyService.find(appId, category).orElse(null);
+        if (policy != null && !policy.isEnabled()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "APP 通知策略已停用: " + category);
+        }
+        return policy != null && policy.getProviderCode() != null ? policy.getProviderCode() : fallback;
     }
 
     private JsonNode parseJson(String json) {
