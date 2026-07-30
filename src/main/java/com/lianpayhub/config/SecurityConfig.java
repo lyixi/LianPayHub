@@ -10,6 +10,8 @@ import com.lianpayhub.security.JsonAccessDeniedHandler;
 import com.lianpayhub.security.JsonAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +21,12 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -32,6 +40,7 @@ public class SecurityConfig {
     private final ApiAppAuthenticationFilter apiAppAuthenticationFilter;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
     private final JsonAccessDeniedHandler accessDeniedHandler;
+    private final String corsAllowedOriginPatterns;
 
     public SecurityConfig(AdminIpWhitelistFilter adminIpWhitelistFilter,
                           AdminJwtAuthenticationFilter adminJwtAuthenticationFilter,
@@ -40,7 +49,8 @@ public class SecurityConfig {
                           AdminPasswordPolicyFilter adminPasswordPolicyFilter,
                           ApiAppAuthenticationFilter apiAppAuthenticationFilter,
                           JsonAuthenticationEntryPoint authenticationEntryPoint,
-                          JsonAccessDeniedHandler accessDeniedHandler) {
+                          JsonAccessDeniedHandler accessDeniedHandler,
+                          @Value("${lianpayhub.security.cors-allowed-origin-patterns:*}") String corsAllowedOriginPatterns) {
         this.adminIpWhitelistFilter = adminIpWhitelistFilter;
         this.adminJwtAuthenticationFilter = adminJwtAuthenticationFilter;
         this.appUserJwtAuthenticationFilter = appUserJwtAuthenticationFilter;
@@ -49,14 +59,18 @@ public class SecurityConfig {
         this.apiAppAuthenticationFilter = apiAppAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
+        this.corsAllowedOriginPatterns = corsAllowedOriginPatterns;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
+                .cors()
+                .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeRequests()
+                .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .antMatchers(
                         "/admin/auth/login",
                         "/actuator/health",
@@ -85,6 +99,21 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(splitCsv(corsAllowedOriginPatterns));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -94,5 +123,12 @@ public class SecurityConfig {
         return username -> {
             throw new UsernameNotFoundException(username);
         };
+    }
+
+    private List<String> splitCsv(String value) {
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isEmpty())
+                .collect(Collectors.toList());
     }
 }

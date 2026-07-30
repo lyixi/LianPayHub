@@ -38,8 +38,9 @@
 - 通知通道配置管理：维护阿里云/腾讯云/HTTP 聚合短信、SMTP/云邮件等短信与邮件通道，支持后台测试短信和主动发送邮件
 - 套餐管理基础接口
 - 设备注册与启动记录
-- 手机号验证码发送、登录校验与用户 APP 绑定
-- 后台用户-APP 绑定查询、创建、启停
+- 手机号验证码发送、登录校验、账号密码登录与用户 APP 绑定
+- 用户资料维护：用户名、昵称、头像、手机号、密码、登录记录、设备记录
+- 后台用户画像、重置密码、启停、绑定查询、创建与维护
 - 设备会员/账号会员状态查询
 - 支付订单创建与支付适配层骨架
 - 支付统一回调入口、幂等处理、回调日志
@@ -49,7 +50,7 @@
 - 适配型 APP 数据上报
 - 统一 API 返回与异常处理
 - 后台管理员登录、JWT 鉴权、默认管理员初始化、强制默认密码修改、管理员创建/启停/重置密码/修改自身密码
-- 静态管理后台页面：总览、APP、平台配置（支付/短信/邮件）、交易管理（套餐/订单/退款）、用户、绑定、设备、会员、回调、启动、适配、日志、管理员、工具
+- 静态管理后台页面：总览、APP、平台（支付/短信/邮件/AI/搜索/存储）、交易（套餐/订单/退款）、用户、绑定、设备、会员、回调、启动、适配、日志、管理员、工具
 - 后台用户、用户-APP 绑定、设备绑定/解绑、会员、订单、启动记录分页查询与基础维护
 - 后台 APP、支付配置、通知配置、套餐、用户、绑定、设备、会员、订单、退款、回调、启动、适配上报、日志、管理员 CSV 导出
 - APP 接入包 Markdown 下载、公开启用套餐列表接口
@@ -136,8 +137,10 @@ admin / admin123456
 
 - `GET /admin/apps/{id}/integration-package`
 - `GET /admin/users`
+- `GET /admin/users/{id}/profile`
 - `GET /admin/payment-configs`
 - `GET /admin/payment-configs/{id}`
+- `GET /admin/payment-configs/{id}/check`
 - `GET /admin/notification-configs`
 - `GET /admin/notification-configs/{id}`
 - `GET /admin/app-platform-policies?appId=xxx`
@@ -163,6 +166,7 @@ admin / admin123456
 - `GET /admin/reports/analytics?granularity=DAY&metric=PAID_AMOUNT&periods=30`
 - `GET /admin/admin-users`
 - `GET /admin/admin-users/{id}`
+- `GET /admin/storage`
 
 常用日志查询接口：
 
@@ -178,11 +182,14 @@ admin / admin123456
 - `PUT /admin/apps/{id}`
 - `PATCH /admin/apps/{id}/status`
 - `POST /admin/apps/{id}/reset-secret`
+- `DELETE /admin/apps/{id}`
 - `POST /admin/payment-configs`
 - `PUT /admin/payment-configs/{id}`
+- `DELETE /admin/payment-configs/{id}`
 - `PATCH /admin/payment-configs/{id}/status`
 - `POST /admin/notification-configs`
 - `PUT /admin/notification-configs/{id}`
+- `DELETE /admin/notification-configs/{id}`
 - `PATCH /admin/notification-configs/{id}/status`
 - `POST /admin/notification-configs/sms/send`
 - `POST /admin/notification-configs/email/send`
@@ -194,6 +201,8 @@ admin / admin123456
 - `POST /admin/refunds/{id}/mark-failed`
 - `POST /admin/demo/device-vip`
 - `PATCH /admin/users/{id}/status`
+- `PUT /admin/users/{id}/profile`
+- `POST /admin/users/{id}/reset-password`
 - `POST /admin/user-bindings`
 - `PATCH /admin/user-bindings/{id}/status`
 - `POST /admin/devices/{id}/bind-user`
@@ -207,13 +216,55 @@ admin / admin123456
 - `PATCH /admin/admin-users/{id}/status`
 - `POST /admin/admin-users/{id}/reset-password`
 - `POST /admin/admin-users/me/change-password`
+- `DELETE /admin/search-platforms/{id}`
+- `DELETE /admin/ai-platforms/{id}`
 
 本地调试时可以调用 `POST /admin/demo/device-vip` 一键创建演示 APP、套餐、设备、订单，并自动标记支付成功。调试接口 `/api/payment/dev/mark-paid` 默认只用于开发环境，生产配置中已关闭；管理后台订单页使用受管理员 JWT 保护的 `/admin/orders/{id}/mark-paid`。
+
+## 账号体系
+
+当前用户能力已经补齐：
+
+- 用户名、昵称、头像
+- 手机号登录和账号密码登录并存
+- 密码设置、修改、重置、默认密码强制改密
+- 头像上传、自动压缩、云同步
+- 登录失败锁定、token 版本失效
+- 用户画像页：登录记录、设备记录、订单、会员、文件、绑定、AI Key
+- 用户级配置同步：支持小体积 `ini/json/xml/yaml` 配置文件，带版本号和删除
+
+常用接口：
+
+- `POST /api/auth/password-login`
+- `GET /api/user/profile`
+- `PUT /api/user/profile`
+- `POST /api/user/password/set`
+- `POST /api/user/password/change`
+- `POST /api/user/mobile/change`
+- `POST /api/user/avatar`
+- `GET /api/user/login-logs`
+- `GET /api/configs`
+- `GET /api/configs/changes`
+- `GET /api/configs/{key}`
+- `PUT /api/configs/{key}`
+- `DELETE /api/configs/{key}`
 
 APP 侧常用接口：
 
 - `POST /api/auth/send-code`
 - `POST /api/auth/login`
+- `POST /api/auth/password-login`
+- `GET /api/user/profile`
+- `PUT /api/user/profile`
+- `POST /api/user/password/set`
+- `POST /api/user/password/change`
+- `POST /api/user/mobile/change`
+- `POST /api/user/avatar`
+- `GET /api/user/login-logs`
+- `GET /api/configs`
+- `GET /api/configs/changes`
+- `PUT /api/configs/{key}`
+- `DELETE /api/configs/{key}`
 - `POST /api/device/register`
 - `POST /api/device/launch`：启动上报；客户端每次启动生成 `sessionId`；下次启动时补传 `previousSessionId`、`previousSessionEndAt`、`previousDurationSeconds`。后台只在找到同 APP、同设备、同会话 ID 的上一条 `LAUNCH` 时回填退出时间和时长，不再单独写 `EXIT` 行，避免异常漏报导致超长误算
 - `GET /api/packages?appId=demo-app`：公开启用套餐列表

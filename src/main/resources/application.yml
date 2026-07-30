@@ -43,6 +43,7 @@ lianpayhub:
     api-auth-mode: secret
     api-signature-time-window-seconds: 300
     admin-ip-whitelist: []
+    cors-allowed-origin-patterns: "*"
   admin:
     default-username: admin
     default-password: admin123456

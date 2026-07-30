@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AppLoginLogRepository extends JpaRepository<AppLoginLog, Long> {
     Page<AppLoginLog> findByAppId(String appId, Pageable pageable);
     Page<AppLoginLog> findByUserId(Long userId, Pageable pageable);
+    Page<AppLoginLog> findByAppIdAndUserId(String appId, Long userId, Pageable pageable);
     Page<AppLoginLog> findByMobile(String mobile, Pageable pageable);
     Page<AppLoginLog> findByAppIdAndMobile(String appId, String mobile, Pageable pageable);
     long countByUserId(Long userId);

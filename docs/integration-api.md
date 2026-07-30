@@ -23,6 +23,7 @@
 | 对接支付 | 本文档的支付模块 + 支付回调说明 |
 | 对接会员查询 | 本文档的会员模块 + 鉴权说明 |
 | 对接云同步 | 本文档的云同步模块 + 用户 JWT 说明 |
+| 对接账号体系 | 本文档的账号模块 + 用户资料 / 密码 / 头像 / 配置同步说明 |
 
 ## 3. 统一约定
 
@@ -138,6 +139,7 @@ SHA-256(appSecret 明文) 的十六进制字符串
 |---|---|---|---|
 | 认证 | POST | `/api/auth/send-code` | 发送短信验证码 |
 | 认证 | POST | `/api/auth/login` | 用户登录并获取 JWT |
+| 认证 | POST | `/api/auth/password-login` | 账号密码登录并获取 JWT |
 | 设备 | POST | `/api/device/register` | 注册设备 |
 | 设备 | POST | `/api/device/launch` | 上报启动记录 |
 | 会员 | GET | `/api/member/status` | 查询会员状态 |
@@ -148,6 +150,17 @@ SHA-256(appSecret 明文) 的十六进制字符串
 | 云同步 | GET | `/api/sync/{fileId}/url` | 获取下载链接 |
 | 云同步 | DELETE | `/api/sync/{fileId}` | 删除文件 |
 | 云同步 | GET | `/api/sync/changes` | 增量同步 |
+| 账号 | GET | `/api/user/profile` | 获取当前用户资料 |
+| 账号 | PUT | `/api/user/profile` | 修改用户名 / 昵称 |
+| 账号 | POST | `/api/user/password/set` | 首次设置密码 |
+| 账号 | POST | `/api/user/password/change` | 修改密码 |
+| 账号 | POST | `/api/user/mobile/change` | 修改手机号 |
+| 账号 | POST | `/api/user/avatar` | 上传头像 |
+| 账号 | GET | `/api/user/login-logs` | 查询自己的登录记录 |
+| 配置同步 | GET | `/api/configs` | 拉取当前用户配置 |
+| 配置同步 | GET | `/api/configs/changes` | 拉取配置增量 |
+| 配置同步 | PUT | `/api/configs/{key}` | 新建或更新配置 |
+| 配置同步 | DELETE | `/api/configs/{key}` | 删除配置 |
 | 适配器 | POST | `/api/adapter/report` | 适配上报 |
 | 适配器 | GET | `/api/adapter/status` | 健康检查 |
 
@@ -268,6 +281,85 @@ Content-Type: application/json
 | `userId` | number | 用户 ID |
 | `mobile` | string | 当前手机号 |
 | `appId` | string | 当前 APP |
+
+### 5.3 账号密码登录
+
+| 项目 | 内容 |
+|---|---|
+| 方法 | `POST` |
+| 路径 | `/api/auth/password-login` |
+| 用途 | 使用用户名或手机号 + 密码登录 |
+| 鉴权 | 不需要用户 JWT；若启用 APP 鉴权则需通过 APP Secret/签名 |
+
+请求示例：
+
+```http
+POST /api/auth/password-login
+Content-Type: application/json
+
+{
+  "appId": "demo-app",
+  "account": "alice",
+  "password": "12345678"
+}
+```
+
+说明：
+
+- `account` 可以是用户名或手机号
+- 当前 APP 需要开启密码登录能力
+- 登录失败会累计失败次数，超过阈值后账号会临时锁定
+- 密码重置后旧 token 会失效，登录结果可能返回 `mustChangePassword=true`
+
+### 5.4 用户资料与账号管理
+
+以下接口都需要用户 JWT：
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| GET | `/api/user/profile` | 获取当前用户资料 |
+| PUT | `/api/user/profile` | 修改用户名和昵称 |
+| POST | `/api/user/password/set` | 首次设置密码 |
+| POST | `/api/user/password/change` | 使用旧密码修改新密码 |
+| POST | `/api/user/mobile/change` | 修改绑定手机号 |
+| POST | `/api/user/avatar` | 上传头像 |
+| GET | `/api/user/login-logs` | 查询自己的登录记录 |
+
+资料响应常见字段：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | number | 用户 ID |
+| `mobile` | string | 手机号 |
+| `username` | string/null | 用户名，全局唯一 |
+| `nickname` | string/null | 昵称 |
+| `avatarUrl` | string/null | 头像下载地址 |
+| `status` | string | `ENABLED`、`DISABLED`、`LOCKED`、`DELETED` |
+| `lastLoginAt` | string/null | 最近登录时间 |
+| `passwordSetAt` | string/null | 密码设置时间 |
+| `mustChangePassword` | boolean | 是否必须修改密码 |
+
+说明：
+
+- 用户名规则为 3-32 位字母、数字、点、横线或下划线，且全局唯一
+- 头像上传使用 `multipart/form-data`，字段名为 `file`
+- 头像上传后服务端会自动裁剪压缩为 256px JPEG 并删除旧头像
+- 修改手机号需要同时校验旧手机号验证码和新手机号验证码
+- `GET /api/user/login-logs` 只返回当前 JWT 对应 `userId + appId` 的记录，不会跨 APP 暴露
+
+### 5.5 用户配置同步
+
+以下接口都需要用户 JWT，按当前 token 中的 `userId + appId` 隔离：
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| GET | `/api/configs` | 列出当前用户当前 APP 的配置 |
+| GET | `/api/configs/changes?sinceVersion=0` | 按版本号查询增量变更 |
+| GET | `/api/configs/{key}` | 查询单个配置 |
+| PUT | `/api/configs/{key}` | 新增或更新配置 |
+| DELETE | `/api/configs/{key}` | 删除配置 |
+
+配置同步适合保存小体积配置，例如 `ini/json/xml/yaml` 文本。服务端按用户 + APP 隔离，并维护单调递增版本号，客户端可以用 `changes` 做增量同步和删除感知。
 
 ## 6. 模块二：设备接口
 

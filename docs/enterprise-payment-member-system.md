@@ -126,6 +126,8 @@
 - app_secret_version
 - app_type (`STANDARD`, `DEVICE_ONLY`, `ADAPTER`)
 - need_mobile_login (boolean)
+- allow_password_login (boolean)
+- allow_avatar_upload (boolean)
 - need_device_vip (boolean)
 - status
 - created_at
@@ -135,11 +137,26 @@
 
 - id
 - mobile (unique)
+- username (unique, nullable)
+- nickname
+- password_hash
+- avatar_storage_key
+- avatar_url
+- avatar_content_type
+- avatar_size_bytes
 - user_type (`ACCOUNT`, `GUEST`)
 - open_id
-- status
+- status (`ENABLED`, `DISABLED`, `LOCKED`, `DELETED`)
+- last_login_at
+- password_set_at
+- failed_password_attempts
+- locked_until
+- token_version
+- must_change_password
 - created_at
 - updated_at
+
+- note: 手机号仍作为默认登录标识；用户名用于账号密码登录和展示。密码重置、修改手机号、管理员强制改密等安全动作会推进 `token_version`，从而让旧用户 JWT 失效。头像上传后服务端压缩为 256px JPEG 并写入统一存储。
 
 ### 4.3 `user_app_binding`
 
@@ -431,7 +448,11 @@
 - `PUT /admin/packages/{id}`
 - `PATCH /admin/packages/{id}/status`
 - `GET /admin/users`
+- `GET /admin/users/{id}`
+- `GET /admin/users/{id}/profile`
+- `PUT /admin/users/{id}/profile`
 - `PATCH /admin/users/{id}/status`
+- `POST /admin/users/{id}/reset-password`
 - `GET /admin/user-bindings`
 - `GET /admin/user-bindings/{id}`
 - `POST /admin/user-bindings`
@@ -479,6 +500,19 @@
 
 - `POST /api/auth/send-code`
 - `POST /api/auth/login`
+- `POST /api/auth/password-login`
+- `GET /api/user/profile`
+- `PUT /api/user/profile`
+- `POST /api/user/password/set`
+- `POST /api/user/password/change`
+- `POST /api/user/mobile/change`
+- `POST /api/user/avatar`
+- `GET /api/user/login-logs`
+- `GET /api/configs`
+- `GET /api/configs/changes`
+- `GET /api/configs/{key}`
+- `PUT /api/configs/{key}`
+- `DELETE /api/configs/{key}`
 - `POST /api/device/register`
 - `POST /api/device/launch`
 - `GET /api/member/status`
