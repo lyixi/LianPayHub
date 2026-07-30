@@ -50,6 +50,8 @@ public class AppService {
                 command.needDeviceVip(),
                 command.allowPasswordLogin(),
                 command.allowAvatarUpload(),
+                command.accessTokenMinutes(),
+                command.refreshTokenMinutes(),
                 command.enableUserAiKey(),
                 command.defaultAiQuotaUnits(),
                 command.defaultAiProviderCode(),
@@ -65,7 +67,8 @@ public class AppService {
         AppInfo appInfo = appInfoRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "APP 不存在"));
         appInfo.update(command.appName(), command.needMobileLogin(), command.needDeviceVip(),
-                command.allowPasswordLogin(), command.allowAvatarUpload());
+                command.allowPasswordLogin(), command.allowAvatarUpload(),
+                command.accessTokenMinutes(), command.refreshTokenMinutes());
         appInfo.updateAiSettings(command.enableUserAiKey(), command.defaultAiQuotaUnits(), command.defaultAiProviderCode(), null, 0L);
         return appInfo;
     }

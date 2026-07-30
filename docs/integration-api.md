@@ -140,6 +140,10 @@ SHA-256(appSecret 明文) 的十六进制字符串
 | 认证 | POST | `/api/auth/send-code` | 发送短信验证码 |
 | 认证 | POST | `/api/auth/login` | 用户登录并获取 JWT |
 | 认证 | POST | `/api/auth/password-login` | 账号密码登录并获取 JWT |
+| 认证 | POST | `/api/auth/refresh` | 使用 refresh token 续期 |
+| 认证 | POST | `/api/auth/logout` | 撤销当前 refresh token |
+| 认证 | POST | `/api/auth/logout-all` | 当前账号退出所有设备 |
+| 认证 | POST | `/api/auth/logout-device` | 撤销指定设备 refresh token |
 | 设备 | POST | `/api/device/register` | 注册设备 |
 | 设备 | POST | `/api/device/launch` | 上报启动记录 |
 | 会员 | GET | `/api/member/status` | 查询会员状态 |
@@ -277,10 +281,14 @@ Content-Type: application/json
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `token` | string | 用户 JWT |
+| `token` | string | 用户 JWT，兼容字段，等同 `accessToken` |
+| `accessToken` | string | Access Token |
+| `refreshToken` | string | Refresh Token，客户端需安全保存 |
 | `userId` | number | 用户 ID |
 | `mobile` | string | 当前手机号 |
 | `appId` | string | 当前 APP |
+| `accessTokenExpiresInMinutes` | number | Access Token 有效期，来自 APP 设置 |
+| `refreshTokenExpiresInMinutes` | number | Refresh Token 有效期，来自 APP 设置 |
 
 ### 5.3 账号密码登录
 
@@ -308,8 +316,59 @@ Content-Type: application/json
 
 - `account` 可以是用户名或手机号
 - 当前 APP 需要开启密码登录能力
+- 建议登录请求传 `deviceCode`，用于设备级 refresh token 撤销和设备黑名单
 - 登录失败会累计失败次数，超过阈值后账号会临时锁定
 - 密码重置后旧 token 会失效，登录结果可能返回 `mustChangePassword=true`
+
+### 5.3.1 自动续期与退出
+
+| 方法 | 路径 | 鉴权 | 用途 |
+|---|---|---|---|
+| POST | `/api/auth/refresh` | 不需要 access token | 使用 refresh token 续期，成功后旧 refresh token 自动撤销并返回新 refresh token |
+| POST | `/api/auth/logout` | 不需要 access token | 撤销传入的 refresh token |
+| POST | `/api/auth/logout-all` | 需要用户 JWT | 当前账号退出所有设备：撤销该用户所有 refresh token，并推进 `tokenVersion` 让旧 access token 失效 |
+| POST | `/api/auth/logout-device` | 需要用户 JWT | 撤销当前 APP 下指定 `deviceCode` 的 refresh token |
+
+刷新请求示例：
+
+```http
+POST /api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "<refresh-token>"
+}
+```
+
+退出当前 refresh token：
+
+```http
+POST /api/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "<refresh-token>"
+}
+```
+
+退出指定设备：
+
+```http
+POST /api/auth/logout-device
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "deviceCode": "device-001"
+}
+```
+
+说明：
+
+- Refresh token 只以 SHA-256 哈希落库，明文只返回给客户端一次
+- Refresh token 刷新时会轮换，旧 refresh token 立即失效
+- APP 后台设置中可以分别调整 Access Token 和 Refresh Token 的分钟数
+- 如果设备进入黑名单，带该 `deviceCode` 的 access token 会被拒绝，关联 refresh token 会被撤销
 
 ### 5.4 用户资料与账号管理
 

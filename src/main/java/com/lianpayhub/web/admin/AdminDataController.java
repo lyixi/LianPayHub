@@ -204,6 +204,16 @@ public class AdminDataController {
         return ApiResponse.ok(deviceService.unbind(id));
     }
 
+    @PostMapping("/devices/{id}/blacklist")
+    public ApiResponse<DeviceInfo> blacklistDevice(@PathVariable Long id) {
+        return ApiResponse.ok(deviceService.blacklist(id));
+    }
+
+    @PostMapping("/devices/{id}/unblacklist")
+    public ApiResponse<DeviceInfo> unblacklistDevice(@PathVariable Long id) {
+        return ApiResponse.ok(deviceService.unblacklist(id));
+    }
+
     @PostMapping("/devices/{id}/bind-user")
     public ApiResponse<DeviceInfo> bindDeviceUser(@PathVariable Long id,
                                                   @javax.validation.Valid @RequestBody BindDeviceUserRequest request) {

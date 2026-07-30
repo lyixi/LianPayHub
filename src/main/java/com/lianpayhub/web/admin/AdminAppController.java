@@ -48,6 +48,8 @@ public class AdminAppController {
                 request.needDeviceVip(),
                 request.allowPasswordLogin(),
                 request.allowAvatarUpload(),
+                request.accessTokenMinutes(),
+                request.refreshTokenMinutes(),
                 request.enableUserAiKey(),
                 request.defaultAiQuotaUnits(),
                 request.defaultAiProviderCode()
@@ -84,6 +86,8 @@ public class AdminAppController {
                 request.needDeviceVip(),
                 request.allowPasswordLogin(),
                 request.allowAvatarUpload(),
+                request.accessTokenMinutes(),
+                request.refreshTokenMinutes(),
                 request.enableUserAiKey(),
                 request.defaultAiQuotaUnits(),
                 request.defaultAiProviderCode()

@@ -9,8 +9,10 @@ public class AppPasswordLoginRequest {
     private String account;
     @NotBlank
     private String password;
+    private String deviceCode;
 
     public String appId() { return appId; }
     public String account() { return account; }
     public String password() { return password; }
+    public String deviceCode() { return deviceCode; }
 }

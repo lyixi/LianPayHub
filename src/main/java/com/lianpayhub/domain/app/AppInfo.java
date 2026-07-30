@@ -41,6 +41,12 @@ public class AppInfo extends BaseEntity {
     @Column(name = "allow_avatar_upload", nullable = false)
     private boolean allowAvatarUpload = true;
 
+    @Column(name = "access_token_minutes", nullable = false)
+    private Integer accessTokenMinutes = 30;
+
+    @Column(name = "refresh_token_minutes", nullable = false)
+    private Integer refreshTokenMinutes = 43200;
+
     @Column(name = "enable_user_ai_key", nullable = false)
     private boolean enableUserAiKey;
 
@@ -73,12 +79,13 @@ public class AppInfo extends BaseEntity {
                    boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,
                    String defaultAiGroupId, Long defaultAiDailyLimit) {
         this(appId, appName, appSecretHash, appType, needMobileLogin, needDeviceVip, false, true,
-                enableUserAiKey, defaultAiQuotaUnits, defaultAiProviderCode, defaultAiGroupId, defaultAiDailyLimit);
+                30, 43200, enableUserAiKey, defaultAiQuotaUnits, defaultAiProviderCode, defaultAiGroupId, defaultAiDailyLimit);
     }
 
     public AppInfo(String appId, String appName, String appSecretHash, AppType appType,
                    boolean needMobileLogin, boolean needDeviceVip,
                    boolean allowPasswordLogin, boolean allowAvatarUpload,
+                   Integer accessTokenMinutes, Integer refreshTokenMinutes,
                    boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,
                    String defaultAiGroupId, Long defaultAiDailyLimit) {
         this.appId = appId;
@@ -89,6 +96,8 @@ public class AppInfo extends BaseEntity {
         this.needDeviceVip = needDeviceVip;
         this.allowPasswordLogin = allowPasswordLogin;
         this.allowAvatarUpload = allowAvatarUpload;
+        this.accessTokenMinutes = normalizeTokenMinutes(accessTokenMinutes, 30);
+        this.refreshTokenMinutes = normalizeTokenMinutes(refreshTokenMinutes, 43200);
         this.enableUserAiKey = enableUserAiKey;
         this.defaultAiQuotaUnits = defaultAiQuotaUnits == null ? 0L : defaultAiQuotaUnits;
         this.defaultAiProviderCode = defaultAiProviderCode;
@@ -128,6 +137,10 @@ public class AppInfo extends BaseEntity {
         return allowAvatarUpload;
     }
 
+    public Integer getAccessTokenMinutes() { return accessTokenMinutes; }
+
+    public Integer getRefreshTokenMinutes() { return refreshTokenMinutes; }
+
     public boolean isEnableUserAiKey() { return enableUserAiKey; }
     public Long getDefaultAiQuotaUnits() { return defaultAiQuotaUnits; }
     public String getDefaultAiProviderCode() { return defaultAiProviderCode; }
@@ -156,11 +169,20 @@ public class AppInfo extends BaseEntity {
 
     public void update(String appName, boolean needMobileLogin, boolean needDeviceVip,
                        boolean allowPasswordLogin, boolean allowAvatarUpload) {
+        update(appName, needMobileLogin, needDeviceVip, allowPasswordLogin, allowAvatarUpload,
+                accessTokenMinutes, refreshTokenMinutes);
+    }
+
+    public void update(String appName, boolean needMobileLogin, boolean needDeviceVip,
+                       boolean allowPasswordLogin, boolean allowAvatarUpload,
+                       Integer accessTokenMinutes, Integer refreshTokenMinutes) {
         this.appName = appName;
         this.needMobileLogin = needMobileLogin;
         this.needDeviceVip = needDeviceVip;
         this.allowPasswordLogin = allowPasswordLogin;
         this.allowAvatarUpload = allowAvatarUpload;
+        this.accessTokenMinutes = normalizeTokenMinutes(accessTokenMinutes, 30);
+        this.refreshTokenMinutes = normalizeTokenMinutes(refreshTokenMinutes, 43200);
     }
 
     public void updateAiSettings(boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode,
@@ -179,5 +201,12 @@ public class AppInfo extends BaseEntity {
     public void resetSecret(String appSecretHash) {
         this.appSecretHash = appSecretHash;
         this.appSecretVersion = this.appSecretVersion + 1;
+    }
+
+    private Integer normalizeTokenMinutes(Integer minutes, int fallback) {
+        if (minutes == null || minutes < 1) {
+            return fallback;
+        }
+        return Math.min(minutes, 525600);
     }
 }

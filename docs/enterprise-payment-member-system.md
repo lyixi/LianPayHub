@@ -128,6 +128,8 @@
 - need_mobile_login (boolean)
 - allow_password_login (boolean)
 - allow_avatar_upload (boolean)
+- access_token_minutes
+- refresh_token_minutes
 - need_device_vip (boolean)
 - status
 - created_at
@@ -157,6 +159,25 @@
 - updated_at
 
 - note: 手机号仍作为默认登录标识；用户名用于账号密码登录和展示。密码重置、修改手机号、管理员强制改密等安全动作会推进 `token_version`，从而让旧用户 JWT 失效。头像上传后服务端压缩为 256px JPEG 并写入统一存储。
+
+### 4.2.1 `user_refresh_token`
+
+- id
+- token_hash (unique)
+- user_id
+- app_id
+- device_code
+- token_version
+- expires_at
+- last_used_at
+- revoked_at
+- revoke_reason
+- ip_address
+- user_agent
+- created_at
+- updated_at
+
+- note: Access token 默认 30 分钟，refresh token 默认 30 天。Refresh token 明文只返回客户端，服务端仅保存 SHA-256 哈希。刷新时采用轮换策略，旧 refresh token 立即撤销。账号退出所有设备会撤销所有 refresh token，并推进 `user_info.token_version` 使旧 access token 失效。
 
 ### 4.3 `user_app_binding`
 
@@ -501,6 +522,10 @@
 - `POST /api/auth/send-code`
 - `POST /api/auth/login`
 - `POST /api/auth/password-login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `POST /api/auth/logout-all`
+- `POST /api/auth/logout-device`
 - `GET /api/user/profile`
 - `PUT /api/user/profile`
 - `POST /api/user/password/set`

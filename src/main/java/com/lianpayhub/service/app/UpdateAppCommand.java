@@ -6,24 +6,29 @@ public class UpdateAppCommand {
     private final boolean needDeviceVip;
     private final boolean allowPasswordLogin;
     private final boolean allowAvatarUpload;
+    private final Integer accessTokenMinutes;
+    private final Integer refreshTokenMinutes;
     private final boolean enableUserAiKey;
     private final Long defaultAiQuotaUnits;
     private final String defaultAiProviderCode;
 
     public UpdateAppCommand(String appName, boolean needMobileLogin, boolean needDeviceVip,
                             boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode) {
-        this(appName, needMobileLogin, needDeviceVip, false, true,
+        this(appName, needMobileLogin, needDeviceVip, false, true, 30, 43200,
                 enableUserAiKey, defaultAiQuotaUnits, defaultAiProviderCode);
     }
 
     public UpdateAppCommand(String appName, boolean needMobileLogin, boolean needDeviceVip,
                             boolean allowPasswordLogin, boolean allowAvatarUpload,
+                            Integer accessTokenMinutes, Integer refreshTokenMinutes,
                             boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode) {
         this.appName = appName;
         this.needMobileLogin = needMobileLogin;
         this.needDeviceVip = needDeviceVip;
         this.allowPasswordLogin = allowPasswordLogin;
         this.allowAvatarUpload = allowAvatarUpload;
+        this.accessTokenMinutes = accessTokenMinutes;
+        this.refreshTokenMinutes = refreshTokenMinutes;
         this.enableUserAiKey = enableUserAiKey;
         this.defaultAiQuotaUnits = defaultAiQuotaUnits;
         this.defaultAiProviderCode = defaultAiProviderCode;
@@ -34,6 +39,8 @@ public class UpdateAppCommand {
     public boolean needDeviceVip() { return needDeviceVip; }
     public boolean allowPasswordLogin() { return allowPasswordLogin; }
     public boolean allowAvatarUpload() { return allowAvatarUpload; }
+    public Integer accessTokenMinutes() { return accessTokenMinutes; }
+    public Integer refreshTokenMinutes() { return refreshTokenMinutes; }
     public boolean enableUserAiKey() { return enableUserAiKey; }
     public Long defaultAiQuotaUnits() { return defaultAiQuotaUnits; }
     public String defaultAiProviderCode() { return defaultAiProviderCode; }

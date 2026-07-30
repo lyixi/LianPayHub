@@ -82,7 +82,8 @@ public class SecurityConfig {
                         "/admin-ui/**"
                 ).permitAll()
                 .antMatchers("/admin/**").hasRole("ADMIN")
-                .antMatchers("/api/sync/**", "/api/user/**", "/api/configs/**").authenticated()
+                .antMatchers("/api/sync/**", "/api/user/**", "/api/configs/**",
+                        "/api/auth/logout-all", "/api/auth/logout-device").authenticated()
                 .anyRequest().permitAll()
                 .and()
                 .exceptionHandling()

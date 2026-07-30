@@ -1,6 +1,7 @@
 package com.lianpayhub.service.device;
 
 import com.lianpayhub.domain.device.DeviceCodeChangeLog;
+import com.lianpayhub.domain.device.DeviceBindStatus;
 import com.lianpayhub.domain.device.DeviceInfo;
 import com.lianpayhub.domain.launch.LaunchEventType;
 import com.lianpayhub.domain.launch.LaunchRecord;
@@ -16,6 +17,7 @@ import com.lianpayhub.repository.LaunchRecordRepository;
 import com.lianpayhub.repository.UserAppBindingRepository;
 import com.lianpayhub.repository.UserInfoRepository;
 import com.lianpayhub.service.app.AppService;
+import com.lianpayhub.service.auth.UserRefreshTokenService;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
@@ -30,29 +32,37 @@ public class DeviceService {
     private final UserInfoRepository userInfoRepository;
     private final UserAppBindingRepository userAppBindingRepository;
     private final AppService appService;
+    private final UserRefreshTokenService refreshTokenService;
 
     public DeviceService(DeviceInfoRepository deviceInfoRepository, DeviceCodeChangeLogRepository deviceCodeChangeLogRepository,
                          LaunchRecordRepository launchRecordRepository, UserInfoRepository userInfoRepository,
-                         UserAppBindingRepository userAppBindingRepository, AppService appService) {
+                         UserAppBindingRepository userAppBindingRepository, AppService appService,
+                         UserRefreshTokenService refreshTokenService) {
         this.deviceInfoRepository = deviceInfoRepository;
         this.deviceCodeChangeLogRepository = deviceCodeChangeLogRepository;
         this.launchRecordRepository = launchRecordRepository;
         this.userInfoRepository = userInfoRepository;
         this.userAppBindingRepository = userAppBindingRepository;
         this.appService = appService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
     public DeviceInfo registerOrGet(RegisterDeviceCommand command) {
         appService.requireEnabledApp(command.appId());
-        return deviceInfoRepository.findByAppIdAndDeviceCode(command.appId(), command.deviceCode())
-                .orElseGet(() -> deviceInfoRepository.save(new DeviceInfo(
+        DeviceInfo existing = deviceInfoRepository.findByAppIdAndDeviceCode(command.appId(), command.deviceCode())
+                .orElse(null);
+        if (existing != null) {
+            requireDeviceNotBlacklisted(existing);
+            return existing;
+        }
+        return deviceInfoRepository.save(new DeviceInfo(
                         command.appId(),
                         command.deviceCode(),
                         command.deviceName(),
                         command.deviceType(),
                         command.deviceFingerprint()
-                )));
+                ));
     }
 
     @Transactional
@@ -146,7 +156,25 @@ public class DeviceService {
     public DeviceInfo unbind(Long id) {
         DeviceInfo device = deviceInfoRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "设备不存在"));
+        requireDeviceNotBlacklisted(device);
         device.unbindUser();
+        return deviceInfoRepository.save(device);
+    }
+
+    @Transactional
+    public DeviceInfo blacklist(Long id) {
+        DeviceInfo device = deviceInfoRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "设备不存在"));
+        device.blacklist();
+        refreshTokenService.revokeByAppDevice(device.getAppId(), device.getDeviceCode(), "device_blacklisted");
+        return deviceInfoRepository.save(device);
+    }
+
+    @Transactional
+    public DeviceInfo unblacklist(Long id) {
+        DeviceInfo device = deviceInfoRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "设备不存在"));
+        device.unblacklist();
         return deviceInfoRepository.save(device);
     }
 
@@ -184,5 +212,11 @@ public class DeviceService {
                 adminUsername
         ));
         return saved;
+    }
+
+    private void requireDeviceNotBlacklisted(DeviceInfo device) {
+        if (device.getBindStatus() == DeviceBindStatus.BLACKLISTED) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "设备已被拉黑");
+        }
     }
 }

@@ -9,6 +9,8 @@ public class UpdateAppRequest {
     private boolean needDeviceVip;
     private boolean allowPasswordLogin;
     private boolean allowAvatarUpload = true;
+    private Integer accessTokenMinutes;
+    private Integer refreshTokenMinutes;
     private boolean enableUserAiKey;
     private Long defaultAiQuotaUnits;
     private String defaultAiProviderCode;
@@ -18,6 +20,8 @@ public class UpdateAppRequest {
     public boolean needDeviceVip() { return needDeviceVip; }
     public boolean allowPasswordLogin() { return allowPasswordLogin; }
     public boolean allowAvatarUpload() { return allowAvatarUpload; }
+    public Integer accessTokenMinutes() { return accessTokenMinutes; }
+    public Integer refreshTokenMinutes() { return refreshTokenMinutes; }
     public boolean enableUserAiKey() { return enableUserAiKey; }
     public Long defaultAiQuotaUnits() { return defaultAiQuotaUnits; }
     public String defaultAiProviderCode() { return defaultAiProviderCode; }

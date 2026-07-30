@@ -16,7 +16,6 @@ import com.lianpayhub.repository.UserAppBindingRepository;
 import com.lianpayhub.repository.UserInfoRepository;
 import com.lianpayhub.service.ai.UserAiProvisionService;
 import com.lianpayhub.service.app.AppService;
-import com.lianpayhub.service.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,28 +32,28 @@ public class AppAuthService {
     private final UserInfoRepository userInfoRepository;
     private final UserAppBindingRepository bindingRepository;
     private final AppLoginLogRepository loginLogRepository;
-    private final JwtService jwtService;
     private final SecurityProperties securityProperties;
     private final SmsCodeService smsCodeService;
     private final UserAiProvisionService userAiProvisionService;
     private final PasswordEncoder passwordEncoder;
+    private final UserRefreshTokenService refreshTokenService;
 
     public AppAuthService(AppService appService, UserInfoRepository userInfoRepository,
                           UserAppBindingRepository bindingRepository, AppLoginLogRepository loginLogRepository,
-                          JwtService jwtService,
                           SecurityProperties securityProperties,
                           SmsCodeService smsCodeService,
                           UserAiProvisionService userAiProvisionService,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder,
+                          UserRefreshTokenService refreshTokenService) {
         this.appService = appService;
         this.userInfoRepository = userInfoRepository;
         this.bindingRepository = bindingRepository;
         this.loginLogRepository = loginLogRepository;
-        this.jwtService = jwtService;
         this.securityProperties = securityProperties;
         this.smsCodeService = smsCodeService;
         this.userAiProvisionService = userAiProvisionService;
         this.passwordEncoder = passwordEncoder;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -82,12 +81,13 @@ public class AppAuthService {
             userAiProvisionService.ensureCredentialForBoundUser(userInfo.getId(), command.appId());
             userInfo.markLogin();
 
-            String token = jwtService.generateUserToken(userInfo.getId(), command.appId(), userInfo.getMobile(), userInfo.getTokenVersion());
+            UserRefreshTokenService.IssuedTokens tokens = refreshTokenService.issue(
+                    userInfo, appInfo, command.deviceCode(), command.ipAddress(), command.userAgent());
             loginLogRepository.save(new AppLoginLog(command.appId(), userInfo.getId(), userInfo.getMobile(),
                     AppLoginType.MOBILE, null, null, command.ipAddress(), command.userAgent(),
                     LogResultStatus.SUCCESS, null));
             userInfoRepository.save(userInfo);
-            return new AppLoginResult(token, userInfo.getId(), userInfo.getMobile(), command.appId(), userInfo.isMustChangePassword());
+            return loginResult(tokens, userInfo, command.appId());
         } catch (RuntimeException ex) {
             loginLogRepository.save(new AppLoginLog(command.appId(), userId, command.mobile(),
                     AppLoginType.MOBILE, null, null, command.ipAddress(), command.userAgent(),
@@ -131,18 +131,59 @@ public class AppAuthService {
             userInfo.markLogin();
             userInfo.resetPasswordFailures();
 
-            String token = jwtService.generateUserToken(userInfo.getId(), command.appId(), userInfo.getMobile(), userInfo.getTokenVersion());
+            UserRefreshTokenService.IssuedTokens tokens = refreshTokenService.issue(
+                    userInfo, appInfo, command.deviceCode(), command.ipAddress(), command.userAgent());
             loginLogRepository.save(new AppLoginLog(command.appId(), userInfo.getId(), userInfo.getMobile(),
                     AppLoginType.PASSWORD, null, null, command.ipAddress(), command.userAgent(),
                     LogResultStatus.SUCCESS, null));
             userInfoRepository.save(userInfo);
-            return new AppLoginResult(token, userInfo.getId(), userInfo.getMobile(), command.appId(), userInfo.isMustChangePassword());
+            return loginResult(tokens, userInfo, command.appId());
         } catch (RuntimeException ex) {
             loginLogRepository.save(new AppLoginLog(command.appId(), userId, mobile,
                     AppLoginType.PASSWORD, null, null, command.ipAddress(), command.userAgent(),
                     LogResultStatus.FAILED, ex.getMessage()));
             throw ex;
         }
+    }
+
+    @Transactional
+    public AppLoginResult refresh(String refreshToken) {
+        UserRefreshTokenService.IssuedTokens tokens = refreshTokenService.refresh(refreshToken);
+        UserInfo userInfo = userInfoRepository.findById(tokens.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN, "用户不存在"));
+        return loginResult(tokens, userInfo, tokens.getAppId());
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        refreshTokenService.revokeByToken(refreshToken, "logout");
+    }
+
+    @Transactional
+    public void logoutAll(Long userId) {
+        UserInfo userInfo = userInfoRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "用户不存在"));
+        userInfo.bumpTokenVersion();
+        userInfoRepository.save(userInfo);
+        refreshTokenService.revokeByUser(userId, "logout_all");
+    }
+
+    @Transactional
+    public void logoutDevice(Long userId, String appId, String deviceCode) {
+        refreshTokenService.revokeByUserAndDevice(userId, appId, deviceCode, "logout_device");
+    }
+
+    private AppLoginResult loginResult(UserRefreshTokenService.IssuedTokens tokens, UserInfo userInfo, String appId) {
+        return new AppLoginResult(
+                tokens.getAccessToken(),
+                tokens.getRefreshToken(),
+                userInfo.getId(),
+                userInfo.getMobile(),
+                appId,
+                userInfo.isMustChangePassword(),
+                tokens.getAccessTokenExpiresInMinutes(),
+                tokens.getRefreshTokenExpiresInMinutes()
+        );
     }
 
     private String normalize(String value) {

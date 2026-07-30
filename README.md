@@ -227,15 +227,21 @@ admin / admin123456
 
 - 用户名、昵称、头像
 - 手机号登录和账号密码登录并存
+- Access Token + Refresh Token 自动续期，APP 可分别配置两者有效期
+- 支持刷新 token、当前会话退出、账号退出所有设备、单设备撤销 refresh token
 - 密码设置、修改、重置、默认密码强制改密
 - 头像上传、自动压缩、云同步
-- 登录失败锁定、token 版本失效
+- 登录失败锁定、token 版本失效、设备黑名单
 - 用户画像页：登录记录、设备记录、订单、会员、文件、绑定、AI Key
 - 用户级配置同步：支持小体积 `ini/json/xml/yaml` 配置文件，带版本号和删除
 
 常用接口：
 
 - `POST /api/auth/password-login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `POST /api/auth/logout-all`
+- `POST /api/auth/logout-device`
 - `GET /api/user/profile`
 - `PUT /api/user/profile`
 - `POST /api/user/password/set`
@@ -254,6 +260,10 @@ APP 侧常用接口：
 - `POST /api/auth/send-code`
 - `POST /api/auth/login`
 - `POST /api/auth/password-login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `POST /api/auth/logout-all`
+- `POST /api/auth/logout-device`
 - `GET /api/user/profile`
 - `PUT /api/user/profile`
 - `POST /api/user/password/set`

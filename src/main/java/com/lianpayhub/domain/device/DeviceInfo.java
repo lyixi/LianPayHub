@@ -36,6 +36,10 @@ public class DeviceInfo extends BaseEntity {
     @Column(name = "bind_status", nullable = false, length = 32)
     private DeviceBindStatus bindStatus = DeviceBindStatus.UNBOUND;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "blacklisted_previous_bind_status", length = 32)
+    private DeviceBindStatus blacklistedPreviousBindStatus;
+
     @Column(name = "bind_at")
     private LocalDateTime bindAt;
 
@@ -85,6 +89,10 @@ public class DeviceInfo extends BaseEntity {
         return bindStatus;
     }
 
+    public DeviceBindStatus getBlacklistedPreviousBindStatus() {
+        return blacklistedPreviousBindStatus;
+    }
+
     public LocalDateTime getBindAt() {
         return bindAt;
     }
@@ -107,6 +115,19 @@ public class DeviceInfo extends BaseEntity {
         this.userId = null;
         this.bindStatus = DeviceBindStatus.UNBOUND;
         this.bindAt = null;
+    }
+
+    public void blacklist() {
+        if (this.bindStatus != DeviceBindStatus.BLACKLISTED) {
+            this.blacklistedPreviousBindStatus = this.bindStatus;
+        }
+        this.bindStatus = DeviceBindStatus.BLACKLISTED;
+        this.userId = null;
+    }
+
+    public void unblacklist() {
+        this.bindStatus = this.blacklistedPreviousBindStatus == null ? DeviceBindStatus.UNBOUND : this.blacklistedPreviousBindStatus;
+        this.blacklistedPreviousBindStatus = null;
     }
 
     public void markLaunch() {

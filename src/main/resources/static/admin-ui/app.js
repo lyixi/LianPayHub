@@ -1826,6 +1826,8 @@ function openAppCreate() {
     checkbox("needMobileLogin", "手机号登录", true) +
     checkbox("allowPasswordLogin", "密码登录", false) +
     checkbox("allowAvatarUpload", "头像上传", true) +
+    input("accessTokenMinutes", "Access Token 时长(分钟)", "30", { required: false, type: "number" }) +
+    input("refreshTokenMinutes", "Refresh Token 时长(分钟)", "43200", { required: false, type: "number" }) +
     checkbox("needDeviceVip", "设备会员", false) +
     checkbox("enableUserAiKey", "启用用户AI Key", false) +
     input("defaultAiQuotaUnits", "默认AI配额", "0", { required: false, type: "number" }) +
@@ -1845,6 +1847,8 @@ function createApp() {
       needMobileLogin: $("needMobileLogin").checked,
       allowPasswordLogin: $("allowPasswordLogin").checked,
       allowAvatarUpload: $("allowAvatarUpload").checked,
+      accessTokenMinutes: $("accessTokenMinutes").value ? Number($("accessTokenMinutes").value) : 30,
+      refreshTokenMinutes: $("refreshTokenMinutes").value ? Number($("refreshTokenMinutes").value) : 43200,
       needDeviceVip: $("needDeviceVip").checked,
       enableUserAiKey: $("enableUserAiKey").checked,
       defaultAiQuotaUnits: $("defaultAiQuotaUnits").value ? Number($("defaultAiQuotaUnits").value) : 0,
@@ -1869,6 +1873,8 @@ function openAppDetail(id) {
       "手机号登录": item.needMobileLogin,
       "密码登录": item.allowPasswordLogin,
       "头像上传": item.allowAvatarUpload,
+      "Access Token 时长": (item.accessTokenMinutes || 30) + " 分钟",
+      "Refresh Token 时长": (item.refreshTokenMinutes || 43200) + " 分钟",
       "设备会员": item.needDeviceVip,
       "启用用户AI Key": item.enableUserAiKey,
       "默认AI配额": item.defaultAiQuotaUnits,
@@ -1903,6 +1909,8 @@ function openAppEdit(id) {
       checkbox("editNeedMobileLogin", "手机号登录", !!item.needMobileLogin) +
       checkbox("editAllowPasswordLogin", "密码登录", !!item.allowPasswordLogin) +
       checkbox("editAllowAvatarUpload", "头像上传", item.allowAvatarUpload !== false) +
+      input("editAccessTokenMinutes", "Access Token 时长(分钟)", item.accessTokenMinutes || 30, { required: false, type: "number" }) +
+      input("editRefreshTokenMinutes", "Refresh Token 时长(分钟)", item.refreshTokenMinutes || 43200, { required: false, type: "number" }) +
       checkbox("editNeedDeviceVip", "设备会员", !!item.needDeviceVip) +
       checkbox("editEnableUserAiKey", "启用用户AI Key", !!item.enableUserAiKey) +
       input("editDefaultAiQuotaUnits", "默认AI配额", item.defaultAiQuotaUnits || 0, { required: false, type: "number" }) +
@@ -1921,6 +1929,8 @@ function saveAppEdit(id) {
       needMobileLogin: $("editNeedMobileLogin").checked,
       allowPasswordLogin: $("editAllowPasswordLogin").checked,
       allowAvatarUpload: $("editAllowAvatarUpload").checked,
+      accessTokenMinutes: $("editAccessTokenMinutes").value ? Number($("editAccessTokenMinutes").value) : 30,
+      refreshTokenMinutes: $("editRefreshTokenMinutes").value ? Number($("editRefreshTokenMinutes").value) : 43200,
       needDeviceVip: $("editNeedDeviceVip").checked,
       enableUserAiKey: $("editEnableUserAiKey").checked,
       defaultAiQuotaUnits: $("editDefaultAiQuotaUnits").value ? Number($("editDefaultAiQuotaUnits").value) : 0,
@@ -3373,6 +3383,7 @@ function renderDevices(page) {
                 '<button class="small" onclick="openDeviceCodeEdit(' + r.id + ')">改设备码</button>' +
                 '<button class="small" onclick="openDeviceBindUser(' + r.id + ')">绑定用户</button>' +
                 '<button class="small danger" onclick="unbindDevice(' + r.id + ')">解绑</button>' +
+                '<button class="small ' + (r.bindStatus === "BLACKLISTED" ? "" : "danger") + '" onclick="toggleDeviceBlacklist(' + r.id + ', \'' + r.bindStatus + '\')">' + (r.bindStatus === "BLACKLISTED" ? "解除拉黑" : "拉黑") + '</button>' +
                 '</div>';
             }
           }
@@ -3421,6 +3432,7 @@ function openDeviceDetail(id) {
       ], data.recentDeviceCodeChanges));
     openModal("设备详情", body,
       '<button class="secondary" type="button" onclick="copyEncodedText(\'' + encodeURIComponent(item.deviceCode || "") + '\')">复制设备码</button>' +
+      '<button class="' + (item.bindStatus === "BLACKLISTED" ? "secondary" : "danger") + '" type="button" onclick="toggleDeviceBlacklist(' + item.id + ', \'' + item.bindStatus + '\')">' + (item.bindStatus === "BLACKLISTED" ? "解除拉黑" : "拉黑") + '</button>' +
       '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
   }).catch(function (err) { toast(err.message); });
 }
@@ -4376,6 +4388,20 @@ function exportUsers() {
     username: f.username,
     limit: 5000
   }), "users.csv");
+}
+
+function toggleDeviceBlacklist(id, status) {
+  var blacklisted = status === "BLACKLISTED";
+  var title = blacklisted ? "确认解除设备黑名单" : "确认拉黑设备";
+  var message = blacklisted ? "解除后设备可以重新注册、启动和刷新登录。"
+    : "拉黑后该设备无法注册、启动、刷新登录，且该设备的 refresh token 会被撤销。";
+  openRiskConfirm(title, message, blacklisted ? "确认解除" : "确认拉黑", function () {
+    api("/admin/devices/" + id + "/" + (blacklisted ? "unblacklist" : "blacklist"), { method: "POST" }).then(function () {
+      toast(blacklisted ? "设备已解除拉黑" : "设备已拉黑");
+      closeModal();
+      renderDevices(currentPage("devices"));
+    }).catch(function (err) { toast(err.message); });
+  });
 }
 
 function exportBindings() {

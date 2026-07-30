@@ -7,8 +7,10 @@ import com.lianpayhub.service.auth.AppLoginResult;
 import com.lianpayhub.service.auth.AppPasswordLoginCommand;
 import com.lianpayhub.service.auth.SendSmsCodeResult;
 import com.lianpayhub.service.auth.SmsCodeService;
+import com.lianpayhub.security.AppUserPrincipal;
 import javax.validation.Valid;
 import javax.servlet.http.HttpServletRequest;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -36,6 +38,7 @@ public class AuthController {
                 request.appId(),
                 request.mobile(),
                 request.code(),
+                request.deviceCode(),
                 clientIp(httpRequest),
                 httpRequest.getHeader("User-Agent")
         )));
@@ -48,9 +51,34 @@ public class AuthController {
                 request.appId(),
                 request.account(),
                 request.password(),
+                request.deviceCode(),
                 clientIp(httpRequest),
                 httpRequest.getHeader("User-Agent")
         )));
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<AppLoginResult> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ApiResponse.ok(appAuthService.refresh(request.refreshToken()));
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        appAuthService.logout(request.refreshToken());
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/logout-all")
+    public ApiResponse<Void> logoutAll(@AuthenticationPrincipal AppUserPrincipal principal) {
+        appAuthService.logoutAll(principal.getUserId());
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/logout-device")
+    public ApiResponse<Void> logoutDevice(@AuthenticationPrincipal AppUserPrincipal principal,
+                                          @Valid @RequestBody LogoutDeviceRequest request) {
+        appAuthService.logoutDevice(principal.getUserId(), principal.getAppId(), request.deviceCode());
+        return ApiResponse.ok();
     }
 
     private String clientIp(HttpServletRequest request) {

@@ -10,6 +10,8 @@ public class CreateAppCommand {
     private final boolean needDeviceVip;
     private final boolean allowPasswordLogin;
     private final boolean allowAvatarUpload;
+    private final Integer accessTokenMinutes;
+    private final Integer refreshTokenMinutes;
     private final boolean enableUserAiKey;
     private final Long defaultAiQuotaUnits;
     private final String defaultAiProviderCode;
@@ -17,13 +19,14 @@ public class CreateAppCommand {
     public CreateAppCommand(String appId, String appName, AppType appType,
                             boolean needMobileLogin, boolean needDeviceVip,
                             boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode) {
-        this(appId, appName, appType, needMobileLogin, needDeviceVip, false, true,
+        this(appId, appName, appType, needMobileLogin, needDeviceVip, false, true, 30, 43200,
                 enableUserAiKey, defaultAiQuotaUnits, defaultAiProviderCode);
     }
 
     public CreateAppCommand(String appId, String appName, AppType appType,
                             boolean needMobileLogin, boolean needDeviceVip,
                             boolean allowPasswordLogin, boolean allowAvatarUpload,
+                            Integer accessTokenMinutes, Integer refreshTokenMinutes,
                             boolean enableUserAiKey, Long defaultAiQuotaUnits, String defaultAiProviderCode) {
         this.appId = appId;
         this.appName = appName;
@@ -32,6 +35,8 @@ public class CreateAppCommand {
         this.needDeviceVip = needDeviceVip;
         this.allowPasswordLogin = allowPasswordLogin;
         this.allowAvatarUpload = allowAvatarUpload;
+        this.accessTokenMinutes = accessTokenMinutes;
+        this.refreshTokenMinutes = refreshTokenMinutes;
         this.enableUserAiKey = enableUserAiKey;
         this.defaultAiQuotaUnits = defaultAiQuotaUnits;
         this.defaultAiProviderCode = defaultAiProviderCode;
@@ -44,6 +49,8 @@ public class CreateAppCommand {
     public boolean needDeviceVip() { return needDeviceVip; }
     public boolean allowPasswordLogin() { return allowPasswordLogin; }
     public boolean allowAvatarUpload() { return allowAvatarUpload; }
+    public Integer accessTokenMinutes() { return accessTokenMinutes; }
+    public Integer refreshTokenMinutes() { return refreshTokenMinutes; }
     public boolean enableUserAiKey() { return enableUserAiKey; }
     public Long defaultAiQuotaUnits() { return defaultAiQuotaUnits; }
     public String defaultAiProviderCode() { return defaultAiProviderCode; }

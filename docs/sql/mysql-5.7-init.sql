@@ -10,6 +10,15 @@ CREATE TABLE IF NOT EXISTS app_info (
   app_type VARCHAR(32) NOT NULL,
   need_mobile_login BIT NOT NULL,
   need_device_vip BIT NOT NULL,
+  allow_password_login BIT NOT NULL DEFAULT 0,
+  allow_avatar_upload BIT NOT NULL DEFAULT 1,
+  access_token_minutes INT NOT NULL DEFAULT 30,
+  refresh_token_minutes INT NOT NULL DEFAULT 43200,
+  enable_user_ai_key BIT NOT NULL DEFAULT 0,
+  default_ai_quota_units BIGINT NOT NULL DEFAULT 0,
+  default_ai_provider_code VARCHAR(64) NULL,
+  default_ai_group_id VARCHAR(128) NULL,
+  default_ai_daily_limit BIGINT NOT NULL DEFAULT 0,
   status VARCHAR(32) NOT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
@@ -352,6 +361,27 @@ CREATE TABLE IF NOT EXISTS app_login_log (
   PRIMARY KEY (id),
   KEY idx_app_login_app_time (app_id, created_at),
   KEY idx_app_login_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS user_refresh_token (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  token_hash VARCHAR(128) NOT NULL,
+  user_id BIGINT NOT NULL,
+  app_id VARCHAR(64) NOT NULL,
+  device_code VARCHAR(128) NULL,
+  token_version BIGINT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  last_used_at DATETIME NULL,
+  revoked_at DATETIME NULL,
+  revoke_reason VARCHAR(128) NULL,
+  ip_address VARCHAR(64) NULL,
+  user_agent VARCHAR(512) NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY idx_user_refresh_hash (token_hash),
+  KEY idx_user_refresh_user_app (user_id, app_id),
+  KEY idx_user_refresh_device (app_id, user_id, device_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS adapter_report (

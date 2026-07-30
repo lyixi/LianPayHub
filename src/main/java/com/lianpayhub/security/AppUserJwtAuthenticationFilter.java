@@ -2,6 +2,8 @@ package com.lianpayhub.security;
 
 import com.lianpayhub.service.security.JwtService;
 import com.lianpayhub.repository.UserInfoRepository;
+import com.lianpayhub.repository.DeviceInfoRepository;
+import com.lianpayhub.domain.device.DeviceBindStatus;
 import io.jsonwebtoken.Claims;
 import java.io.IOException;
 import java.util.Collections;
@@ -21,10 +23,13 @@ public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserInfoRepository userInfoRepository;
+    private final DeviceInfoRepository deviceInfoRepository;
 
-    public AppUserJwtAuthenticationFilter(JwtService jwtService, UserInfoRepository userInfoRepository) {
+    public AppUserJwtAuthenticationFilter(JwtService jwtService, UserInfoRepository userInfoRepository,
+                                          DeviceInfoRepository deviceInfoRepository) {
         this.jwtService = jwtService;
         this.userInfoRepository = userInfoRepository;
+        this.deviceInfoRepository = deviceInfoRepository;
     }
 
     @Override
@@ -59,12 +64,13 @@ public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
             Long userId = Long.valueOf(claims.getSubject());
             String appId = claims.get("appId", String.class);
             String mobile = claims.get("mobile", String.class);
+            String deviceCode = claims.get("deviceCode", String.class);
             Number tokenVersionNumber = claims.get("tokenVersion", Number.class);
             Long tokenVersion = tokenVersionNumber == null ? null : tokenVersionNumber.longValue();
-            if (!isTokenVersionValid(userId, tokenVersion)) {
+            if (!isTokenVersionValid(userId, tokenVersion) || !isDeviceAllowed(appId, deviceCode)) {
                 return;
             }
-            AppUserPrincipal principal = new AppUserPrincipal(userId, appId, mobile);
+            AppUserPrincipal principal = new AppUserPrincipal(userId, appId, mobile, deviceCode);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
@@ -80,5 +86,14 @@ public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
         return userInfoRepository.findById(userId)
                 .map(user -> tokenVersion == null || tokenVersion.equals(user.getTokenVersion()))
                 .orElse(false);
+    }
+
+    private boolean isDeviceAllowed(String appId, String deviceCode) {
+        if (!StringUtils.hasText(appId) || !StringUtils.hasText(deviceCode)) {
+            return true;
+        }
+        return deviceInfoRepository.findByAppIdAndDeviceCode(appId, deviceCode.trim())
+                .map(device -> device.getBindStatus() != DeviceBindStatus.BLACKLISTED)
+                .orElse(true);
     }
 }
