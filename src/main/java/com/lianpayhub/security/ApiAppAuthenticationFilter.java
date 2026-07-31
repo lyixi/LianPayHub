@@ -55,7 +55,13 @@ public class ApiAppAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !Boolean.TRUE.equals(securityProperties.getApiAuthEnabled())
                 || !request.getRequestURI().startsWith("/api/")
+                || isRefreshTokenAuthRequest(request)
                 || request.getRequestURI().startsWith("/api/payment/notify/");
+    }
+
+    private boolean isRefreshTokenAuthRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return "/api/auth/refresh".equals(uri) || "/api/auth/logout".equals(uri);
     }
 
     @Override

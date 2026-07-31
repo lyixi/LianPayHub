@@ -367,6 +367,7 @@ Content-Type: application/json
 
 - Refresh token 只以 SHA-256 哈希落库，明文只返回给客户端一次
 - Refresh token 刷新时会轮换，旧 refresh token 立即失效
+- `/api/auth/refresh` 和 `/api/auth/logout` 以 refresh token 自身作为凭证，即使开启 APP 接口鉴权，也不需要额外携带 APP Secret
 - APP 后台设置中可以分别调整 Access Token 和 Refresh Token 的分钟数
 - 如果设备进入黑名单，带该 `deviceCode` 的 access token 会被拒绝，关联 refresh token 会被撤销
 

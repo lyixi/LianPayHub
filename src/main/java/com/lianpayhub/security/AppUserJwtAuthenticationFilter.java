@@ -5,12 +5,15 @@ import com.lianpayhub.repository.UserInfoRepository;
 import com.lianpayhub.repository.DeviceInfoRepository;
 import com.lianpayhub.domain.device.DeviceBindStatus;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import java.io.IOException;
 import java.util.Collections;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +23,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(AppUserJwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final UserInfoRepository userInfoRepository;
@@ -67,7 +72,12 @@ public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
             String deviceCode = claims.get("deviceCode", String.class);
             Number tokenVersionNumber = claims.get("tokenVersion", Number.class);
             Long tokenVersion = tokenVersionNumber == null ? null : tokenVersionNumber.longValue();
-            if (!isTokenVersionValid(userId, tokenVersion) || !isDeviceAllowed(appId, deviceCode)) {
+            if (!isTokenVersionValid(userId, tokenVersion)) {
+                log.info("APP 用户 JWT 拒绝：tokenVersion 不匹配 userId={} appId={}", userId, appId);
+                return;
+            }
+            if (!isDeviceAllowed(appId, deviceCode)) {
+                log.info("APP 用户 JWT 拒绝：设备已拉黑 appId={} deviceCode={}", appId, deviceCode);
                 return;
             }
             AppUserPrincipal principal = new AppUserPrincipal(userId, appId, mobile, deviceCode);
@@ -77,7 +87,11 @@ public class AppUserJwtAuthenticationFilter extends OncePerRequestFilter {
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
+        } catch (ExpiredJwtException ex) {
+            log.info("APP 用户 JWT 拒绝：access token 已过期 subject={}", ex.getClaims() == null ? null : ex.getClaims().getSubject());
+            SecurityContextHolder.clearContext();
         } catch (RuntimeException ignored) {
+            log.info("APP 用户 JWT 拒绝：token 无效");
             SecurityContextHolder.clearContext();
         }
     }

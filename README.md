@@ -436,6 +436,8 @@ Authorization: Bearer <user-token>
 
 服务端会校验用户 token 中的 `appId`、`userId` 与请求参数一致，且用户和绑定关系处于启用状态。设备码会员 APP 仍按 `deviceId/deviceCode` 识别会员，不要求用户 JWT。
 
+`/api/auth/refresh` 和 `/api/auth/logout` 使用 refresh token 自身作为凭证，即使开启 APP 接口鉴权，也不需要额外携带 APP Secret。
+
 ## 运行方式
 
 1. 先准备 MySQL 环境；生产集群建议额外准备 Redis
