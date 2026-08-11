@@ -54,6 +54,11 @@ public class AdminAiPlatformController {
         return ApiResponse.ok(service.moacodeUsage(id));
     }
 
+    @GetMapping("/{id}/account-balance")
+    public ApiResponse<java.util.Map<String, Object>> accountBalance(@PathVariable Long id) {
+        return ApiResponse.ok(service.accountBalance(id));
+    }
+
     public static class UpsertAiPlatformRequest {
         @NotBlank public String providerCode;
         @NotBlank public String displayName;

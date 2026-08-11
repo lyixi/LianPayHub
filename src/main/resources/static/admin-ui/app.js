@@ -4920,11 +4920,11 @@ function renderAiPlatforms() {
       table([
         { title: '编码', key: 'providerCode' },
         { title: '名称', key: 'displayName' },
-        { title: '模型Base URL', key: 'baseUrl' },
-        { title: '后台Base URL', key: 'consoleBaseUrl' },
+        { title: '余额', render: function (r) { return '<span id="aiBalance' + r.id + '">-</span>'; } },
         { title: '状态', render: function (r) { return badge(r.enabled ? 'ENABLED' : 'DISABLED'); } },
         { title: '操作', render: function (r) {
-          var buttons = '<button class="small" onclick="openAiPlatformEdit(' + r.id + ')">配置</button>';
+          var buttons = '<button class="small" onclick="openAiPlatformDetail(' + r.id + ')">详情</button>';
+          buttons += '<button class="small" onclick="openAiPlatformEdit(' + r.id + ')">配置</button>';
           buttons += '<button class="small" onclick="toggleAiPlatform(' + r.id + ', ' + (r.enabled ? "true" : "false") + ')">启停</button>';
           if (isMoacodeProviderCode(r.providerCode)) {
             buttons += '<button class="small secondary" onclick="openMoacodePricing(' + r.id + ')">价格</button>';
@@ -4948,7 +4948,79 @@ function renderAiPlatforms() {
         { title: 'Key', render: function (r) { return r.apiKey ? '已配置' : '未配置'; } },
         { title: '配额', key: 'quotaUnits' }
       ], keys) + '</div>';
+    loadAiPlatformBalances(platforms);
   });
+}
+
+function loadAiPlatformBalances(platforms) {
+  (platforms || []).forEach(function (item) {
+    var cell = $("aiBalance" + item.id);
+    if (!cell) return;
+    if (!aiProviderSupportsBalance(item.providerCode)) {
+      cell.textContent = "-";
+      return;
+    }
+    cell.textContent = "查询中";
+    api('/admin/ai-platforms/' + item.id + '/account-balance').then(function (data) {
+      var target = $("aiBalance" + item.id);
+      if (target) target.innerHTML = aiBalanceHtml(data, item.providerCode);
+    }).catch(function (err) {
+      var target = $("aiBalance" + item.id);
+      if (target) target.innerHTML = '<span class="muted" title="' + escapeAttr(err.message || "查询失败") + '">查询失败</span>';
+    });
+  });
+}
+
+function aiProviderSupportsBalance(providerCode) {
+  var code = String(providerCode || "").toLowerCase();
+  return code === "deepseek" || code === "moacode" || code === "moacode-team";
+}
+
+function aiBalanceHtml(data, providerCode) {
+  data = data || {};
+  var code = String(providerCode || data.providerCode || "").toLowerCase();
+  var balance = data.balanceSummary || {};
+  var usage = data.usageSummary || {};
+  var available = firstPresent(data.availableBalance, balance.effectiveAvailableBalance, balance.totalBalance, balance.balance, balance.subscriptionBalance, balance.payAsYouGoBalance);
+  var titleParts = [];
+  if (code === "deepseek") {
+    titleParts.push("总余额 " + formatCurrency(available, "￥", 2));
+    var deepseekDetail = [];
+    (balance.balanceInfos || []).forEach(function (row) {
+      titleParts.push((row.currency || row.currency_code || "CNY") + " total=" + firstPresent(row.total_balance, row.totalBalance, "-") + " granted=" + firstPresent(row.granted_balance, row.grantedBalance, "-") + " topped=" + firstPresent(row.topped_up_balance, row.toppedUpBalance, "-"));
+      deepseekDetail.push((row.currency || row.currency_code || "CNY") + " " + formatCurrency(firstPresent(row.total_balance, row.totalBalance), "￥", 2));
+    });
+    return '<div title="' + escapeAttr(titleParts.join("\n")) + '"><strong>' + escapeHtml(formatCurrency(available, "￥", 2)) + '</strong><div class="muted">' + escapeHtml(deepseekDetail.join(" / ") || "DeepSeek") + '</div></div>';
+  }
+  if (code === "moacode-team") {
+    titleParts.push("有效可用 " + formatCurrency(available, "$", 2));
+    titleParts.push("团队 " + firstPresent(balance.teamName, "-"));
+    titleParts.push("团队日剩余 " + formatCurrency(balance.teamDailyRemainingBalance, "$", 2));
+    titleParts.push("用户日剩余 " + formatCurrency(balance.userDailyRemainingBalance, "$", 2));
+    titleParts.push("本月消耗 " + formatCurrency(firstPresent(balance.teamMonthSpend, usage.totalCost), "$", 2));
+    return '<div title="' + escapeAttr(titleParts.join("\n")) + '"><strong>' + escapeHtml(formatCurrency(available, "$", 2)) + '</strong><div class="muted">日剩 ' + escapeHtml(formatCurrency(firstPresent(balance.teamDailyRemainingBalance, balance.userDailyRemainingBalance), "$", 2)) + ' / 月耗 ' + escapeHtml(formatCurrency(firstPresent(balance.teamMonthSpend, usage.totalCost), "$", 2)) + '</div></div>';
+  }
+  titleParts.push("总余额 " + formatCurrency(available, "$", 2));
+  titleParts.push("订阅 " + formatCurrency(balance.subscriptionBalance, "$", 2));
+  titleParts.push("按量 " + formatCurrency(balance.payAsYouGoBalance, "$", 2));
+  titleParts.push("本月成本 " + formatCurrency(usage.totalCost, "$", 2));
+  titleParts.push("请求 " + firstPresent(usage.totalRequests, "-"));
+  return '<div title="' + escapeAttr(titleParts.join("\n")) + '"><strong>' + escapeHtml(formatCurrency(available, "$", 2)) + '</strong><div class="muted">订阅 ' + escapeHtml(formatCurrency(balance.subscriptionBalance, "$", 2)) + ' / 按量 ' + escapeHtml(formatCurrency(balance.payAsYouGoBalance, "$", 2)) + '</div></div>';
+}
+
+function firstPresent() {
+  for (var i = 0; i < arguments.length; i += 1) {
+    var value = arguments[i];
+    if (value !== null && value !== undefined && value !== "") return value;
+  }
+  return null;
+}
+
+function formatCurrency(value, symbol, digits) {
+  if (value === null || value === undefined || value === "") return "-";
+  var parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "-";
+  return symbol + parsed.toLocaleString("zh-CN", { maximumFractionDigits: digits, minimumFractionDigits: 0 });
 }
 
 function aiPlatformForm(item) {
@@ -4960,6 +5032,10 @@ function aiPlatformForm(item) {
   var defaults = aiPlatformDefaults[defaultCode] || aiPlatformDefaults.api2d;
   var isApi2d = defaultCode === "api2d";
   var isMoacode = isMoacodeProviderCode(defaultCode);
+  var singleKey = aiProviderUsesSingleKey(defaultCode);
+  var sharedApiKey = credential.adminApiKey || credential.modelApiKey || credential.apiKey || '';
+  var pricing = config.tokenPricing || {};
+  var defaultPricing = (pricing.models && pricing.models.default) || {};
   return '<div class="form-grid">' +
     (isCreate
       ? select('aiProviderCode', '支持的平台', Object.keys(aiPlatformDefaults).map(optionOf), defaultCode)
@@ -4973,25 +5049,41 @@ function aiPlatformForm(item) {
     input('aiDefaultModel', '默认模型', config.defaultModel || defaults.defaultModel || '') +
     input('aiModelBaseUrl', 'AI 调用 Base URL', item.baseUrl || defaults.baseUrl) +
     (isApi2d || isMoacode ? input('aiConsoleBaseUrl', isMoacode ? '余额/用量 Base URL' : '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false }) : input('aiConsoleBaseUrl', '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false })) +
-    textarea('aiAdminApiKey', isApi2d ? 'API2D 主账号管理 Token' : (isMoacode ? 'MoaCode 主账号 API Key' : 'DeepSeek 主账号 API Key'), credential.adminApiKey || '', { required: false }) +
-    textarea('aiModelApiKey', '大模型 API Key', credential.modelApiKey || '', { required: false }) +
+    (singleKey ? textarea('aiSharedApiKey', isMoacode ? 'MoaCode API Key' : '平台 API Key', sharedApiKey, { required: false }) :
+      textarea('aiAdminApiKey', 'API2D 主账号管理 Token', credential.adminApiKey || '', { required: false }) +
+      textarea('aiModelApiKey', '大模型 API Key', credential.modelApiKey || '', { required: false })) +
     (isApi2d || isMoacode ? textarea('aiUsageCookie', isMoacode ? 'MoaCode Cookie' : 'API2D ForwardKey', credential.usageCookie || credential.forwardKey || credential.cookie || '', { required: false }) : '') +
     (isApi2d ? sectionTitle('Key 分配参数') +
       input('aiDefaultKeyTypeId', '默认 Key 分组 ID', config.defaultKeyTypeId || '', { required: false }) +
       input('aiQuotaTransferPath', '额度转入路径', config.quotaTransferPath || '', { required: false }) +
       select('aiQuotaTransferMethod', '额度转入方法', [{ value: 'POST', label: 'POST' }, { value: 'PUT', label: 'PUT' }], config.quotaTransferMethod || 'POST') : '') +
+    (!isApi2d ? sectionTitle('价格配置') +
+      input('aiPointValueCny', '1P折合人民币', pricing.pointValueCny || '0.01', { required: false, type: 'number' }) +
+      input('aiBillingMultiplier', '计费倍率', pricing.billingMultiplier || '1.5', { required: false, type: 'number' }) +
+      input('aiPromptPrice', '输入价/百万token', defaultPricing.prompt || '1', { required: false, type: 'number' }) +
+      input('aiCompletionPrice', '输出价/百万token', defaultPricing.completion || '2', { required: false, type: 'number' }) +
+      input('aiCacheHitPrice', '缓存读价/百万token', defaultPricing.cacheHit || '0.1', { required: false, type: 'number' }) +
+      input('aiCacheMissPrice', '缓存写价/百万token', defaultPricing.cacheMiss || '1', { required: false, type: 'number' }) : '') +
     input('aiDocsUrl', '文档地址', config.docs || defaults.docs || '', { required: false }) +
     '</div>';
 }
 
 function aiPlatformBody() {
+  var provider = $('aiProviderCode').value;
+  var singleKey = aiProviderUsesSingleKey(provider);
+  var sharedApiKey = singleKey && $('aiSharedApiKey') ? $('aiSharedApiKey').value : '';
   return {
-    providerCode: $('aiProviderCode').value,
+    providerCode: provider,
     displayName: $('aiProviderName').value,
     baseUrl: $('aiModelBaseUrl').value,
     consoleBaseUrl: $('aiConsoleBaseUrl').value,
     configJson: aiPlatformConfigJson(),
-    credentialJson: JSON.stringify({
+    credentialJson: JSON.stringify(singleKey ? {
+      adminApiKey: sharedApiKey,
+      modelApiKey: sharedApiKey,
+      apiKey: sharedApiKey,
+      usageCookie: $('aiUsageCookie') ? $('aiUsageCookie').value : ''
+    } : {
       adminApiKey: $('aiAdminApiKey').value,
       modelApiKey: $('aiModelApiKey').value,
       usageCookie: $('aiUsageCookie') ? $('aiUsageCookie').value : ''
@@ -5023,7 +5115,7 @@ function bindAiPlatformDefault(mode) {
 function aiPlatformConfigJson() {
   var provider = $('aiProviderCode').value;
   var defaults = aiPlatformDefaults[provider] || {};
-  return JSON.stringify({
+  var config = {
     publicId: $('aiPublicId').value,
     publicName: $('aiPublicName').value,
     publicFamily: $('aiPublicFamily').value,
@@ -5039,12 +5131,48 @@ function aiPlatformConfigJson() {
     supportsStreaming: !!defaults.supportsStreaming,
     supportsImages: !!defaults.supportsImages,
     docs: $('aiDocsUrl').value
-  });
+  };
+  if (!aiProviderUsesApi2dPricing(provider)) {
+    var modelPricing = {
+      prompt: numberOrFallback($('aiPromptPrice') && $('aiPromptPrice').value, 1),
+      completion: numberOrFallback($('aiCompletionPrice') && $('aiCompletionPrice').value, 2),
+      cacheHit: numberOrFallback($('aiCacheHitPrice') && $('aiCacheHitPrice').value, 0.1),
+      cacheMiss: numberOrFallback($('aiCacheMissPrice') && $('aiCacheMissPrice').value, 1)
+    };
+    config.tokenPricing = {
+      unit: 'point',
+      costUnit: isMoacodeProviderCode(provider) ? 'USD' : 'CNY',
+      perTokens: 1000000,
+      pointValueCny: numberOrFallback($('aiPointValueCny') && $('aiPointValueCny').value, 0.01),
+      billingMultiplier: numberOrFallback($('aiBillingMultiplier') && $('aiBillingMultiplier').value, 1.5),
+      models: {
+        default: modelPricing
+      }
+    };
+    if (provider === 'deepseek') {
+      config.tokenPricing.models['deepseek-chat'] = modelPricing;
+      config.tokenPricing.models['deepseek-reasoner'] = modelPricing;
+    }
+  }
+  return JSON.stringify(config);
 }
 
 function isMoacodeProviderCode(providerCode) {
   var code = String(providerCode || "").toLowerCase();
   return code === "moacode" || code === "moacode-team";
+}
+
+function aiProviderUsesSingleKey(providerCode) {
+  return String(providerCode || "").toLowerCase() !== "api2d";
+}
+
+function aiProviderUsesApi2dPricing(providerCode) {
+  return String(providerCode || "").toLowerCase() === "api2d";
+}
+
+function numberOrFallback(value, fallback) {
+  var parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function openAiPlatformCreate() {
@@ -5054,6 +5182,83 @@ function openAiPlatformCreate() {
 
 function saveAiPlatformCreate() {
   api('/admin/ai-platforms', { method: 'POST', body: aiPlatformBody() }).then(function () { closeModal(); renderAiPlatforms(); }).catch(function (err) { toast(err.message); });
+}
+
+function openAiPlatformDetail(id) {
+  api('/admin/ai-platforms/' + id).then(function (item) {
+    var config = parseJsonObject(item.configJson || '{}');
+    var body = detailList({
+      '编码': item.providerCode,
+      '名称': item.displayName,
+      '默认模型': config.defaultModel,
+      '模型 Base URL': item.baseUrl,
+      '后台 Base URL': item.consoleBaseUrl,
+      '计费模式': config.billingMode,
+      '状态': item.enabled ? '启用' : '停用'
+    }) + sectionBlock('模型价格', '<div id="aiPlatformPricingBlock">加载中</div>');
+    var footer = '<button class="secondary" type="button" onclick="openAiPlatformEdit(' + id + ')">配置</button>';
+    if (isMoacodeProviderCode(item.providerCode)) {
+      footer += '<button class="secondary" type="button" onclick="openMoacodeUsage(' + id + ')">消耗</button>';
+    }
+    footer += '<button class="secondary" type="button" onclick="closeModal()">关闭</button>';
+    openModal('AI平台详情', body, footer);
+    loadAiPlatformPricingIntoDetail(item);
+  }).catch(function (err) { toast(err.message); });
+}
+
+function loadAiPlatformPricingIntoDetail(item) {
+  var block = $("aiPlatformPricingBlock");
+  if (!block) return;
+  if (isMoacodeProviderCode(item.providerCode)) {
+    api('/admin/ai-platforms/' + item.id + '/moacode/pricing').then(function (data) {
+      var rows = data.models || [];
+      block.innerHTML = compactTable([
+        { title: '模型', key: 'modelName' },
+        { title: '供应商', render: function (r) { return formatValue(r.providerDisplay || r.providerName); } },
+        { title: '倍率', key: 'rateMultiplier' },
+        { title: '输入', key: 'inputTokenPrice' },
+        { title: '输出', key: 'outputTokenPrice' },
+        { title: '缓存写', key: 'cacheCreationTokenPrice' },
+        { title: '缓存读', key: 'cacheReadTokenPrice' },
+        { title: '请求', key: 'requestPrice' }
+      ], rows);
+    }).catch(function (err) {
+      block.innerHTML = '<div class="empty-cell">' + escapeHtml(err.message || "价格查询失败") + '</div>';
+    });
+    return;
+  }
+  var config = parseJsonObject(item.configJson || '{}');
+  var pricing = config.tokenPricing || config.pricing || {};
+  var models = pricing.models || {};
+  var rows = Object.keys(models).map(function (model) {
+    var row = models[model] || {};
+    return {
+      model: model,
+      prompt: row.prompt,
+      completion: row.completion,
+      cacheHit: row.cacheHit,
+      cacheMiss: row.cacheMiss,
+      requestCost: row.requestCost
+    };
+  });
+  if (!rows.length && config.defaultModel) {
+    rows = [{ model: config.defaultModel, prompt: '-', completion: '-', cacheHit: '-', cacheMiss: '-', requestCost: '-' }];
+  }
+  block.innerHTML = (pricing.unit || pricing.costUnit || pricing.billingMultiplier || pricing.pointValueCny
+    ? detailList({
+      '单位': pricing.unit,
+      '成本币种': pricing.costUnit,
+      '每单位 tokens': pricing.perTokens,
+      '1P折合': pricing.pointValueCny,
+      '计费倍率': pricing.billingMultiplier
+    }) : '') + compactTable([
+      { title: '模型', key: 'model' },
+      { title: '输入', key: 'prompt' },
+      { title: '输出', key: 'completion' },
+      { title: '缓存读', key: 'cacheHit' },
+      { title: '缓存写', key: 'cacheMiss' },
+      { title: '请求', key: 'requestCost' }
+    ], rows);
 }
 
 function openAiPlatformEdit(id) {

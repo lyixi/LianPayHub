@@ -119,6 +119,63 @@ public class AiProviderAdminService {
         return result;
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> accountBalance(Long id) {
+        AiProviderConfig config = detail(id);
+        if ("deepseek".equalsIgnoreCase(config.getProviderCode())) {
+            return deepSeekAccountBalance(config);
+        }
+        if ("moacode".equalsIgnoreCase(config.getProviderCode())
+                || "moacode-team".equalsIgnoreCase(config.getProviderCode())) {
+            Map<String, Object> usage = moacodeUsage(id);
+            Map<String, Object> balanceSummary = map(usage.get("balanceSummary"));
+            Object available = "moacode-team".equalsIgnoreCase(config.getProviderCode())
+                    ? firstText(value(balanceSummary, "effectiveAvailableBalance"), value(balanceSummary, "teamDailyRemainingBalance"),
+                            value(balanceSummary, "dailyRemainingBalance"), value(balanceSummary, "userDailyRemainingBalance"))
+                    : firstText(value(balanceSummary, "totalBalance"), value(balanceSummary, "balance"),
+                            value(balanceSummary, "subscriptionBalance"), value(balanceSummary, "payAsYouGoBalance"));
+            Map<String, Object> result = new LinkedHashMap<String, Object>();
+            result.put("providerCode", config.getProviderCode());
+            result.put("keyStatus", "active");
+            result.put("currencyUnit", "moacode-team".equalsIgnoreCase(config.getProviderCode()) ? "moacode_team_balance" : "moacode_balance");
+            result.put("availableBalance", numberOrValue(available));
+            result.put("balanceSummary", balanceSummary);
+            result.put("usageSummary", usage.get("usageSummary"));
+            result.put("raw", usage.get("raw"));
+            result.put("fetchedAt", System.currentTimeMillis());
+            return result;
+        }
+        throw new BusinessException(ErrorCode.BAD_REQUEST, "该 AI 平台暂不支持余额查询");
+    }
+
+    private Map<String, Object> deepSeekAccountBalance(AiProviderConfig config) {
+        String apiKey = credential(config, "adminApiKey", "modelApiKey", "apiKey");
+        if (apiKey == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "DeepSeek API Key 未配置，无法查询余额");
+        }
+        String baseUrl = firstText(config.getBaseUrl(), "https://api.deepseek.com/v1");
+        baseUrl = baseUrl.replaceAll("/+$", "");
+        Map<String, Object> raw = getJsonWithBearer(baseUrl + "/user/balance", apiKey);
+        List<Map<String, Object>> balanceInfos = rows(data(raw), "balance_infos");
+        double total = 0;
+        for (Map<String, Object> info : balanceInfos) {
+            Double amount = number(firstText(value(info, "total_balance"), value(info, "granted_balance")));
+            if (amount != null) total += amount;
+        }
+        Map<String, Object> summary = new LinkedHashMap<String, Object>();
+        summary.put("balanceInfos", balanceInfos);
+        summary.put("totalBalance", total);
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("providerCode", config.getProviderCode());
+        result.put("keyStatus", "active");
+        result.put("currencyUnit", "CNY");
+        result.put("availableBalance", total);
+        result.put("balanceSummary", summary);
+        result.put("raw", raw);
+        result.put("fetchedAt", System.currentTimeMillis());
+        return result;
+    }
+
     private String normalizeProviderCode(String providerCode) {
         if (providerCode == null || providerCode.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "AI平台编码不能为空");
@@ -156,6 +213,20 @@ public class AiProviderAdminService {
             throw ex;
         } catch (Exception ex) {
             throw new BusinessException(ErrorCode.SERVER_ERROR, "MoaCode 查询失败: " + ex.getMessage());
+        }
+    }
+
+    private Map<String, Object> getJsonWithBearer(String url, String apiKey) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(java.util.Collections.singletonList(MediaType.APPLICATION_JSON));
+            headers.setBearerAuth(apiKey.trim());
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET,
+                    new HttpEntity<Void>(headers), String.class);
+            String body = response.getBody() == null ? "{}" : response.getBody();
+            return objectMapper.readValue(body, Map.class);
+        } catch (Exception ex) {
+            throw new BusinessException(ErrorCode.SERVER_ERROR, "AI 平台余额查询失败: " + ex.getMessage());
         }
     }
 
@@ -419,5 +490,10 @@ public class AiProviderAdminService {
             }
         }
         return null;
+    }
+
+    private Object numberOrValue(Object value) {
+        Double number = number(value);
+        return number == null ? value : number;
     }
 }
