@@ -5212,8 +5212,12 @@ function loadAiPlatformPricingIntoDetail(item) {
   if (isMoacodeProviderCode(item.providerCode)) {
     api('/admin/ai-platforms/' + item.id + '/moacode/pricing').then(function (data) {
       var rows = data.models || [];
-      block.innerHTML = compactTable([
+      block.innerHTML = detailList({
+        '计费上下文': data.billingContext,
+        '候选上下文': (data.billingContextCandidates || []).join(' / ')
+      }) + compactTable([
         { title: '模型', key: 'modelName' },
+        { title: '账单', render: function (r) { return r.billingSelected ? badge('当前') : ''; } },
         { title: '供应商', render: function (r) { return formatValue(r.providerDisplay || r.providerName); } },
         { title: '倍率', key: 'rateMultiplier' },
         { title: '输入', key: 'inputTokenPrice' },
@@ -5299,8 +5303,12 @@ function openMoacodePricing(id) {
   api('/admin/ai-platforms/' + id + '/moacode/pricing').then(function (data) {
     var rows = data.models || [];
     openModal('MoaCode 价格表',
-      compactTable([
+      detailList({
+        '计费上下文': data.billingContext,
+        '候选上下文': (data.billingContextCandidates || []).join(' / ')
+      }) + compactTable([
         { title: '模型', key: 'modelName' },
+        { title: '账单', render: function (r) { return r.billingSelected ? badge('当前') : ''; } },
         { title: '供应商', render: function (r) { return formatValue(r.providerDisplay || r.providerName); } },
         { title: '倍率', key: 'rateMultiplier' },
         { title: '输入', key: 'inputTokenPrice' },

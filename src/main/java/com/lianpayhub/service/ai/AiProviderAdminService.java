@@ -84,10 +84,27 @@ public class AiProviderAdminService {
         } catch (BusinessException ex) {
             providersRaw = new LinkedHashMap<String, Object>();
         }
+        Map<String, Object> availableProvidersRaw = new LinkedHashMap<String, Object>();
+        String cookie = credential(config, "usageCookie", "forwardKey", "cookie");
+        if (cookie != null) {
+            try {
+                availableProvidersRaw = getJson(accountBaseUrl(config) + "/api/v1/user/available-providers", cookie);
+            } catch (BusinessException ex) {
+                availableProvidersRaw = new LinkedHashMap<String, Object>();
+            }
+        }
+        Map<String, Object> pricingIndex = moacodePricingIndex(rows(modelsRaw, "models"), rows(providersRaw, "providers"),
+                availableProvidersRaw, config.getProviderCode());
         result.put("providerCode", config.getProviderCode());
-        result.put("models", modelPricingRows(modelsRaw));
+        result.put("billingContext", pricingIndex.get("billingContext"));
+        result.put("billingContextCandidates", pricingIndex.get("billingContextCandidates"));
+        result.put("models", pricingIndex.get("models"));
         result.put("providers", rows(providersRaw, "providers"));
-        result.put("raw", raw("models", modelsRaw, "providers", providersRaw));
+        Map<String, Object> raw = new LinkedHashMap<String, Object>();
+        raw.put("models", modelsRaw);
+        raw.put("providers", providersRaw);
+        raw.put("availableProviders", availableProvidersRaw);
+        result.put("raw", raw);
         return result;
     }
 
@@ -230,23 +247,138 @@ public class AiProviderAdminService {
         }
     }
 
-    private List<Map<String, Object>> modelPricingRows(Map<String, Object> raw) {
-        List<Map<String, Object>> rows = rows(raw, "models");
-        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
-        for (Map<String, Object> row : rows) {
+    private Map<String, Object> moacodePricingIndex(List<Map<String, Object>> modelRows, List<Map<String, Object>> providerRows,
+                                                    Map<String, Object> availableProvidersRaw, String providerCode) {
+        Map<String, Object> availableData = data(availableProvidersRaw);
+        Map<String, Object> priorityRoot = map(availableData.get("provider_priority_by_context"));
+        List<String> billingContextCandidates = moacodeBillingContextCandidates(providerCode);
+        Map<String, List<Map<String, Object>>> priorityEntriesByContext = new LinkedHashMap<String, List<Map<String, Object>>>();
+        String billingContext = null;
+        for (String candidate : billingContextCandidates) {
+            Map<String, Object> contextPriority = map(priorityRoot.get(candidate));
+            List<Map<String, Object>> priorityEntries = new ArrayList<Map<String, Object>>();
+            for (Map.Entry<String, Object> entry : contextPriority.entrySet()) {
+                List<Integer> providerIds = new ArrayList<Integer>();
+                if (entry.getValue() instanceof List) {
+                    for (Object item : (List<?>) entry.getValue()) {
+                        Double number = number(item);
+                        if (number != null) providerIds.add(number.intValue());
+                    }
+                }
+                if (!providerIds.isEmpty()) {
+                    Map<String, Object> priority = new LinkedHashMap<String, Object>();
+                    priority.put("type", entry.getKey());
+                    priority.put("providerIds", providerIds);
+                    priorityEntries.add(priority);
+                }
+            }
+            if (!priorityEntries.isEmpty()) {
+                billingContext = candidate;
+                priorityEntriesByContext.put(candidate, priorityEntries);
+                break;
+            }
+        }
+        Map<Integer, Map<String, Object>> providerById = new LinkedHashMap<Integer, Map<String, Object>>();
+        for (Map<String, Object> row : providerRows) {
+            Double id = number(value(row, "id"));
+            if (id == null) continue;
+            Map<String, Object> item = new LinkedHashMap<String, Object>();
+            item.put("id", id.intValue());
+            item.put("type", firstText(value(row, "type")));
+            item.put("name", firstText(value(row, "name")));
+            item.put("displayName", firstText(value(row, "display_name"), value(row, "displayName")));
+            providerById.put(id.intValue(), item);
+        }
+        Map<String, List<Map<String, Object>>> byModel = new LinkedHashMap<String, List<Map<String, Object>>>();
+        Map<String, Map<String, Object>> selectedByModel = new LinkedHashMap<String, Map<String, Object>>();
+        for (Map<String, Object> row : modelRows) {
             Map<String, Object> item = new LinkedHashMap<String, Object>();
             item.put("modelName", firstText(value(row, "model_name"), value(row, "modelName"), value(row, "name")));
             item.put("displayName", firstText(value(row, "display_name"), value(row, "displayName"), value(row, "model_name")));
             item.put("providerName", firstText(value(row, "provider_name"), value(row, "providerName")));
             item.put("providerDisplay", firstText(value(row, "provider_display"), value(row, "providerDisplay")));
+            item.put("providerId", number(value(row, "provider_id")) == null ? null : number(value(row, "provider_id")).intValue());
             item.put("rateMultiplier", value(row, "rate_multiplier"));
             item.put("inputTokenPrice", value(row, "input_token_price"));
             item.put("outputTokenPrice", value(row, "output_token_price"));
             item.put("cacheCreationTokenPrice", value(row, "cache_creation_token_price"));
             item.put("cacheReadTokenPrice", value(row, "cache_read_token_price"));
             item.put("requestPrice", value(row, "request_price"));
-            result.add(item);
+            String normalizedModel = String.valueOf(item.get("modelName")).toLowerCase();
+            List<Map<String, Object>> entries = byModel.get(normalizedModel);
+            if (entries == null) {
+                entries = new ArrayList<Map<String, Object>>();
+                byModel.put(normalizedModel, entries);
+            }
+            entries.add(item);
         }
+        for (Map.Entry<String, List<Map<String, Object>>> entry : byModel.entrySet()) {
+            Map<String, Object> selected = null;
+            List<Map<String, Object>> priorityEntries = priorityEntriesByContext.get(billingContext);
+            if (priorityEntries != null) {
+                for (Map<String, Object> priority : priorityEntries) {
+                    Object providerIdsValue = priority.get("providerIds");
+                    if (!(providerIdsValue instanceof List)) continue;
+                    for (Object providerIdValue : (List<?>) providerIdsValue) {
+                        Double providerId = number(providerIdValue);
+                        if (providerId == null) continue;
+                        Map<String, Object> candidate = null;
+                        for (Map<String, Object> pricing : entry.getValue()) {
+                            Double rowProviderId = number(pricing.get("providerId"));
+                            if (rowProviderId != null && rowProviderId.intValue() == providerId.intValue()) {
+                                candidate = pricing;
+                                break;
+                            }
+                        }
+                        if (candidate == null) continue;
+                        Map<String, Object> provider = providerById.get(providerId.intValue());
+                        String expectedType = String.valueOf(priority.get("type"));
+                        if (provider == null || expectedType.equals(provider.get("type"))) {
+                            selected = candidate;
+                            break;
+                        }
+                    }
+                    if (selected != null) break;
+                }
+            }
+            if (selected == null && !entry.getValue().isEmpty()) {
+                selected = entry.getValue().get(0);
+            }
+            if (selected != null) {
+                selectedByModel.put(entry.getKey(), selected);
+            }
+        }
+        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
+        for (Map.Entry<String, List<Map<String, Object>>> entry : byModel.entrySet()) {
+            Map<String, Object> selected = selectedByModel.get(entry.getKey());
+            for (Map<String, Object> row : entry.getValue()) {
+                Map<String, Object> item = new LinkedHashMap<String, Object>(row);
+                item.put("billingContext", billingContext);
+                item.put("billingSelected", selected != null && selected.get("providerId") != null && selected.get("providerId").equals(row.get("providerId")));
+                item.put("billingProviderId", selected == null ? null : selected.get("providerId"));
+                item.put("billingProviderDisplay", selected == null ? null : selected.get("providerDisplay"));
+                item.put("billingRateMultiplier", selected == null ? null : selected.get("rateMultiplier"));
+                result.add(item);
+            }
+        }
+        Map<String, Object> index = new LinkedHashMap<String, Object>();
+        index.put("billingContext", billingContext);
+        index.put("billingContextCandidates", billingContextCandidates);
+        index.put("models", result);
+        return index;
+    }
+
+    private List<String> moacodeBillingContextCandidates(String providerCode) {
+        if ("moacode-team".equalsIgnoreCase(providerCode)) {
+            List<String> result = new ArrayList<String>();
+            result.add("team");
+            return result;
+        }
+        List<String> result = new ArrayList<String>();
+        result.add("subscription");
+        result.add("pay_as_you_go");
+        result.add("payg");
+        result.add("pay");
         return result;
     }
 
