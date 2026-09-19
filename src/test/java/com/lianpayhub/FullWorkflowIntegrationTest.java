@@ -246,6 +246,9 @@ public class FullWorkflowIntegrationTest {
         postCode("/api/auth/login", null,
                 "{\"appId\":\"" + STANDARD_APP + "\",\"mobile\":\"" + MOBILE + "\"}", 409);
         patchOk("/admin/users/" + userId + "/status", token, "{\"status\":\"ENABLED\"}");
+        appLogin = postOk("/api/auth/login", null,
+                "{\"appId\":\"" + STANDARD_APP + "\",\"mobile\":\"" + MOBILE + "\"}");
+        appUserToken = text(appLogin, "/data/token");
 
         JsonNode bindingList = getOk("/admin/user-bindings", token,
                 "appId", STANDARD_APP, "userId", String.valueOf(userId), "size", "20");

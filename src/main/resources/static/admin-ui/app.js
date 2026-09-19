@@ -9,25 +9,25 @@ var state = {
   channelsTab: localStorage.getItem("lph_channels_tab") || "payment",
   commerceTab: localStorage.getItem("lph_commerce_tab") || "products",
   logTab: "admin-operations",
-  theme: localStorage.getItem("lph_theme") || "dark",
-  accent: localStorage.getItem("lph_accent") || "teal"
+  theme: localStorage.getItem("lph_theme") || "light",
+  accent: localStorage.getItem("lph_accent") || "blue"
 };
 
 var titles = {
-  dashboard: ["总览", ""],
-  apps: ["APP 管理", ""],
-  channels: ["平台", ""],
-  commerce: ["交易", ""],
-  users: ["用户管理", ""],
-  bindings: ["绑定管理", ""],
-  devices: ["设备管理", ""],
-  members: ["会员管理", ""],
-  callbacks: ["回调日志", ""],
-  launches: ["启动记录", ""],
-  adapter: ["适配上报", ""],
-  logs: ["日志审计", ""],
-  admins: ["管理员", ""],
-  tools: ["调试工具", ""]
+  dashboard: ["运行总览", "核心业务指标与系统运行态势"],
+  apps: ["应用管理", "管理接入中枢的产品与应用凭证"],
+  channels: ["平台能力", "支付、通知、AI、搜索与存储配置"],
+  commerce: ["交易中心", "商品、套餐、订单与退款流程"],
+  users: ["用户账户", "统一用户身份与账户状态"],
+  bindings: ["账号绑定", "应用侧身份与中枢账户关联"],
+  devices: ["设备资产", "可信设备、授权与活跃状态"],
+  members: ["会员权益", "会员有效期与产品权益管理"],
+  callbacks: ["回调记录", "接口回调投递结果与故障排查"],
+  launches: ["启动记录", "客户端版本、启动与环境数据"],
+  adapter: ["适配报告", "客户端能力适配与上报结果"],
+  logs: ["审计日志", "管理员操作与关键业务事件"],
+  admins: ["管理员", "后台账号、权限与访问安全"],
+  tools: ["诊断工具", "受控执行接口与通知链路验证"]
 };
 
 var displayLabels = {
@@ -337,6 +337,8 @@ function init() {
   $("logoutBtn").addEventListener("click", logout);
   $("refreshBtn").addEventListener("click", renderCurrent);
   $("themeToggleBtn").addEventListener("click", toggleTheme);
+  $("menuTrigger").addEventListener("click", function () { document.body.classList.toggle("nav-open"); });
+  $("sidebarScrim").addEventListener("click", closeMobileNav);
   $("accentSelect").addEventListener("change", function () { setAccent($("accentSelect").value); });
   $("accentSelect").value = state.accent;
   $("modalCloseBtn").addEventListener("click", closeModal);
@@ -1416,6 +1418,7 @@ function logout() {
 }
 
 function switchView(view) {
+  if (!titles[view]) view = "dashboard";
   state.view = view;
   localStorage.setItem("lph_view", view);
   window.scrollTo(0, 0);
@@ -1429,7 +1432,12 @@ function switchView(view) {
   Array.prototype.forEach.call(document.querySelectorAll(".view"), function (el) {
     el.classList.toggle("hidden", el.id !== view);
   });
+  closeMobileNav();
   renderCurrent();
+}
+
+function closeMobileNav() {
+  document.body.classList.remove("nav-open");
 }
 
 function renderCurrent() {
@@ -1651,6 +1659,9 @@ function renderDashboard() {
       '<button class="secondary" type="button" onclick="applyAnalyticsFilter()">生成统计</button>' +
       "</div>";
     $("dashboard").innerHTML =
+      '<section class="operations-banner"><div><span class="operations-label"><i></i> SYSTEM OPERATIONAL</span>' +
+      '<h2>业务运行稳定，关键链路可用</h2><p>身份、交易与平台服务正在本地节点协同运行。</p></div>' +
+      '<div class="operations-meta"><div><span>服务入口</span><b>/api</b></div><div><span>运行节点</span><b>0.0.0.0:8888</b></div><div><span>数据源</span><b>MYSQL / ACTIVE</b></div></div></section>' +
       '<div class="grid metrics">' +
       metric("APP", overview.appCount) +
       metric("用户", overview.userCount) +

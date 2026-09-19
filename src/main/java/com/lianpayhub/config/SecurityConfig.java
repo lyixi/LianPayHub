@@ -72,6 +72,8 @@ public class SecurityConfig {
                 .authorizeRequests()
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .antMatchers(
+                        "/admin",
+                        "/admin/",
                         "/admin/auth/login",
                         "/actuator/health",
                         "/actuator/info",

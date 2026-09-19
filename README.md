@@ -28,6 +28,11 @@
 - `docs/`：设计文档
   - `docs/backend-platform-app-design.md`：后台统一平台配置与多 APP 覆盖设计
   - `docs/admin-roadmap.md`：后台功能优化路线图与优先队列
+  - `docs/api/overview.md`：总接口文档、接口分区与模块导航
+  - `docs/architecture/`：按管理端、客户端、官网和核心业务拆分的架构文档
+  - `docs/architecture/content-and-ai.md`：官网内容运营、旧站迁移与 AI 预留设计
+  - `docs/architecture/official-website-design.md`：官网 UI、后台运营体验与发布设计
+  - `docs/deployment-runbook.md`：生产发布、无感更新、验收和回滚运行手册
 - `src/main/java/`：后端服务代码
 - `src/main/resources/`：配置文件
 
@@ -105,7 +110,7 @@ Authorization: Bearer <token>
 启动服务后访问：
 
 ```text
-http://localhost:8888/swagger-ui/index.html
+http://0.0.0.0:8888/swagger-ui/index.html
 ```
 
 后台接口调试步骤：
@@ -122,7 +127,7 @@ http://localhost:8888/swagger-ui/index.html
 启动服务后访问：
 
 ```text
-http://localhost:8888/console/
+http://0.0.0.0:8888/console/
 ```
 
 默认登录：
@@ -131,7 +136,7 @@ http://localhost:8888/console/
 admin / admin123456
 ```
 
-当前页面已包含总览、统计图、APP、平台配置、交易管理、用户、绑定、设备、会员、回调、启动、适配、日志、管理员和调试工具。平台配置内含支付、短信、邮件、AI、APP覆盖、搜索平台 tab；交易管理内含套餐、订单、退款三个 tab，避免侧边栏过长。页面直接调用现有后端 API，适合先看效果和做本地运营联调。控制台采用轻量 Material 操作台布局，带深色/浅色模式、主题色切换和加载反馈，主题偏好会保存在浏览器本地。
+当前页面已包含运行总览、统计分析、应用、平台能力、交易、用户、绑定、设备、会员、回调、启动、适配、审计、管理员和诊断工具。平台能力内含支付、短信、邮件、AI、搜索与存储，交易中心内含商品、购买页、套餐、订单和退款。控制台采用高密度企业运行台设计，提供清晰的环境状态、审计入口、深浅色模式和移动端抽屉导航。
 
 常用后台查询接口：
 
@@ -556,6 +561,9 @@ Windows 本地也可以直接运行完整回归脚本：
 
 ## 文档
 
+- 总接口文档：[`docs/api/overview.md`](docs/api/overview.md)
+- 架构文档索引：[`docs/architecture/README.md`](docs/architecture/README.md)
+- 生产发布运行手册：[`docs/deployment-runbook.md`](docs/deployment-runbook.md)
 - 对外接入文档：`docs/integration-api.md`
 - 设计文档：`docs/enterprise-payment-member-system.md`
 - 云同步设计文档：`docs/cloud-sync-file-system.md`

@@ -43,6 +43,18 @@ public class AdminOperationLogFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        if (request.getContentType() != null && request.getContentType().toLowerCase().startsWith("multipart/")) {
+            Throwable failure = null;
+            try {
+                filterChain.doFilter(request, response);
+            } catch (Throwable ex) {
+                failure = ex;
+                throw ex;
+            } finally {
+                saveLog(request, response, failure, "[multipart upload]");
+            }
+            return;
+        }
         CachedBodyHttpServletRequest wrapped = new CachedBodyHttpServletRequest(request);
         Throwable failure = null;
         try {
@@ -51,17 +63,16 @@ public class AdminOperationLogFilter extends OncePerRequestFilter {
             failure = ex;
             throw ex;
         } finally {
-            saveLog(wrapped, response, failure);
+            saveLog(wrapped, response, failure, wrapped.getCachedBodyAsString());
         }
     }
 
-    private void saveLog(CachedBodyHttpServletRequest request, HttpServletResponse response, Throwable failure) {
+    private void saveLog(HttpServletRequest request, HttpServletResponse response, Throwable failure, String body) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         AdminPrincipal principal = authentication == null ? null : asAdminPrincipal(authentication.getPrincipal());
         int status = response.getStatus();
         LogResultStatus resultStatus = failure == null && status < 400 ? LogResultStatus.SUCCESS : LogResultStatus.FAILED;
         String errorMessage = failure == null ? null : failure.getMessage();
-        String body = request.getCachedBodyAsString();
         logRepository.save(new AdminOperationLog(
                 principal == null ? null : principal.getAdminId(),
                 principal == null ? null : principal.getUsername(),

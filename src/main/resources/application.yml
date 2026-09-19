@@ -1,4 +1,5 @@
 server:
+  address: 0.0.0.0
   port: 8888
 
 spring:
@@ -58,7 +59,7 @@ lianpayhub:
   storage:
     backend: local                          # local | aliyun-oss
     local-path: ./storage
-    local-base-url: http://localhost:8888/files
+    local-base-url: /files
     max-config-file-bytes: 524288           # 512 KB
     max-image-file-bytes: 5242880           # 5 MB
     default-quota-bytes: 52428800           # 50 MB per (user, app)

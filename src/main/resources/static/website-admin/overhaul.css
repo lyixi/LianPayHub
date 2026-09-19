@@ -1,0 +1,125 @@
+:root {
+  --admin-bg: #f3f6f8;
+  --admin-surface: #fff;
+  --admin-ink: #17212b;
+  --admin-muted: #6e7b86;
+  --admin-line: #dfe6eb;
+  --admin-blue: #2563eb;
+  --admin-navy: #101923;
+  --admin-radius: 16px;
+}
+
+body { background: var(--admin-bg); color: var(--admin-ink); font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.55; }
+.content-area { padding: 0 42px 80px; }
+.topbar { height: 122px; margin-bottom: 28px; }
+.topbar h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; }
+.breadcrumb { font-size: 11px; }
+.primary-action { border-radius: 10px; padding: 12px 17px; background: var(--admin-blue); box-shadow: 0 8px 20px rgba(37,99,235,.16); transition: transform .2s, box-shadow .2s, background .2s; }
+.primary-action:hover { background: #174fc5; transform: translateY(-1px); box-shadow: 0 12px 26px rgba(37,99,235,.22); }
+.metric-grid { gap: 14px; }
+.metric-grid article, .work-panel, .data-surface, .lead-board { border: 1px solid var(--admin-line); border-radius: var(--admin-radius); box-shadow: 0 8px 28px rgba(22,39,53,.045); }
+.metric-grid article { min-height: 142px; padding: 22px; border-top-width: 3px; }
+.metric-grid article > b { font-family: "Noto Sans SC", sans-serif; font-size: 34px; font-weight: 800; }
+.work-panel { padding: 26px; }
+.focus-panel { border: 0; }
+.data-surface, .lead-board { overflow: hidden; }
+.data-head { background: #f7f9fa; border-bottom: 1px solid var(--admin-line); }
+.data-row { min-height: 94px; }
+.data-icon { border-radius: 12px; }
+.row-actions button, .filter-set button { border-radius: 8px; transition: border-color .2s, color .2s, background .2s; }
+.filter-set button.active { background: var(--admin-navy); }
+.settings-surface { padding: 0; background: transparent; }
+.settings-heading { position: sticky; top: 0; z-index: 4; margin-bottom: 16px; padding: 22px 26px; border: 1px solid var(--admin-line); border-radius: var(--admin-radius); background: rgba(255,255,255,.94); box-shadow: 0 10px 28px rgba(22,39,53,.06); backdrop-filter: blur(14px); }
+.settings-heading h2 { font-size: 26px; font-weight: 800; }
+.settings-heading p { font-size: 13px; }
+.settings-grid { display: block; padding: 0; }
+.site-editor-layout { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 16px; align-items: start; }
+.site-outline { position: sticky; top: 166px; padding: 16px 10px; border: 1px solid var(--admin-line); border-radius: var(--admin-radius); background: #fff; box-shadow: 0 8px 24px rgba(22,39,53,.035); }
+.site-outline-intro { padding: 8px 10px 16px; border-bottom: 1px solid #edf1f4; }
+.site-outline-intro span { display: block; color: var(--admin-blue); font: 600 9px/1.2 "IBM Plex Mono", monospace; letter-spacing: .08em; }
+.site-outline-intro strong { display: block; margin-top: 7px; font-size: 16px; }
+.site-outline-intro p { margin: 7px 0 0; color: var(--admin-muted); font-size: 11px; line-height: 1.65; }
+.site-outline-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; margin-top: 4px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #6c7883; text-align: left; cursor: pointer; transition: background .2s, color .2s; }
+.site-outline-item b { width: 22px; color: #a1acb5; font: 500 10px "IBM Plex Mono", monospace; }
+.site-outline-item span { font-size: 12px; font-weight: 700; }
+.site-outline-item:hover { background: #f2f6ff; color: var(--admin-blue); }
+.site-outline-item.is-active { background: #edf3ff; color: var(--admin-blue); }
+.site-outline-item.is-active b { color: var(--admin-blue); }
+.site-outline-tip { margin: 16px 8px 3px; padding-top: 14px; border-top: 1px solid #edf1f4; color: var(--admin-muted); font-size: 10px; line-height: 1.65; }
+.site-editor-content > .settings-section { display: none; }
+.site-editor-content > .settings-section.is-active { display: block; }
+.settings-section { margin: 14px 0; padding: 24px 26px 28px; border: 1px solid var(--admin-line); border-radius: var(--admin-radius); background: var(--admin-surface); box-shadow: 0 8px 24px rgba(22,39,53,.035); }
+.settings-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid #edf1f4; }
+.settings-section-head > div > span { color: var(--admin-blue); font: 600 10px/1.2 "IBM Plex Mono", monospace; letter-spacing: .08em; }
+.settings-section-head h3 { margin: 7px 0 4px; font-size: 18px; font-weight: 800; }
+.settings-section-head p { margin: 0; color: var(--admin-muted); font-size: 12px; }
+.settings-section-head select { width: min(360px, 100%); padding: 12px; border: 1px solid var(--admin-line); border-radius: 10px; background: #fbfcfd; }
+.settings-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px 24px; }
+.settings-section-grid label { color: #36434f; font-size: 12px; font-weight: 700; }
+.settings-section-grid input, .settings-section-grid textarea { min-height: 44px; margin-top: 7px; padding: 11px 12px; border: 1px solid var(--admin-line); border-radius: 10px; background: #fbfcfd; color: var(--admin-ink); outline: 0; transition: border .2s, box-shadow .2s, background .2s; }
+.settings-section-grid textarea { min-height: 104px; line-height: 1.7; resize: vertical; }
+.settings-section-grid input:focus, .settings-section-grid textarea:focus, .settings-section-head select:focus { border-color: var(--admin-blue); background: #fff; box-shadow: 0 0 0 4px rgba(37,99,235,.1); }
+.settings-section-grid label.wide { grid-column: 1 / -1; }
+dialog { border-radius: 18px; overflow: hidden; }
+#editorForm > header { padding: 24px 28px; background: #fbfcfd; }
+.editor-fields { background: #fff; }
+.editor-fields input, .editor-fields textarea { border-radius: 10px; }
+.editor-fields { display: block; padding: 20px 28px; max-height: 66vh; }
+.editor-section { padding: 20px 0 24px; border-bottom: 1px solid #edf1f4; }
+.editor-section:first-child { padding-top: 0; }
+.editor-section:last-child { border-bottom: 0; }
+.editor-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.editor-section-title h3 { margin: 0; font-size: 16px; }
+.editor-section-title span { color: var(--admin-muted); font-size: 11px; }
+.editor-section-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px 20px; }
+.editor-section-grid label { color: #36434f; font-size: 12px; font-weight: 700; }
+.editor-section-grid input, .editor-section-grid textarea { display: block; width: 100%; min-height: 42px; margin-top: 7px; padding: 10px 11px; border: 1px solid var(--admin-line); border-radius: 9px; background: #fbfcfd; outline: 0; }
+.editor-section-grid textarea { min-height: 98px; line-height: 1.7; resize: vertical; }
+.editor-field-textarea { grid-column: 1 / -1; }
+.editor-section-grid input:focus, .editor-section-grid textarea:focus { border-color: var(--admin-blue); background: #fff; box-shadow: 0 0 0 4px rgba(37,99,235,.1); }
+#editorForm > footer { padding: 18px 28px; }
+@media (max-width: 720px) {
+  .content-area { padding: 0 14px 50px; }
+  .settings-heading { position: static; padding: 20px; }
+  .site-editor-layout { display: block; }
+  .site-outline { position: static; display: flex; gap: 5px; margin-bottom: 12px; padding: 8px; overflow-x: auto; }
+  .site-outline-intro, .site-outline-tip { display: none; }
+  .site-outline-item { flex: 0 0 auto; width: auto; min-height: 38px; padding: 0 10px; gap: 7px; }
+  .site-outline-item b { width: auto; }
+  .site-outline-item span { white-space: nowrap; }
+  .settings-section { padding: 20px; }
+  .settings-section-head { display: block; }
+  .settings-section-head select { width: 100%; margin-top: 16px; }
+  .settings-section-grid { grid-template-columns: 1fr; gap: 15px; }
+  .editor-section-grid { grid-template-columns: 1fr; }
+  .editor-field-textarea { grid-column: auto; }
+  .editor-section-title { display: block; }
+  .editor-section-title span { display: block; margin-top: 4px; }
+}
+
+/* Admin readability pass: labels and help text should be comfortable at 100% zoom. */
+body { font-size: 15px; line-height: 1.6; }
+.breadcrumb { font-size: 12px; }
+.top-actions > a, .top-actions .sync-state { font-size: 12px; }
+.metric-grid article > span { font-size: 13px; }
+.metric-grid article > small { font-size: 10px; }
+.panel-heading small, .focus-panel > small { font-size: 10px; }
+.panel-heading h2 { font-size: 19px; }
+.pipeline-row b { font-size: 14px; }
+.pipeline-row span { font-size: 11px; }
+.data-head { font-size: 11px; }
+.data-main b { font-size: 15px; }
+.data-main small, .data-row > small { font-size: 12px; }
+.row-actions button, .filter-set button { font-size: 12px; }
+.settings-heading p { font-size: 14px; }
+.site-outline-intro p { font-size: 12px; }
+.site-outline-item span { font-size: 14px; }
+.site-outline-tip { font-size: 11px; }
+.settings-section-head h3 { font-size: 21px; }
+.settings-section-head p { font-size: 13px; }
+.settings-section-grid label, .editor-section-grid label { font-size: 13px; }
+.settings-section-grid input, .settings-section-grid textarea, .settings-section-head select { font-size: 15px; }
+.editor-section-title h3 { font-size: 18px; }
+.editor-section-title span { font-size: 12px; }
+.editor-section-grid input, .editor-section-grid textarea { font-size: 15px; }
+.editor-fields { font-size: 15px; }
