@@ -11,6 +11,7 @@
 | [核心业务架构](core-domain.md) | 用户、APP、商品、会员、订单、支付等领域能力 |
 | [官网内容运营与 AI 预留](content-and-ai.md) | 旧站功能迁移、内容域、官网后台与 AI 草稿助手设计 |
 | [官网 UI 与发布设计](official-website-design.md) | 官网视觉、页面、后台体验、AI 预留及无感发布方案 |
+| [公司官网与产品中心设计](website-product-center-design.md) | 官网定位、产品目录、应用商店式详情、版本安装包、评价反馈与后台编辑流程 |
 | [生产发布运行手册](../deployment-runbook.md) | 环境、无感发布、验收、监控与回滚 |
 | [平台能力与多 APP 配置](../backend-platform-app-design.md) | AI、支付、短信、邮件、验证码、搜索的配置分层 |
 

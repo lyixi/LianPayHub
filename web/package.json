@@ -14,6 +14,13 @@
     "@glinui/tokens": "0.1.1",
     "@glinui/ui": "0.1.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-placeholder": "^3.31.3",
+    "@tiptap/extension-table": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "dompurify": "^3.4.15",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.468.0",
     "next": "15.5.25",
@@ -27,6 +34,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.6",
     "@types/react-dom": "^19.0.2",
+    "playwright": "^1.63.0",
     "typescript": "^5.7.2"
   },
   "overrides": {
