@@ -22,6 +22,12 @@ public class StorageProperties {
     /** 单个图片最大字节数（默认 5 MB） */
     private long maxImageFileBytes = 5242880L;
 
+    /** 图片最长边上限。官网历史产品图允许高分辨率长图。 */
+    private int maxImageDimension = 8192;
+
+    /** 单个官网安装包最大字节数（默认 2 GB） */
+    private long maxDownloadFileBytes = 2147483648L;
+
     /** 每个 (user, app) 的默认存储配额字节数（默认 50 MB） */
     private long defaultQuotaBytes = 52428800L;
 
@@ -48,6 +54,12 @@ public class StorageProperties {
 
     public long getMaxImageFileBytes() { return maxImageFileBytes; }
     public void setMaxImageFileBytes(long maxImageFileBytes) { this.maxImageFileBytes = maxImageFileBytes; }
+
+    public int getMaxImageDimension() { return maxImageDimension; }
+    public void setMaxImageDimension(int maxImageDimension) { this.maxImageDimension = maxImageDimension; }
+
+    public long getMaxDownloadFileBytes() { return maxDownloadFileBytes; }
+    public void setMaxDownloadFileBytes(long maxDownloadFileBytes) { this.maxDownloadFileBytes = maxDownloadFileBytes; }
 
     public long getDefaultQuotaBytes() { return defaultQuotaBytes; }
     public void setDefaultQuotaBytes(long defaultQuotaBytes) { this.defaultQuotaBytes = defaultQuotaBytes; }

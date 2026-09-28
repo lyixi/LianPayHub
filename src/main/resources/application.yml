@@ -3,8 +3,12 @@ server:
   port: 8888
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
   application:
-    name: lianpayhub-server
+    name: lyixi-official-site
   devtools:
     restart:
       enabled: true
@@ -31,6 +35,8 @@ management:
         include: health,info
 
 lianpayhub:
+  website:
+    public-base-url: https://lyixi.com
   security:
     jwt-secret: change-me-to-a-long-random-secret-for-production
     jwt-expire-minutes: 720
@@ -62,6 +68,8 @@ lianpayhub:
     local-base-url: /files
     max-config-file-bytes: 524288           # 512 KB
     max-image-file-bytes: 5242880           # 5 MB
+    max-image-dimension: 8192                # 官网产品长图最长边
+    max-download-file-bytes: 2147483648      # 2 GB
     default-quota-bytes: 52428800           # 50 MB per (user, app)
     max-file-count: 500
     max-path-depth: 8

@@ -1,6 +1,18 @@
-# 联付中枢
+# 懒一夕官网
 
-联付中枢是一个企业级支付与会员管理后端框架，基于 Java + Spring Boot + MySQL。
+懒一夕官网是公司统一的产品展示与内容运营入口。项目同时提供 `/admin` 官网运营后台、`/console` 业务控制台和供自有产品使用的 `/api` 接口；后端基于 Java、Spring Boot 与 MySQL，官网界面基于 Next.js。
+
+历史技术标识仍使用 `lianpayhub`（Java 包名、配置前缀、数据库名、环境变量及 Maven artifactId）。这些标识是部署与接口兼容项，不是当前产品名称；更改它们需要单独的迁移方案。
+
+## 旧官网产品迁移
+
+项目内置幂等迁移器，可将旧版 `lyixi.com` 的有效软件、正文和图片导入当前官网后台：
+
+```bash
+node scripts/import-legacy-products.mjs --update-existing
+```
+
+迁移器按产品 slug 和旧资源来源去重，不会重复创建数据；历史产品默认保持草稿，已有产品的发布状态不会改变。服务地址、管理员账号和密码可分别通过 `LIANPAYHUB_BASE_URL`、`LIANPAYHUB_ADMIN_USERNAME`、`LIANPAYHUB_ADMIN_PASSWORD` 环境变量覆盖。
 
 ## 目标
 

@@ -14,8 +14,8 @@
     <groupId>com.lianpayhub</groupId>
     <artifactId>lianpayhub-server</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>联付中枢</name>
-    <description>Multi-app payment and membership management platform.</description>
+    <name>懒一夕官网</name>
+    <description>懒一夕官网、内容运营与多产品业务服务。</description>
 
     <properties>
         <java.version>1.8</java.version>

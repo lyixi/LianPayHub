@@ -16,6 +16,12 @@ public enum AllowedFileType {
     TXT(FileCategory.CONFIG, null,
             "text/plain", ".txt"),
 
+    ZIP(FileCategory.DOWNLOAD, new byte[]{0x50, 0x4B, 0x03, 0x04}, "application/zip", ".zip"),
+    DMG(FileCategory.DOWNLOAD, null, "application/x-apple-diskimage", ".dmg"),
+    EXE(FileCategory.DOWNLOAD, new byte[]{0x4D, 0x5A}, "application/vnd.microsoft.portable-executable", ".exe"),
+    APK(FileCategory.DOWNLOAD, new byte[]{0x50, 0x4B, 0x03, 0x04}, "application/vnd.android.package-archive", ".apk"),
+    GZ(FileCategory.DOWNLOAD, new byte[]{0x1F, (byte) 0x8B}, "application/gzip", ".gz"),
+
     // 图片：校验 Magic Bytes + ImageIO 解码
     JPEG(FileCategory.IMAGE,
             new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},

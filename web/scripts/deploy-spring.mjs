@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const output = resolve(root, "web/out");
+const publicRoot = resolve(root, "web/public");
 const staticRoot = resolve(root, "src/main/resources/static");
 const runtimeStaticRoot = resolve(root, "target/classes/static");
 const siteRoot = resolve(staticRoot, "official-ui");
@@ -15,6 +16,10 @@ await mkdir(assetRoot, { recursive: true });
 await cp(resolve(output, "index.html"), resolve(siteRoot, "index.html"));
 await cp(resolve(output, "admin/index.html"), resolve(adminRoot, "index.html"));
 await cp(resolve(output, "_next"), resolve(assetRoot, "_next"), { recursive: true, force: true });
+// Next's static export keeps public assets at the output root. Copy the source
+// public directory as well so brand marks, favicons and manifests are served
+// by Spring Boot at their original absolute URLs.
+await cp(publicRoot, staticRoot, { recursive: true, force: true });
 
 // The local Spring process runs from target/classes during development. Keep
 // that runtime classpath in sync when Maven is not available on the machine.

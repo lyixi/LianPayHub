@@ -237,8 +237,8 @@ var notificationDefaults = {
     },
     aggregate: {
       displayName: "聚合短信",
-      senderName: "联付中枢",
-      senderAddress: "联付中枢",
+      senderName: "懒一夕",
+      senderAddress: "懒一夕",
       endpoint: "https://sms-provider.example.com",
       templateCode: "LOGIN_CODE",
       accessKeyId: "",
@@ -252,8 +252,8 @@ var notificationDefaults = {
     },
     local: {
       displayName: "本地日志短信",
-      senderName: "联付中枢",
-      senderAddress: "联付中枢",
+      senderName: "懒一夕",
+      senderAddress: "懒一夕",
       endpoint: "",
       templateCode: "",
       accessKeyId: "",
@@ -269,7 +269,7 @@ var notificationDefaults = {
   EMAIL: {
     smtp: {
       displayName: "SMTP 邮箱",
-      senderName: "联付中枢",
+      senderName: "懒一夕",
       senderAddress: "noreply@example.com",
       endpoint: "smtp.example.com",
       configJson: '{"host":"smtp.example.com","port":465,"ssl":true,"smtpAuth":true}',
@@ -277,7 +277,7 @@ var notificationDefaults = {
     },
     "aliyun-dm": {
       displayName: "阿里云邮件推送",
-      senderName: "联付中枢",
+      senderName: "懒一夕",
       senderAddress: "noreply@example.com",
       endpoint: "dm.aliyuncs.com",
       configJson: '{"accountName":"","regionId":"cn-hangzhou"}',
@@ -285,7 +285,7 @@ var notificationDefaults = {
     },
     "tencent-ses": {
       displayName: "腾讯云 SES",
-      senderName: "联付中枢",
+      senderName: "懒一夕",
       senderAddress: "noreply@example.com",
       endpoint: "ses.tencentcloudapi.com",
       configJson: '{"region":"ap-guangzhou"}',
@@ -293,7 +293,7 @@ var notificationDefaults = {
     },
     local: {
       displayName: "本地日志邮件",
-      senderName: "联付中枢",
+      senderName: "懒一夕",
       senderAddress: "noreply@example.com",
       endpoint: "",
       configJson: "{}",
@@ -2069,7 +2069,7 @@ function notificationDefault(type, provider) {
   var map = notificationDefaults[type] || {};
   return map[provider] || map.local || {
     displayName: labelOf(provider),
-    senderName: "联付中枢",
+    senderName: "懒一夕",
     senderAddress: "",
     endpoint: "",
     templateCode: "",
@@ -2549,9 +2549,9 @@ function renderEmailSendPanel(rows) {
   return '<div class="form-grid send-form">' +
     select("emailSendConfigId", "通道", options, "", { required: false }) +
     input("emailSendTo", "收件邮箱", "user@example.com") +
-    input("emailSendSubject", "主题", "联付中枢测试邮件") +
+    input("emailSendSubject", "主题", "懒一夕测试邮件") +
     checkbox("emailSendHtml", "HTML 邮件", false) +
-    textarea("emailSendContent", "邮件内容", "这是一封来自联付中枢的测试邮件。") +
+    textarea("emailSendContent", "邮件内容", "这是一封来自懒一夕的测试邮件。") +
     '<div class="form-actions"><button type="button" onclick="sendEmailMessage()">发送邮件</button></div>' +
     '</div>';
 }

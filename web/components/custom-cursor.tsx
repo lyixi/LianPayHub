@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const INTERACTIVE_SELECTOR = "a, button, input, textarea, select, [role='button'], [data-cursor='interactive']";
+const INTERACTIVE_SELECTOR = "a, button, [role='button'], label[for], input[type='button'], input[type='submit'], input[type='file'], input[type='checkbox'], input[type='radio'], select, [data-cursor='interactive']";
 const PERFORMANCE_KEY = "lyixi-reduced-effects";
 
 type DeviceNavigator = Navigator & {

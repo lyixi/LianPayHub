@@ -18,7 +18,6 @@ import java.util.Locale;
 @Component
 public class FileValidator {
 
-    private static final int MAX_IMAGE_DIMENSION = 4096;
     private static final int MAGIC_READ_BYTES = 16;
 
     private final StorageProperties props;
@@ -32,12 +31,24 @@ public class FileValidator {
      * 抛出 BusinessException 表示校验不通过。
      */
     public AllowedFileType validate(MultipartFile file) {
+        return validate(file, false);
+    }
+
+    /** 官网管理员资源允许经过签名校验的安装包，普通用户同步接口不允许。 */
+    public AllowedFileType validateWebsiteAsset(MultipartFile file) {
+        return validate(file, true);
+    }
+
+    private AllowedFileType validate(MultipartFile file, boolean allowDownloads) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "文件不能为空");
         }
 
         String ext = extractExtension(file.getOriginalFilename());
         AllowedFileType type = findByExtension(ext);
+        if (type.category == FileCategory.DOWNLOAD && !allowDownloads) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "不支持的文件类型：" + ext);
+        }
 
         byte[] header = readHeader(file);
 
@@ -47,6 +58,8 @@ public class FileValidator {
 
         long maxBytes = type.category == FileCategory.IMAGE
                 ? props.getMaxImageFileBytes()
+                : type.category == FileCategory.DOWNLOAD
+                ? props.getMaxDownloadFileBytes()
                 : props.getMaxConfigFileBytes();
         if (file.getSize() > maxBytes) {
             throw new BusinessException(ErrorCode.BAD_REQUEST,
@@ -136,9 +149,10 @@ public class FileValidator {
             if (img == null) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "图片无法解析，文件可能已损坏");
             }
-            if (img.getWidth() > MAX_IMAGE_DIMENSION || img.getHeight() > MAX_IMAGE_DIMENSION) {
+            int maxDimension = props.getMaxImageDimension();
+            if (img.getWidth() > maxDimension || img.getHeight() > maxDimension) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST,
-                        "图片尺寸超过上限：" + MAX_IMAGE_DIMENSION + "px");
+                        "图片尺寸超过上限：" + maxDimension + "px");
             }
         } catch (BusinessException e) {
             throw e;

@@ -16,9 +16,9 @@ public class OpenApiConfig {
     public OpenAPI lianPayHubOpenApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("联付中枢 API")
+                        .title("懒一夕官网 API")
                         .version("0.1.0")
-                        .description("企业级支付与会员管理后端接口文档"))
+                        .description("官网内容运营、产品账号与支付服务接口文档"))
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
                 .schemaRequirement(SECURITY_SCHEME_NAME, new SecurityScheme()
                         .name(SECURITY_SCHEME_NAME)

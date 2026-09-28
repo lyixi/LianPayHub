@@ -46,6 +46,8 @@ public class WebsiteSiteSettings extends BaseEntity {
     @Column(name="product_count_label",length=40) private String productCountLabel;
     @Column(name="years_label",length=40) private String yearsLabel;
     @Column(name="featured_product_slug",length=80) private String featuredProductSlug;
+    @Column(name="hero_carousel_json",columnDefinition="TEXT") private String heroCarouselJson;
+    @Column(name="company_principles_json",columnDefinition="TEXT") private String companyPrinciplesJson;
     @Column(name="footer_copyright",length=160) private String footerCopyright;
     @Column(name="icp_number",length=80) private String icpNumber;
 
@@ -91,6 +93,10 @@ public class WebsiteSiteSettings extends BaseEntity {
     public String getContactDescription(){return contactDescription;} public String getEmail(){return email;}
     public String getProductCountLabel(){return productCountLabel;} public String getYearsLabel(){return yearsLabel;}
     public String getFeaturedProductSlug(){return featuredProductSlug;}
+    public String getHeroCarouselJson(){return heroCarouselJson;}
+    public void setHeroCarouselJson(String value){this.heroCarouselJson=value;}
+    public String getCompanyPrinciplesJson(){return companyPrinciplesJson;}
+    public void setCompanyPrinciplesJson(String value){this.companyPrinciplesJson=value;}
     public String getHeroLocation(){return heroLocation;} public String getProductCountDescription(){return productCountDescription;}
     public String getYearsDescription(){return yearsDescription;} public String getSystemCtaLabel(){return systemCtaLabel;}
     public String getSystemCoreEyebrow(){return systemCoreEyebrow;} public String getSystemCoreTitle(){return systemCoreTitle;}

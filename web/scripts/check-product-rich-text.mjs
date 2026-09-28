@@ -62,12 +62,14 @@ try {
     table: await page.locator(".rich-text-content table").count(),
     script: await page.locator(".rich-text-content script").count(),
     unsafeGlobal: await page.evaluate(() => Boolean(window.__richTextUnsafe)),
+    link: await page.locator(".rich-text-content a").first().evaluate(element => ({ href: element.getAttribute("href"), target: element.getAttribute("target"), rel: element.getAttribute("rel") })),
   };
 
   if (!saved?.content?.includes(marker)) throw new Error("Saved product content does not contain the test marker");
   if (Object.values(editor).some(count => count !== 1)) throw new Error(`Editor did not restore rich content: ${JSON.stringify(editor)}`);
   if ([publicPage.heading, publicPage.strong, publicPage.image, publicPage.table].some(count => count !== 1)) throw new Error(`Public product page lost rich content: ${JSON.stringify(publicPage)}`);
   if (publicPage.script !== 0 || publicPage.unsafeGlobal) throw new Error(`Unsafe rich text was executed: ${JSON.stringify(publicPage)}`);
+  if (publicPage.link.href !== "https://lyixi.com" || publicPage.link.target !== "_blank" || !publicPage.link.rel?.includes("noopener")) throw new Error(`Rich-text link is not safely clickable: ${JSON.stringify(publicPage.link)}`);
 
   console.log(JSON.stringify({ product: original.slug, editor, publicPage, saved: true }, null, 2));
 } finally {
