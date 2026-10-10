@@ -5425,6 +5425,11 @@ function renderTools() {
   var launchCurl = "curl -X POST http://localhost:8888/api/device/launch -H 'Content-Type: application/json' -d '{\"appId\":\"<appId>\",\"deviceCode\":\"<deviceCode>\",\"platform\":\"ios\",\"version\":\"1.0.0\"}'";
   var payCurl = "curl -X POST http://localhost:8888/api/payment/create-order -H 'Content-Type: application/json' -d '{\"appId\":\"<appId>\",\"deviceId\":1,\"packageId\":1,\"payChannel\":\"ALIPAY\"}'";
   $("tools").innerHTML =
+    panel("配置导入 / 导出", '<div class="configuration-transfer-controls">' +
+      '<button class="secondary" type="button" onclick="exportConfiguration()">导出所有配置</button>' +
+      '<label>备份文件<input id="configurationFile" type="file" accept=".zip,.json,application/zip,application/json"></label>' +
+      '<button type="button" onclick="previewConfigurationImport()">预览导入</button></div>') +
+    '<div style="height:12px"></div>' +
     panel("演示数据", '<button type="button" onclick="createDemo()">创建演示数据</button>') +
     '<div style="height:12px"></div>' +
     panel("设备码支付接入", '<div class="actions"><button type="button" onclick="copyEncodedText(\'' + encodeURIComponent(launchCurl) + '\')">复制启动上报 curl</button>' +
@@ -5443,6 +5448,83 @@ function renderTools() {
       '</div>') +
     '<div style="height:12px"></div>' +
     panel("常用入口", '<p><a href="/swagger" target="_blank">Swagger 接口文档</a></p><p><a href="/docs" target="_blank">文档别名</a></p><p><a href="/actuator/health" target="_blank">健康检查</a></p>');
+}
+
+var configurationSectionLabels = {
+  apps: "应用", aiProviders: "AI 平台", searchPlatforms: "搜索平台", notificationChannels: "通知渠道",
+  paymentChannels: "支付渠道", platformPolicies: "平台策略", appAiSettings: "应用 AI 参数",
+  packages: "套餐", products: "商品", plans: "商品规格", purchasePages: "购买页",
+  websiteProducts: "官网产品", websiteArticles: "官网文章", websitePages: "官网页面", websiteSettings: "站点设置",
+  websiteMedia: "媒体库", resourceFiles: "资源文件"
+};
+
+function exportConfiguration() {
+  openRiskConfirm("导出所有配置", "配置包包含支付、通知和应用密钥，请妥善保管。", "确认导出", function () {
+    closeModal();
+    state.exportConfirmed = true;
+    exportCsv("/admin/configuration-transfer/backup", "lianpayhub-backup-" + new Date().toISOString().slice(0, 10) + ".zip");
+    state.exportConfirmed = false;
+  }, { reasonRequired: false });
+}
+
+function configurationImportReport(result) {
+  var rows = result.sections.map(function (item) {
+    return '<tr><td>' + escapeHtml(configurationSectionLabels[item.section] || item.section) + '</td><td>' + item.added +
+      '</td><td>' + item.identical + '</td><td>' + item.updated + '</td><td>' + item.keptLocal + '</td></tr>';
+  }).join("");
+  var conflicts = result.sections.filter(function (item) { return item.conflicts > 0; }).map(function (item) {
+    return '<p style="overflow-wrap:anywhere">' + escapeHtml(configurationSectionLabels[item.section] || item.section) + ': ' + escapeHtml(item.conflictKeys.join(", ")) + '</p>';
+  }).join("");
+  return '<div class="table-wrap"><table><thead><tr><th>配置</th><th>新增</th><th>相同跳过</th><th>覆盖</th><th>保留本机</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + conflicts;
+}
+
+function previewConfigurationImport() {
+  var file = $("configurationFile").files[0];
+  if (!file) { toast("请选择配置文件"); return; }
+  var isArchive = /\.zip$/i.test(file.name);
+  if (file.size > (isArchive ? 2 * 1024 * 1024 * 1024 : 20 * 1024 * 1024)) { toast("备份文件超过大小限制"); return; }
+  var configuration;
+  function transfer(preview, strategy) {
+    if (!isArchive) return api("/admin/configuration-transfer/import?preview=" + preview + "&strategy=" + strategy, { method: "POST", body: configuration });
+    var form = new FormData(); form.append("file", file);
+    return fetch("/admin/configuration-transfer/restore?preview=" + preview + "&strategy=" + strategy, {
+      method: "POST", headers: { Authorization: "Bearer " + state.token }, body: form
+    }).then(function (response) {
+      return response.json().then(function (result) {
+        if (isAuthExpired(response.status, result)) handleAuthExpired(result.message || "登录已过期");
+        if (!response.ok || result.code !== 0) throw new Error(result.message || "导入失败");
+        return result.data;
+      });
+    });
+  }
+  setBusy(true);
+  (isArchive ? Promise.resolve() : file.text().then(function (text) { configuration = JSON.parse(text); })).then(function () {
+    return transfer(true, "KEEP_LOCAL");
+  }).then(function (result) {
+    openModal("导入预览", configurationImportReport(result) + '<label>全部冲突处理<select id="configurationStrategy"><option value="KEEP_LOCAL">保留本机配置</option><option value="OVERWRITE">使用导入配置</option></select></label>',
+      '<button class="secondary" type="button" onclick="closeModal()">取消</button><button id="configurationApplyBtn" type="button">确认导入</button>');
+    $("configurationStrategy").addEventListener("change", function () {
+      var overwrite = this.value === "OVERWRITE";
+      var rows = $("modalBody").querySelectorAll("tbody tr");
+      result.sections.forEach(function (item, index) {
+        if (!rows[index]) return;
+        rows[index].cells[3].textContent = overwrite ? item.conflicts : 0;
+        rows[index].cells[4].textContent = overwrite ? 0 : item.conflicts;
+      });
+    });
+    $("configurationApplyBtn").addEventListener("click", function () {
+      var strategy = $("configurationStrategy").value;
+      $("configurationApplyBtn").disabled = true;
+      transfer(false, strategy)
+        .then(function (actual) {
+          openModal("导入完成", configurationImportReport(actual), '<button class="secondary" type="button" onclick="closeModal()">关闭</button>');
+          $("configurationFile").value = "";
+        }).catch(function (err) {
+          if ($("configurationApplyBtn")) $("configurationApplyBtn").disabled = false;
+          toast(err.message);
+        });
+    });
+  }).catch(function (err) { toast(err.message); }).then(function () { setBusy(false); });
 }
 
 function downloadOpenApi() {

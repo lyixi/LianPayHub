@@ -621,3 +621,8 @@ textarea { height: auto; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+.configuration-transfer-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.configuration-transfer-controls label { flex: 1 1 220px; min-width: 0; margin: 0; }
+.configuration-transfer-controls input,
+.configuration-transfer-controls select { display: block; width: 100%; max-width: 100%; margin-top: 6px; }

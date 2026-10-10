@@ -63,7 +63,8 @@ public class AdminOperationLogFilter extends OncePerRequestFilter {
             failure = ex;
             throw ex;
         } finally {
-            saveLog(wrapped, response, failure, wrapped.getCachedBodyAsString());
+            saveLog(wrapped, response, failure, request.getRequestURI().startsWith("/admin/configuration-transfer/")
+                    ? "[configuration transfer]" : wrapped.getCachedBodyAsString());
         }
     }
 
