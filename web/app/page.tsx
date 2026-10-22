@@ -32,7 +32,44 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [pathname, setPathname] = useState("");
   const path = pathname.split("/").filter(Boolean);
-  useEffect(() => { setPathname(location.pathname); Promise.all([api<SiteContent>("/api/site/v1/site"), api<Product[]>("/api/site/v1/products"), api<Article[]>("/api/site/v1/articles"), api<ContentPage[]>("/api/site/v1/pages")]).then(([siteData, productData, articleData, pageData]) => { setSite({ ...defaultSite, ...siteData }); setProducts(productData.length ? productData : [defaultProduct]); setArticles(articleData); setPages(pageData); }).finally(() => setReady(true)); }, []);
+  useEffect(() => {
+    let active = true;
+    const route = location.pathname.split("/").filter(Boolean);
+    setPathname(location.pathname);
+    setProducts([]);
+    // Optional site settings must not block the current page.
+    api<SiteContent>("/api/site/v1/site").then(data => { if (active) setSite({ ...defaultSite, ...data }); }).catch(() => {});
+    async function loadPage() {
+      if (route[0] === "product" && route[1]) {
+        const product = await api<Product>(`/api/site/v1/products/${encodeURIComponent(route[1])}`);
+        if (active) setProducts([product]);
+      } else if (route[0] === "news") {
+        const data = route[1]
+          ? [await api<Article>(`/api/site/v1/articles/${encodeURIComponent(route[1])}`)]
+          : await api<Article[]>("/api/site/v1/articles");
+        if (active) setArticles(data);
+      } else if (route.length && route[0] !== "product") {
+        const page = await api<ContentPage>(`/api/site/v1/pages/${encodeURIComponent(route[0] === "page" ? route[1] : route[0])}`);
+        if (active) setPages([page]);
+      } else {
+        const data = await api<Product[]>("/api/site/v1/products");
+        if (active) setProducts(data);
+      }
+      if (active) setReady(true);
+      if (route.length && (route[0] !== "product" || route[1])) {
+        api<Product[]>("/api/site/v1/products").then(data => {
+          if (active) setProducts(current => [...current, ...data.filter(item => !current.some(existing => existing.id === item.id))]);
+        }).catch(() => {});
+      }
+    }
+    if (!route.length) api<Article[]>("/api/site/v1/articles").then(data => { if (active) setArticles(data); }).catch(() => {});
+    loadPage().catch(() => { /* Keep the server content visible when required data fails. */ });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (ready) document.documentElement.setAttribute("data-site-ready", "true");
+    return () => document.documentElement.removeAttribute("data-site-ready");
+  }, [ready]);
   const selectedProduct = path[0] === "product" && path[1] ? products.find(item => item.slug === path[1]) : undefined;
   const selectedArticle = path[0] === "news" && path[1] ? articles.find(item => item.slug === path[1]) : undefined;
   const selectedPage = pages.find(item => item.slug === (path[0] === "page" ? path[1] : path[0]));
@@ -40,6 +77,7 @@ export default function Home() {
   if (selectedProduct) return <><SiteHeader name={site.name} /><ProductDetail product={selectedProduct} site={site} products={products} /></>;
   if (selectedArticle) return <><SiteHeader name={site.name} /><ArticleView article={selectedArticle} site={site} products={products} /></>;
   if (selectedPage) return <><SiteHeader name={site.name}/><PageView page={selectedPage} site={site} products={products}/></>;
+  if (path[0] === "product") return <><SiteHeader name={site.name}/><main><ProductBento products={products} site={site}/></main><SiteFooter site={site} products={products}/></>;
   if (path[0] === "news") return <><SiteHeader name={site.name} /><NewsDirectory articles={articles} site={site} products={products} /></>;
   let heroSlides: HeroSlide[] = [];
   try {

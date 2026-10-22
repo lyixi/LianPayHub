@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
+    "check:seo": "node scripts/check-seo.mjs",
     "deploy:spring": "npm run build && node scripts/deploy-spring.mjs"
   },
   "dependencies": {
