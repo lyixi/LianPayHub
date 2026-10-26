@@ -14,6 +14,21 @@ try {
 
   const noJs = await browser.newContext({ javaScriptEnabled: false });
   const page = await noJs.newPage();
+  const sitemapResponse = await fetch(`${baseUrl}/sitemap.xml`);
+  assert.equal(sitemapResponse.status, 200, "Sitemap must be reachable");
+  const sitemap = await sitemapResponse.text();
+  const sitemapPaths = [...sitemap.matchAll(/<loc>https?:\/\/[^/]+([^<]*)<\/loc>/g)].map(match => match[1] || "/");
+  assert.ok(sitemapPaths.length, "Sitemap must contain public URLs");
+  for (const path of sitemapPaths) {
+    const document = await page.goto(`${baseUrl}${path}`);
+    assert.equal(document.status(), 200, `${path} must return HTTP 200`);
+    assert.equal(await page.locator("#seo-content").isVisible(), true, `${path} must expose readable content without JavaScript`);
+    assert.equal(await page.locator("#seo-content h1").count(), 1, `${path} must have one crawler-visible H1`);
+    assert.equal(await page.locator("title").count(), 1, `${path} must have one title`);
+    assert.equal(await page.locator('meta[name="description"]').count(), 1, `${path} must have one description`);
+    assert.ok((await page.locator('meta[name="description"]').getAttribute("content"))?.trim(), `${path} description must not be empty`);
+    assert.equal(await page.locator('link[rel="canonical"]').count(), 1, `${path} must have one canonical`);
+  }
   for (const item of products) {
     const document = await page.goto(`${baseUrl}/product/${item.slug}`);
     assert.equal(document.status(), 200);
@@ -25,6 +40,7 @@ try {
   await page.goto(baseUrl);
   assert.equal(await page.locator(`#seo-content a[href="${productPath}"]`).count(), 1);
   await noJs.close();
+  results.push({ check: "all sitemap URLs have crawler-readable content and complete metadata", count: sitemapPaths.length });
   results.push({ check: "published products readable without JavaScript", count: products.length });
 
   const context = await browser.newContext();

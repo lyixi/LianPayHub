@@ -8,11 +8,6 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", displ
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyixi.com"),
-  title: {
-    default: "懒一夕官网",
-    template: "%s｜懒一夕官网",
-  },
-  description: "懒一夕智能科技的产品、动态与服务入口。",
   keywords: ["懒一夕", "写作天下", "神奇弹幕", "AI 写作", "直播弹幕", "效率工具"],
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
   manifest: "/site.webmanifest",
