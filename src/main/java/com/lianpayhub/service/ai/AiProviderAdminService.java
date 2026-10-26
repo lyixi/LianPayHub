@@ -48,6 +48,7 @@ public class AiProviderAdminService {
     public AiProviderConfig create(String providerCode, String displayName, String baseUrl, String consoleBaseUrl, String configJson, String credentialJson) {
         String safeProviderCode = normalizeProviderCode(providerCode);
         registry.require(safeProviderCode);
+        if ("acedata".equals(safeProviderCode)) { baseUrl = AceDataService.BASE_URL; consoleBaseUrl = null; validateAceKey(credentialJson); }
         if (repository.findByProviderCode(safeProviderCode).isPresent()) {
             throw new BusinessException(ErrorCode.CONFLICT, "AI平台编码已存在");
         }
@@ -57,6 +58,10 @@ public class AiProviderAdminService {
     @Transactional
     public AiProviderConfig update(Long id, String displayName, String baseUrl, String consoleBaseUrl, String configJson, String credentialJson) {
         AiProviderConfig config = detail(id);
+        if ("acedata".equals(config.getProviderCode())) {
+            baseUrl = AceDataService.BASE_URL; consoleBaseUrl = null;
+            if (credentialJson != null && !credentialJson.trim().isEmpty()) validateAceKey(credentialJson);
+        }
         config.update(displayName, baseUrl, consoleBaseUrl, configJson, credentialJson);
         return repository.save(config);
     }
@@ -116,16 +121,6 @@ public class AiProviderAdminService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "MoaCode Cookie 未配置，无法查询余额和用量");
         }
         String baseUrl = accountBaseUrl(config);
-        if ("moacode-team".equalsIgnoreCase(config.getProviderCode())) {
-            Map<String, Object> team = getJson(baseUrl + "/api/v1/user/team?include_member_costs=false", cookie);
-            Map<String, Object> usage = getJson(baseUrl + "/api/v1/user/team/usage?period=1month", cookie);
-            Map<String, Object> result = new LinkedHashMap<String, Object>();
-            result.put("providerCode", config.getProviderCode());
-            result.put("balanceSummary", teamBalanceSummary(team));
-            result.put("usageSummary", teamUsageSummary(usage));
-            result.put("raw", raw("team", team, "usage", usage));
-            return result;
-        }
         Map<String, Object> balance = getJson(baseUrl + "/api/v1/user/balance", cookie);
         Map<String, Object> usage = getJson(baseUrl + "/api/v1/user/usage/summary", cookie);
         Map<String, Object> result = new LinkedHashMap<String, Object>();
@@ -142,19 +137,15 @@ public class AiProviderAdminService {
         if ("deepseek".equalsIgnoreCase(config.getProviderCode())) {
             return deepSeekAccountBalance(config);
         }
-        if ("moacode".equalsIgnoreCase(config.getProviderCode())
-                || "moacode-team".equalsIgnoreCase(config.getProviderCode())) {
+        if ("moacode".equalsIgnoreCase(config.getProviderCode())) {
             Map<String, Object> usage = moacodeUsage(id);
             Map<String, Object> balanceSummary = map(usage.get("balanceSummary"));
-            Object available = "moacode-team".equalsIgnoreCase(config.getProviderCode())
-                    ? firstText(value(balanceSummary, "effectiveAvailableBalance"), value(balanceSummary, "teamDailyRemainingBalance"),
-                            value(balanceSummary, "dailyRemainingBalance"), value(balanceSummary, "userDailyRemainingBalance"))
-                    : firstText(value(balanceSummary, "totalBalance"), value(balanceSummary, "balance"),
-                            value(balanceSummary, "subscriptionBalance"), value(balanceSummary, "payAsYouGoBalance"));
+            Object available = firstText(value(balanceSummary, "totalBalance"), value(balanceSummary, "balance"),
+                    value(balanceSummary, "subscriptionBalance"), value(balanceSummary, "payAsYouGoBalance"));
             Map<String, Object> result = new LinkedHashMap<String, Object>();
             result.put("providerCode", config.getProviderCode());
             result.put("keyStatus", "active");
-            result.put("currencyUnit", "moacode-team".equalsIgnoreCase(config.getProviderCode()) ? "moacode_team_balance" : "moacode_balance");
+            result.put("currencyUnit", "moacode_balance");
             result.put("availableBalance", numberOrValue(available));
             result.put("balanceSummary", balanceSummary);
             result.put("usageSummary", usage.get("usageSummary"));
@@ -193,6 +184,16 @@ public class AiProviderAdminService {
         return result;
     }
 
+    private void validateAceKey(String credentialJson) {
+        try {
+            JsonNode root = objectMapper.readTree(credentialJson == null ? "{}" : credentialJson);
+            if (root == null || root.path("apiKey").asText("").trim().isEmpty())
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写 ACE Data API Key");
+        } catch (java.io.IOException ex) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "ACE Data 凭据 JSON 格式错误");
+        }
+    }
+
     private String normalizeProviderCode(String providerCode) {
         if (providerCode == null || providerCode.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "AI平台编码不能为空");
@@ -202,8 +203,7 @@ public class AiProviderAdminService {
 
     private AiProviderConfig requireMoacode(Long id) {
         AiProviderConfig config = detail(id);
-        if (!"moacode".equalsIgnoreCase(config.getProviderCode())
-                && !"moacode-team".equalsIgnoreCase(config.getProviderCode())) {
+        if (!"moacode".equalsIgnoreCase(config.getProviderCode())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "该接口仅支持 MoaCode 平台");
         }
         return config;
@@ -369,11 +369,6 @@ public class AiProviderAdminService {
     }
 
     private List<String> moacodeBillingContextCandidates(String providerCode) {
-        if ("moacode-team".equalsIgnoreCase(providerCode)) {
-            List<String> result = new ArrayList<String>();
-            result.add("team");
-            return result;
-        }
         List<String> result = new ArrayList<String>();
         result.add("subscription");
         result.add("pay_as_you_go");
@@ -408,112 +403,6 @@ public class AiProviderAdminService {
         copy(result, data, "totalCost", "total_cost", "totalCost");
         result.put("models", modelUsageRows(data.get("model_stats")));
         return result;
-    }
-
-    private Map<String, Object> teamBalanceSummary(Map<String, Object> raw) {
-        Map<String, Object> data = data(raw);
-        Map<String, Object> team = map(data.get("team"));
-        Map<String, Object> result = new LinkedHashMap<String, Object>();
-        copy(result, data, "hasTeam", "has_team", "hasTeam");
-        copy(result, data, "isOwner", "is_owner", "isOwner");
-        copy(result, data, "role", "role");
-        result.put("teamId", firstText(value(team, "id"), value(data, "team_id")));
-        result.put("teamName", firstText(value(team, "name"), value(data, "team_name")));
-        copy(result, data, "dailyBalance", "daily_balance", "dailyBalance");
-        copy(result, data, "dailyRemainingBalance", "daily_remaining_balance", "dailyRemainingBalance");
-        copy(result, data, "userDailyBalance", "user_daily_balance", "userDailyBalance");
-        copy(result, data, "userDailyRemainingBalance", "user_daily_remaining_balance", "userDailyRemainingBalance");
-        result.put("teamDailyBalance", firstText(value(data, "team_daily_balance"), value(team, "daily_balance")));
-        copy(result, data, "teamDailyRemainingBalance", "team_daily_remaining_balance", "teamDailyRemainingBalance");
-        result.put("weeklyLimit", firstText(value(data, "weekly_limit"), value(team, "weekly_limit")));
-        copy(result, data, "currentWeekSpend", "current_week_spend", "currentWeekSpend");
-        copy(result, data, "teamWeekSpend", "team_week_spend", "teamWeekSpend");
-        result.put("monthlyLimit", firstText(value(data, "monthly_limit"), value(team, "monthly_limit")));
-        copy(result, data, "currentMonthSpend", "current_month_spend", "currentMonthSpend");
-        result.put("teamMonthlyLimit", firstText(value(data, "team_monthly_limit"), value(team, "monthly_limit")));
-        copy(result, data, "teamMonthSpend", "team_month_spend", "teamMonthSpend");
-        result.put("effectiveAvailableBalance", effectiveTeamBalance(result));
-        return result;
-    }
-
-    private Map<String, Object> teamUsageSummary(Map<String, Object> raw) {
-        Map<String, Object> data = data(raw);
-        List<Map<String, Object>> models = teamUsageModelRows(data.get("team_stats"));
-        Map<String, Object> result = new LinkedHashMap<String, Object>();
-        copy(result, data, "period", "period");
-        result.put("totalRequests", sum(models, "requests"));
-        result.put("totalInputTokens", sum(models, "inputTokens"));
-        result.put("totalOutputTokens", sum(models, "outputTokens"));
-        result.put("totalCacheCreationTokens", sum(models, "cacheCreationTokens"));
-        result.put("totalCacheReadTokens", sum(models, "cacheReadTokens"));
-        result.put("totalCost", sum(models, "cost"));
-        Object memberStats = data.get("member_stats");
-        result.put("memberCount", memberStats instanceof List ? ((List<?>) memberStats).size() : 0);
-        result.put("models", models);
-        return result;
-    }
-
-    private List<Map<String, Object>> teamUsageModelRows(Object value) {
-        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
-        if (!(value instanceof List)) {
-            return result;
-        }
-        for (Object itemValue : (List<?>) value) {
-            Map<String, Object> row = map(itemValue);
-            String model = firstText(value(row, "model"), value(row, "model_name"));
-            if (model == null) continue;
-            Map<String, Object> item = new LinkedHashMap<String, Object>();
-            item.put("model", model);
-            item.put("requests", firstText(value(row, "requests"), 0));
-            item.put("inputTokens", firstText(value(row, "input_tokens"), value(row, "inputTokens"), 0));
-            item.put("outputTokens", firstText(value(row, "output_tokens"), value(row, "outputTokens"), 0));
-            item.put("cacheCreationTokens", firstText(value(row, "cache_creation_tokens"), value(row, "cacheCreationTokens"), 0));
-            item.put("cacheReadTokens", firstText(value(row, "cache_read_tokens"), value(row, "cacheReadTokens"), 0));
-            item.put("cost", firstText(value(row, "total_cost"), value(row, "cost"), 0));
-            result.add(item);
-        }
-        return result;
-    }
-
-    private Double sum(List<Map<String, Object>> rows, String field) {
-        double total = 0;
-        for (Map<String, Object> row : rows) {
-            Object value = row.get(field);
-            if (value == null) continue;
-            try {
-                total += Double.parseDouble(String.valueOf(value));
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        return total;
-    }
-
-    private Double effectiveTeamBalance(Map<String, Object> balance) {
-        List<Double> candidates = new ArrayList<Double>();
-        addNumber(candidates, balance.get("teamDailyRemainingBalance"));
-        addNumber(candidates, balance.get("dailyRemainingBalance"));
-        addNumber(candidates, balance.get("userDailyRemainingBalance"));
-        addRemaining(candidates, balance.get("weeklyLimit"), balance.get("teamWeekSpend"));
-        addRemaining(candidates, balance.get("weeklyLimit"), balance.get("currentWeekSpend"));
-        addRemaining(candidates, balance.get("teamMonthlyLimit"), balance.get("teamMonthSpend"));
-        addRemaining(candidates, balance.get("monthlyLimit"), balance.get("currentMonthSpend"));
-        if (candidates.isEmpty()) return null;
-        double min = candidates.get(0);
-        for (Double candidate : candidates) {
-            if (candidate < min) min = candidate;
-        }
-        return min;
-    }
-
-    private void addRemaining(List<Double> values, Object limit, Object spent) {
-        Double safeLimit = number(limit);
-        Double safeSpent = number(spent);
-        if (safeLimit != null && safeSpent != null) values.add(Math.max(0, safeLimit - safeSpent));
-    }
-
-    private void addNumber(List<Double> values, Object value) {
-        Double number = number(value);
-        if (number != null) values.add(number);
     }
 
     private Double number(Object value) {

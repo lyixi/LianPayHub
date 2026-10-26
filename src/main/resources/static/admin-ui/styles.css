@@ -1531,45 +1531,116 @@ a:hover {
   }
 }
 
-.field-link{margin-left:auto;font-size:12px;color:var(--primary);text-decoration:none}
-.field-link:hover{text-decoration:underline}
-.field-links-row{display:flex;flex-wrap:wrap;gap:10px 14px;margin:-4px 0 6px;font-size:12px}
-.field-note{grid-column:1/-1;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--primary-soft) 82%, transparent);color:var(--muted);line-height:1.6}
-.field-section{grid-column:1/-1;margin-top:10px;font-weight:760;color:var(--text);padding-top:12px;border-top:1px solid color-mix(in srgb,var(--line) 92%, transparent)}
-.field-link.icon-only{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:color-mix(in srgb,var(--primary-soft) 90%, transparent);font-size:12px;text-decoration:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 14%, transparent)}
-.field-link.icon-only:hover{text-decoration:none;background:color-mix(in srgb,var(--primary) 18%, transparent)}
-.eyebrow + h1{margin-top:12px} .topbar-copy{max-width:560px} .table-wrap,.chart-wrap{box-shadow:inset 0 1px 0 rgba(255,255,255,.02)} .toolbar button.secondary.small,.actions .small.secondary{background:transparent} .actions .small{border-radius:999px} .metric-grid.compact{gap:12px} .subsection h4{margin:0 0 10px;font-size:12px;letter-spacing:.04em;text-transform:uppercase} .pager{margin-top:16px} .toast{border-radius:16px} .modal-head{position:sticky;top:0;z-index:2} .modal-footer{position:sticky;bottom:0;z-index:2} .login-panel label{margin-bottom:16px} .login-panel button{width:100%;margin-top:4px} .nav-group{letter-spacing:.08em;text-transform:uppercase} .sidebar::-webkit-scrollbar{width:10px} .sidebar::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--line-strong) 80%, transparent);border-radius:999px} .top-actions .secondary{min-width:76px} .panel + .panel{margin-top:0} .metric-grid .metric,.metrics .metric{transition:transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease)} .metric-grid .metric:hover,.metrics .metric:hover{transform:translateY(-1px);box-shadow:0 14px 28px rgba(15,23,42,.10)} .panel:hover{box-shadow:0 14px 30px rgba(15,23,42,.10)} .toolbar label,.form-grid>label{display:flex;flex-direction:column} .topbar,.sidebar,.modal,.panel,.metric,.table-wrap,.chart-wrap{will-change:transform} .actions button:not(.danger):not(:first-child){opacity:.88} .actions button:not(.danger):not(:first-child):hover{opacity:1} .table-wrap table{font-variant-numeric:tabular-nums} .detail-item,.analytics-summary>div{box-shadow:inset 0 1px 0 rgba(255,255,255,.02)} .theme-select{border-radius:999px} .modal-mask{background:rgba(3,7,18,.58)} .brand{letter-spacing:-.03em} .panel-title-actions button{height:34px} .table-wrap{border-radius:calc(var(--radius) - 2px)} .nav{border-radius:12px} .panel{overflow:hidden} .toolbar{padding:2px 0} .panel-title-actions{align-items:center} .metric .value,.analytics-summary strong{font-variant-numeric:tabular-nums} .top-actions{align-items:center} .eyebrow{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)} .field-hint{line-height:1.45} .badge{box-shadow:inset 0 1px 0 rgba(255,255,255,.04)} .nav.active{box-shadow:inset 0 1px 0 rgba(255,255,255,.04)} .modal-body .subsection + .subsection{margin-top:18px} .panel-title-actions .secondary{background:transparent} .topbar{box-shadow:0 8px 26px rgba(15,23,42,.06)} .sidebar{box-shadow:inset -1px 0 0 rgba(255,255,255,.02)} .brand::after,.panel-title::before,.metric::before{filter:saturate(112%)} .detail-list{gap:12px} .empty-cell{font-size:13px} .main{padding-bottom:28px} .chart-empty{border-style:dashed} .nav,.panel,.metric,.detail-item,.table-wrap,.chart-wrap,.modal{transition:box-shadow var(--duration) var(--ease), border-color var(--duration) var(--ease), background var(--duration) var(--ease)} .metric:hover::before{opacity:1} .theme-svg{opacity:.92} .topbar-copy #subTitle{max-width:520px} .sidebar-title{letter-spacing:-.02em} .panel-title{padding-right:4px} .top-actions .icon-action{border-radius:999px} .toolbar .field-label-text,.form-grid .field-label-text{font-size:12px} .login-panel{border-radius:20px} .table-wrap,.chart-wrap,.metric,.panel{position:relative} .metric::after,.panel::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)} .metric::after{box-shadow:inset 0 1px 0 rgba(255,255,255,.04)} .topbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent)} .modal-head::after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent)} .panel-title-split .panel-title-actions{padding-left:10px} .actions{align-items:center} .login-panel input{height:42px} .table-wrap tbody tr:nth-child(odd){background:color-mix(in srgb,var(--panel-soft) 26%, transparent)} .table-wrap tbody tr:nth-child(odd):hover{background:color-mix(in srgb,var(--table-hover) 84%, var(--primary-soft))} .detail-item .v code{font-size:12px} .metrics{gap:14px} .analytics-summary{gap:12px} .toolbar .secondary{box-shadow:none} .field-label{display:flex;align-items:center;gap:8px} .field-label-text{display:inline-flex;align-items:center;gap:4px} .modal-body{scrollbar-gutter:stable} .small{font-weight:700} .nav{height:36px} .field-note strong{color:var(--text)} .topbar{position:sticky} .eyebrow{margin-bottom:2px} .detail-item .k{display:flex;align-items:center;gap:6px} .metric .label{display:flex;align-items:center;gap:6px} .panel-title-actions .small{height:30px} .metric-grid.compact .metric .value{font-size:24px} .brand{font-weight:800} .field-link.icon-only{font-weight:800} .sidebar-title::after{width:44px} .panel-title::before{height:20px} .nav{font-weight:640} .panel-title-actions button{font-weight:700} .table-wrap tbody tr{background-clip:padding-box} .field-link.icon-only{transition:background var(--duration) var(--ease),transform var(--duration) var(--ease)} .field-link.icon-only:hover{transform:translateY(-1px)} .top-actions button,.top-actions select{align-self:center} .login-panel{box-shadow:0 24px 60px rgba(15,23,42,.16)} .sidebar{padding-bottom:26px} .panel-title{position:relative} .toolbar input[type="number"]{max-width:120px} .modal-footer{backdrop-filter:blur(12px)} .modal-head{backdrop-filter:blur(12px)} .empty-cell{letter-spacing:.01em} .detail-item .v{font-size:13px} .analytics-summary>div{padding:12px 14px} .table-wrap{background:color-mix(in srgb,var(--panel-solid) 98%, transparent)} .chart-wrap{background:color-mix(in srgb,var(--panel-solid) 98%, transparent)} .sidebar{background:color-mix(in srgb,var(--glass) 92%, transparent)} .topbar{position:sticky} .eyebrow{font-size:10px} .field-note,.risk-box{font-size:12px} .table-wrap td code,.detail-item code{padding:2px 6px;border-radius:999px;background:var(--panel-soft)} .brand::after{height:4px} .nav.active::before{height:20px} .modal h2{font-weight:780} .panel-title-actions .icon-action{width:34px;height:34px} .topbar h1{max-width:12ch} .main{min-width:0} .toolbar .field-hint,.form-grid .field-hint{max-width:40ch} .analytics-summary strong{font-weight:780} .modal-head,.modal-footer{position:sticky} .badge.ok,.badge.warn,.badge.bad{box-shadow:none} .field-note{border:1px solid color-mix(in srgb,var(--line) 86%, transparent)} .metric-grid.compact .metric{min-height:84px} .top-actions .secondary{background:color-mix(in srgb,var(--panel-soft) 92%, transparent)} .toolbar label input,.toolbar label select{margin-top:9px} .subsection{padding-top:2px} .metric{background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 98%, transparent),color-mix(in srgb,var(--panel) 92%, transparent))} .panel{background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 98%, transparent),color-mix(in srgb,var(--panel) 92%, transparent))} .metric .value{word-break:break-word} .brand,.sidebar-title,h1{font-variation-settings:"wght" 780} .analytics-toolbar{margin-bottom:16px} .line-chart{min-height:240px} .chart-empty{font-size:13px} .modal-body .detail-list{margin-top:2px} .nav-group{margin-bottom:8px} .field-link{font-weight:700} .actions .danger{opacity:1} .top-actions{gap:10px} .panel-title-actions button.secondary{border-color:color-mix(in srgb,var(--line) 88%, transparent)} .toolbar .field{max-width:240px} .theme-select{height:38px} .detail-item{overflow:hidden} .brand{font-size:28px} .topbar-copy{padding-right:8px} .panel{min-width:0} .subsection h4{font-weight:760} .metric .label{font-weight:760} .modal-body,.panel,.metric{font-feature-settings:"tnum" 1} .login-panel{padding:30px} .chart-wrap,.table-wrap{border-color:color-mix(in srgb,var(--line) 86%, transparent)} .table-wrap tbody tr td:first-child{color:var(--text)} .actions .small{min-width:60px} .detail-item .v a{word-break:break-all} .panel-title-actions button{padding-inline:12px} .toolbar .field{min-width:0} .detail-list .detail-item{min-height:88px} .table-wrap tbody tr td{font-variant-numeric:tabular-nums} .modal-body .panel{margin-top:12px} .topbar-copy .eyebrow{margin-bottom:4px} .sidebar-title{margin-bottom:26px} .metric-grid.compact .metric{padding:14px} .panel-title-actions .secondary:hover{background:color-mix(in srgb,var(--panel-soft) 52%, var(--primary-soft))} .nav:hover{background:color-mix(in srgb,var(--primary-soft) 64%, var(--panel-soft))} .actions button{box-shadow:none} .actions button:hover{box-shadow:none} .modal{scrollbar-gutter:stable}
+/* Console refinements: one place for shared density and alignment rules. */
+.field-link { margin-left: auto; font-size: 12px; color: var(--primary); text-decoration: none; }
+.field-link:hover { text-decoration: underline; }
+.field-links-row { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: -4px 0 6px; font-size: 12px; }
+.field-note { grid-column: 1 / -1; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--primary-soft) 82%, transparent); color: var(--muted); line-height: 1.6; }
+.field-section { grid-column: 1 / -1; margin-top: 10px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--line) 92%, transparent); color: var(--text); font-weight: 760; }
+.field-link.icon-only { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: color-mix(in srgb, var(--primary-soft) 90%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent); font-size: 12px; text-decoration: none; }
+.field-link.icon-only:hover { background: color-mix(in srgb, var(--primary) 18%, transparent); text-decoration: none; transform: translateY(-1px); }
 
-@media (max-width: 920px) {
-  .app-shell {
-    grid-template-rows: 56px minmax(0, 1fr);
-  }
+.panel-title > span { white-space: nowrap; }
+.panel-title-split { min-width: 0; align-items: center; }
+.panel-title-split > :first-child { display: flex; align-items: center; min-width: max-content; white-space: nowrap; line-height: 1.2; }
+.panel-title-split .panel-title-actions { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: nowrap; gap: 6px; padding-left: 10px; }
+.panel-title-actions { align-items: center; }
 
-  .sidebar {
-    height: 56px;
-    min-height: 56px;
-    padding: 10px !important;
-    align-items: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-gutter: stable;
-  }
+.topbar-copy { max-width: 560px; padding-right: 8px; }
+.topbar-copy #subTitle { max-width: 520px; }
+.top-actions { align-items: center; gap: 10px; }
+.top-actions button, .top-actions select { align-self: center; }
+.top-actions .secondary { min-width: 76px; background: color-mix(in srgb, var(--panel-soft) 92%, transparent); }
 
-  .nav {
-    flex: 0 0 auto;
-    height: 36px;
-  }
+.toolbar label, .form-grid > label { display: flex; flex-direction: column; }
+.toolbar .field { min-width: 0; max-width: 240px; }
+.toolbar label input, .toolbar label select { margin-top: 9px; }
+.toolbar .field-hint, .form-grid .field-hint { max-width: 40ch; }
+.actions { align-items: center; }
+.actions .small { min-width: 60px; border-radius: 999px; }
+.actions button:not(.danger):not(:first-child) { opacity: .88; }
+.actions button:not(.danger):not(:first-child):hover { opacity: 1; }
 
-  .main {
-    padding: 14px;
-  }
+.metric-grid.compact { gap: 12px; }
+.metric-grid.compact .metric { min-height: 84px; padding: 14px; }
+.metric-grid.compact .metric .value { font-size: 24px; }
+.metric .label { display: flex; align-items: center; gap: 6px; font-weight: 760; }
+.metric .value, .analytics-summary strong { font-variant-numeric: tabular-nums; }
+.metrics { gap: 14px; }
+.analytics-summary { gap: 12px; }
 
-  .topbar {
-    position: relative;
-    min-height: 136px;
-    margin: 0 0 14px;
-  }
-}
+.table-wrap, .chart-wrap { position: relative; border-color: color-mix(in srgb, var(--line) 86%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.02); }
+.table-wrap table { font-variant-numeric: tabular-nums; }
+.table-wrap tbody tr { background-clip: padding-box; }
+.table-wrap tbody tr:nth-child(odd) { background: color-mix(in srgb, var(--panel-soft) 26%, transparent); }
+.table-wrap tbody tr:nth-child(odd):hover { background: color-mix(in srgb, var(--table-hover) 84%, var(--primary-soft)); }
+.table-wrap td code, .detail-item code { padding: 2px 6px; border-radius: 999px; background: var(--panel-soft); }
+.detail-item { overflow: hidden; }
+.detail-item .k { display: flex; align-items: center; gap: 6px; }
+.detail-item .v { font-size: 13px; }
+.detail-item .v a { word-break: break-all; }
+.detail-list { gap: 12px; }
+
+.panel, .metric { position: relative; min-width: 0; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 98%, transparent), color-mix(in srgb, var(--panel) 92%, transparent)); }
+.panel::after, .metric::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
+.modal-head { position: sticky; top: 0; z-index: 2; backdrop-filter: blur(12px); }
+.modal-footer { position: sticky; bottom: 0; z-index: 2; backdrop-filter: blur(12px); }
+.modal-body { scrollbar-gutter: stable; }
+.modal-mask { background: rgba(3, 7, 18, .58); }
+.toast { border-radius: 16px; }
+.chart-empty { font-size: 13px; border-style: dashed; }
+.line-chart { min-height: 240px; }
+.analytics-summary > div { padding: 12px 14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.02); }
+.main { min-width: 0; padding-bottom: 28px; }
+.eyebrow + h1 { margin-top: 12px; }
+.subsection h4 { margin-bottom: 10px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; font-weight: 760; }
+.pager { margin-top: 16px; }
+.login-panel label { margin-bottom: 16px; }
+.login-panel button { width: 100%; margin-top: 4px; }
+.nav-group { margin-bottom: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.sidebar { padding-bottom: 26px; }
+.sidebar::-webkit-scrollbar { width: 10px; }
+.sidebar::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--line-strong) 80%, transparent); border-radius: 999px; }
+.panel + .panel { margin-top: 0; }
+.toolbar { padding: 2px 0; }
+.toolbar button.secondary.small, .actions .small.secondary { background: transparent; }
+.toolbar .secondary, .actions button, .actions button:hover { box-shadow: none; }
+.field-hint { line-height: 1.45; }
+.small { font-weight: 700; }
+.empty-cell { font-size: 13px; letter-spacing: .01em; }
+.field-note strong { color: var(--text); }
+.metric-grid .metric, .metrics .metric { transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease); }
+.metric-grid .metric:hover, .metrics .metric:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(15,23,42,.10); }
+.metric:hover::before { opacity: 1; }
+.brand { font-size: 28px; font-weight: 800; letter-spacing: -.03em; }
+.brand, .sidebar-title, h1 { font-variation-settings: "wght" 780; }
+.brand::after { height: 4px; }
+.sidebar-title { margin-bottom: 26px; letter-spacing: -.02em; }
+.sidebar-title::after { width: 44px; }
+.nav { height: 36px; border-radius: 12px; font-weight: 640; }
+.nav.active { box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+.nav:hover { background: color-mix(in srgb, var(--primary-soft) 64%, var(--panel-soft)); }
+.nav.active::before { height: 20px; }
+.theme-svg { opacity: .92; }
+.field-label { display: flex; align-items: center; gap: 8px; }
+.field-label-text { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+.analytics-toolbar { margin-bottom: 16px; }
+.modal-body .detail-list { margin-top: 2px; }
+.modal-body .panel { margin-top: 12px; }
+.modal-body .subsection + .subsection { margin-top: 18px; }
+.badge.ok, .badge.warn, .badge.bad { box-shadow: none; }
+.badge { box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+.risk-box, .field-note { font-size: 12px; }
+.detail-list .detail-item { min-height: 88px; }
+.detail-item .v code { font-size: 12px; }
+.toolbar input[type="number"] { max-width: 120px; }
+.modal h2 { font-weight: 780; }
+.panel-title { position: relative; padding-right: 4px; }
+.panel-title-actions button { height: 34px; padding-inline: 12px; font-weight: 700; }
+.panel-title-actions .small { height: 30px; }
+.panel-title-actions .icon-action { width: 34px; height: 34px; }
+.panel-title-actions .secondary { background: transparent; border-color: color-mix(in srgb, var(--line) 88%, transparent); }
+.panel-title-actions .secondary:hover { background: color-mix(in srgb, var(--panel-soft) 52%, var(--primary-soft)); }
 
 /* Efficiency layout: denser controls and flatter workspace surfaces. */
 :root {

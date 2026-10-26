@@ -22,17 +22,19 @@ public class AiGatewayService {
     private final AiProviderConfigRepository aiProviderConfigRepository;
     private final AiProviderRegistry aiProviderRegistry;
     private final AppPlatformPolicyService appPlatformPolicyService;
+    private final AceDataService aceDataService;
 
     public AiGatewayService(AppAiProviderSettingRepository appAiProviderSettingRepository,
                             UserAiCredentialRepository userAiCredentialRepository,
                             AiProviderConfigRepository aiProviderConfigRepository,
                             AiProviderRegistry aiProviderRegistry,
-                            AppPlatformPolicyService appPlatformPolicyService) {
+                            AppPlatformPolicyService appPlatformPolicyService, AceDataService aceDataService) {
         this.appAiProviderSettingRepository = appAiProviderSettingRepository;
         this.userAiCredentialRepository = userAiCredentialRepository;
         this.aiProviderConfigRepository = aiProviderConfigRepository;
         this.aiProviderRegistry = aiProviderRegistry;
         this.appPlatformPolicyService = appPlatformPolicyService;
+        this.aceDataService = aceDataService;
     }
 
     @Transactional(readOnly = true)
@@ -44,6 +46,19 @@ public class AiGatewayService {
         AiProviderConfig provider = aiProviderConfigRepository.findByProviderCode(setting.getProviderCode())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "AI平台不存在"));
         return aiProviderRegistry.require(setting.getProviderCode()).chat(provider, credential, model, message, stream, imageUrl);
+    }
+
+    @Transactional(readOnly = true)
+    public Object aceData(Long userId, String appId, String operation, java.util.Map<String, Object> parameters) {
+        if (userId == null) throw new BusinessException(ErrorCode.FORBIDDEN, "请先登录并配置用户 AI Key");
+        AppAiProviderSetting setting = resolveSetting(appId, "acedata");
+        UserAiCredential credential = userAiCredentialRepository.findByUserIdAndAppIdAndProviderCode(userId, appId, setting.getProviderCode())
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN, "用户未配置 ACE Data Key"));
+        if (credential.getApiKey() == null || credential.getApiKey().trim().isEmpty())
+            throw new BusinessException(ErrorCode.FORBIDDEN, "用户未配置 ACE Data Key");
+        AiProviderConfig provider = aiProviderConfigRepository.findByProviderCode("acedata")
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "ACE Data 平台不存在"));
+        return aceDataService.invoke(provider, operation, parameters, credential.getApiKey());
     }
 
     private AppAiProviderSetting resolveSetting(String appId, String providerCode) {

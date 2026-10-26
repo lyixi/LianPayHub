@@ -464,7 +464,6 @@ textarea { height: auto; }
 .panel:hover { transform: none; box-shadow: var(--shadow-tight); }
 .panel-title { min-height: 28px; margin-bottom: 14px; color: var(--text); font-size: 14px; font-weight: 690; }
 .panel-title::before { width: 3px; height: 14px; margin-right: 9px; border-radius: 0; background: var(--primary); }
-.panel-title-actions { gap: 6px; }
 .dashboard-pair { gap: 14px; margin: 14px 0; }
 
 .tab-bar {
@@ -522,6 +521,21 @@ textarea { height: auto; }
 .modal-head { border-bottom: 1px solid var(--line); }
 .modal-footer { border-top: 1px solid var(--line); }
 .modal h2 { font-size: 16px; }
+
+.ai-platform-form { display: grid; gap: 14px; }
+.ai-config-section { padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-soft); }
+.ai-config-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.ai-config-section-head strong { font-size: 13px; color: var(--text); }
+.ai-config-section-head span { color: var(--muted); font-size: 11px; }
+.ai-config-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.ai-config-section-grid > .ai-config-note { grid-column: 1 / -1; }
+.ai-config-section-grid .inline-check { align-self: end; min-height: 36px; }
+.ai-config-note { padding: 9px 11px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); background: var(--panel-solid); line-height: 1.5; font-size: 12px; }
+@media (max-width: 640px) {
+  .ai-config-section-grid { grid-template-columns: 1fr; }
+  .ai-config-section-head { display: block; }
+  .ai-config-section-head span { display: block; margin-top: 3px; }
+}
 
 .toast { border-radius: 4px; background: #111820; color: #fff; box-shadow: 0 12px 34px rgba(0,0,0,.24); }
 .row-context-menu { border-radius: 4px; }
@@ -599,8 +613,6 @@ textarea { height: auto; }
   .grid.metrics,
   .metric-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .panel { padding: 12px; }
-  .panel-title-split { align-items: flex-start; }
-  .panel-title-actions { width: 100%; margin: 8px 0 0; }
   .toolbar label,
   .toolbar .field { max-width: 100%; }
 }
@@ -626,3 +638,11 @@ textarea { height: auto; }
 .configuration-transfer-controls label { flex: 1 1 220px; min-width: 0; margin: 0; }
 .configuration-transfer-controls input,
 .configuration-transfer-controls select { display: block; width: 100%; max-width: 100%; margin-top: 6px; }
+
+.ace-workbench { min-width: 0; }
+.ace-workbench .ace-json { width: 100%; box-sizing: border-box; font: 12px/1.7 monospace; tab-size: 2; }
+.ace-workbench textarea.ace-json { min-height: 260px; resize: vertical; }
+.ace-workbench .ace-result { max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px; background: var(--panel-soft); }
+.ace-workbench details { margin: 16px 0; }
+.ace-workbench summary { cursor: pointer; padding: 8px 0; }
+.ace-workbench .ace-result-link { display: inline-block; margin: 8px 16px 8px 0; }

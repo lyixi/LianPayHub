@@ -27,4 +27,17 @@ public class AiGatewayController {
         Long userId = principal == null ? null : principal.getUserId();
         return ApiResponse.ok(aiGatewayService.chat(userId, request.appId(), request.providerCode(), request.model(), request.message(), request.stream(), request.imageUrl()));
     }
+    @PostMapping("/acedata/invoke")
+    public ApiResponse<Object> aceData(@Valid @RequestBody AceDataRequest request,
+                                      @AuthenticationPrincipal AppUserPrincipal principal) {
+        appUserAccessService.requireUserAccessWhenNeeded(request.appId, principal == null ? null : principal.getUserId(), principal);
+        return ApiResponse.ok(aiGatewayService.aceData(principal == null ? null : principal.getUserId(), request.appId, request.operation, request.parameters));
+    }
+
+    public static class AceDataRequest {
+        @javax.validation.constraints.NotBlank public String appId;
+        @javax.validation.constraints.NotBlank public String operation;
+        public java.util.Map<String, Object> parameters;
+    }
+
 }

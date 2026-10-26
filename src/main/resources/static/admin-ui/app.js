@@ -96,8 +96,8 @@ var displayLabels = {
   "mailgun": "Mailgun",
   "api2d": "API2D",
   "deepseek": "DeepSeek",
+  "acedata": "ACE Data",
   "moacode": "MoaCode",
-  "moacode-team": "MoaCode Team",
   "bocha": "博查搜索"
 };
 
@@ -128,6 +128,14 @@ var paymentProviderDefaults = {
 };
 
 var aiPlatformDefaults = {
+  acedata: {
+    displayName: "ACE Data", baseUrl: "https://api.acedata.cloud", consoleBaseUrl: "",
+    publicId: "acedata", publicName: "ACE Data", publicFamily: "ACE Data",
+    defaultModel: "gpt-4o-mini", authScheme: "bearer", billingMode: "provider_balance",
+    supportsChatCompletions: true, supportsStreaming: false, supportsImages: true,
+    supportsVideos: true, supportsAudio: true,
+    docs: "https://platform.acedata.cloud/documents/minimax-videos"
+  },
   api2d: {
     displayName: "API2D",
     baseUrl: "https://openai.api2d.net",
@@ -173,21 +181,6 @@ var aiPlatformDefaults = {
     supportsImages: true,
     docs: ""
   },
-  "moacode-team": {
-    displayName: "MoaCode Team",
-    baseUrl: "https://api.moacode.com/v1",
-    consoleBaseUrl: "",
-    publicId: "moacode-team",
-    publicName: "MoaCode Team",
-    publicFamily: "MoaCode",
-    defaultModel: "gpt-5.3-codex",
-    authScheme: "bearer",
-    billingMode: "internal_ledger",
-    supportsChatCompletions: true,
-    supportsStreaming: false,
-    supportsImages: true,
-    docs: ""
-  }
 };
 
 var searchPlatformDefaults = {
@@ -4937,6 +4930,7 @@ function renderAiPlatforms() {
           var buttons = '<button class="small" onclick="openAiPlatformDetail(' + r.id + ')">详情</button>';
           buttons += '<button class="small" onclick="openAiPlatformEdit(' + r.id + ')">配置</button>';
           buttons += '<button class="small" onclick="toggleAiPlatform(' + r.id + ', ' + (r.enabled ? "true" : "false") + ')">启停</button>';
+          if (r.providerCode === 'acedata') buttons += '<button class="small secondary" onclick="openAceDataWorkbench(' + r.id + ')">接口工作台</button>';
           if (isMoacodeProviderCode(r.providerCode)) {
             buttons += '<button class="small secondary" onclick="openMoacodePricing(' + r.id + ')">价格</button>';
             buttons += '<button class="small secondary" onclick="openMoacodeUsage(' + r.id + ')">消耗</button>';
@@ -4984,7 +4978,7 @@ function loadAiPlatformBalances(platforms) {
 
 function aiProviderSupportsBalance(providerCode) {
   var code = String(providerCode || "").toLowerCase();
-  return code === "deepseek" || code === "moacode" || code === "moacode-team";
+  return code === "deepseek" || code === "moacode";
 }
 
 function aiBalanceHtml(data, providerCode) {
@@ -5002,14 +4996,6 @@ function aiBalanceHtml(data, providerCode) {
       deepseekDetail.push((row.currency || row.currency_code || "CNY") + " " + formatCurrency(firstPresent(row.total_balance, row.totalBalance), "￥", 2));
     });
     return '<div title="' + escapeAttr(titleParts.join("\n")) + '"><strong>' + escapeHtml(formatCurrency(available, "￥", 2)) + '</strong><div class="muted">' + escapeHtml(deepseekDetail.join(" / ") || "DeepSeek") + '</div></div>';
-  }
-  if (code === "moacode-team") {
-    titleParts.push("有效可用 " + formatCurrency(available, "$", 2));
-    titleParts.push("团队 " + firstPresent(balance.teamName, "-"));
-    titleParts.push("团队日剩余 " + formatCurrency(balance.teamDailyRemainingBalance, "$", 2));
-    titleParts.push("用户日剩余 " + formatCurrency(balance.userDailyRemainingBalance, "$", 2));
-    titleParts.push("本月消耗 " + formatCurrency(firstPresent(balance.teamMonthSpend, usage.totalCost), "$", 2));
-    return '<div title="' + escapeAttr(titleParts.join("\n")) + '"><strong>' + escapeHtml(formatCurrency(available, "$", 2)) + '</strong><div class="muted">日剩 ' + escapeHtml(formatCurrency(firstPresent(balance.teamDailyRemainingBalance, balance.userDailyRemainingBalance), "$", 2)) + ' / 月耗 ' + escapeHtml(formatCurrency(firstPresent(balance.teamMonthSpend, usage.totalCost), "$", 2)) + '</div></div>';
   }
   titleParts.push("总余额 " + formatCurrency(available, "$", 2));
   titleParts.push("订阅 " + formatCurrency(balance.subscriptionBalance, "$", 2));
@@ -5047,36 +5033,25 @@ function aiPlatformForm(item) {
   var sharedApiKey = credential.adminApiKey || credential.modelApiKey || credential.apiKey || '';
   var pricing = config.tokenPricing || {};
   var defaultPricing = (pricing.models && pricing.models.default) || {};
-  return '<div class="form-grid">' +
-    (isCreate
-      ? select('aiProviderCode', '支持的平台', Object.keys(aiPlatformDefaults).map(optionOf), defaultCode)
-      : input('aiProviderCode', '平台编码', defaultCode)) +
+  var sections = [];
+  sections.push('<section class="ai-config-section"><div class="ai-config-section-head"><strong>基本信息</strong><span>后台识别和用户侧展示</span></div><div class="ai-config-section-grid">' +
+    (isCreate ? select('aiProviderCode', '支持的平台', Object.keys(aiPlatformDefaults).map(optionOf), defaultCode) : input('aiProviderCode', '平台编码', defaultCode)) +
     input('aiProviderName', '名称', item.displayName || defaults.displayName) +
     input('aiPublicSortOrder', '排序', config.publicSortOrder || 100, { required: false, type: 'number' }) +
     checkbox('aiPublicHidden', '用户侧隐藏', !!config.publicHidden) +
     input('aiPublicId', '用户侧公开 ID', config.publicId || defaults.publicId || '') +
     input('aiPublicName', '用户侧显示名', config.publicName || defaults.publicName || '') +
     input('aiPublicFamily', '用户侧分组名', config.publicFamily || defaults.publicFamily || '') +
-    input('aiDefaultModel', '默认模型', config.defaultModel || defaults.defaultModel || '') +
-    input('aiModelBaseUrl', 'AI 调用 Base URL', item.baseUrl || defaults.baseUrl) +
-    (isApi2d || isMoacode ? input('aiConsoleBaseUrl', isMoacode ? '余额/用量 Base URL' : '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false }) : input('aiConsoleBaseUrl', '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false })) +
-    (singleKey ? textarea('aiSharedApiKey', isMoacode ? 'MoaCode API Key' : '平台 API Key', sharedApiKey, { required: false }) :
-      textarea('aiAdminApiKey', 'API2D 主账号管理 Token', credential.adminApiKey || '', { required: false }) +
-      textarea('aiModelApiKey', '大模型 API Key', credential.modelApiKey || '', { required: false })) +
-    (isApi2d || isMoacode ? textarea('aiUsageCookie', isMoacode ? 'MoaCode Cookie' : 'API2D ForwardKey', credential.usageCookie || credential.forwardKey || credential.cookie || '', { required: false }) : '') +
-    (isApi2d ? sectionTitle('Key 分配参数') +
-      input('aiDefaultKeyTypeId', '默认 Key 分组 ID', config.defaultKeyTypeId || '', { required: false }) +
-      input('aiQuotaTransferPath', '额度转入路径', config.quotaTransferPath || '', { required: false }) +
-      select('aiQuotaTransferMethod', '额度转入方法', [{ value: 'POST', label: 'POST' }, { value: 'PUT', label: 'PUT' }], config.quotaTransferMethod || 'POST') : '') +
-    (!isApi2d ? sectionTitle('价格配置') +
-      input('aiPointValueCny', '1P折合人民币', pricing.pointValueCny || '0.01', { required: false, type: 'number' }) +
-      input('aiBillingMultiplier', '计费倍率', pricing.billingMultiplier || '1.5', { required: false, type: 'number' }) +
-      input('aiPromptPrice', '输入价/百万token', defaultPricing.prompt || '1', { required: false, type: 'number' }) +
-      input('aiCompletionPrice', '输出价/百万token', defaultPricing.completion || '2', { required: false, type: 'number' }) +
-      input('aiCacheHitPrice', '缓存读价/百万token', defaultPricing.cacheHit || '0.1', { required: false, type: 'number' }) +
-      input('aiCacheMissPrice', '缓存写价/百万token', defaultPricing.cacheMiss || '1', { required: false, type: 'number' }) : '') +
-    input('aiDocsUrl', '文档地址', config.docs || defaults.docs || '', { required: false }) +
-    '</div>';
+    input('aiDefaultModel', '默认模型', config.defaultModel || defaults.defaultModel || '') + '</div></section>');
+  sections.push('<section class="ai-config-section"><div class="ai-config-section-head"><strong>连接设置</strong><span>密钥和上游地址</span></div><div class="ai-config-section-grid">' +
+    (defaultCode === 'acedata' ? '<div class="ai-config-note">ACE Data 使用官方固定地址，当前只需要配置一个 API Key。</div>' + input('aiModelBaseUrl', 'AI 调用 Base URL', item.baseUrl || defaults.baseUrl, { required: false, hint: '固定为官方地址' }) : input('aiModelBaseUrl', 'AI 调用 Base URL', item.baseUrl || defaults.baseUrl)) +
+    (defaultCode === 'acedata' ? '' : (isApi2d || isMoacode ? input('aiConsoleBaseUrl', isMoacode ? '余额/用量 Base URL' : '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false }) : input('aiConsoleBaseUrl', '管理 API Base URL', item.consoleBaseUrl || defaults.consoleBaseUrl, { required: false }))) +
+    (defaultCode === 'acedata' ? input('aiSharedApiKey', 'ACE Data API Key', sharedApiKey, { required: !item.id, type: 'password', hint: item.id ? '留空则保留原密钥' : '仅保存到后台凭据' }) : (singleKey ? textarea('aiSharedApiKey', isMoacode ? 'MoaCode API Key' : '平台 API Key', sharedApiKey, { required: false }) : textarea('aiAdminApiKey', 'API2D 主账号管理 Token', credential.adminApiKey || '', { required: false }) + textarea('aiModelApiKey', '大模型 API Key', credential.modelApiKey || '', { required: false }))) +
+    (defaultCode !== 'acedata' && (isApi2d || isMoacode) ? textarea('aiUsageCookie', isMoacode ? 'MoaCode Cookie' : 'API2D ForwardKey', credential.usageCookie || credential.forwardKey || credential.cookie || '', { required: false }) : '') + '</div></section>');
+  if (isApi2d) sections.push('<section class="ai-config-section"><div class="ai-config-section-head"><strong>Key 分配参数</strong><span>API2D 专用</span></div><div class="ai-config-section-grid">' + input('aiDefaultKeyTypeId', '默认 Key 分组 ID', config.defaultKeyTypeId || '', { required: false }) + input('aiQuotaTransferPath', '额度转入路径', config.quotaTransferPath || '', { required: false }) + select('aiQuotaTransferMethod', '额度转入方法', [{ value: 'POST', label: 'POST' }, { value: 'PUT', label: 'PUT' }], config.quotaTransferMethod || 'POST') + '</div></section>');
+  if (!isApi2d) sections.push('<section class="ai-config-section"><div class="ai-config-section-head"><strong>计费设置</strong><span>平台成本与用户计费价格</span></div><div class="ai-config-section-grid">' + input('aiPointValueCny', '1P折合人民币', pricing.pointValueCny || '0.01', { required: false, type: 'number' }) + input('aiBillingMultiplier', '计费倍率', pricing.billingMultiplier || '1.5', { required: false, type: 'number' }) + input('aiPromptPrice', '输入价/百万 token', defaultPricing.prompt || '1', { required: false, type: 'number' }) + input('aiCompletionPrice', '输出价/百万 token', defaultPricing.completion || '2', { required: false, type: 'number' }) + input('aiCacheHitPrice', '缓存读价/百万 token', defaultPricing.cacheHit || '0.1', { required: false, type: 'number' }) + input('aiCacheMissPrice', '缓存写价/百万 token', defaultPricing.cacheMiss || '1', { required: false, type: 'number' }) + '</div></section>');
+  sections.push('<section class="ai-config-section"><div class="ai-config-section-head"><strong>能力与文档</strong><span>接口能力由平台适配器维护</span></div><div class="ai-config-section-grid">' + input('aiDocsUrl', '文档地址', config.docs || defaults.docs || '', { required: false }) + '<div class="ai-config-note">支持聊天、流式、图片、视频、音频等能力会按平台适配器生效。</div></div></section>');
+  return '<div class="ai-platform-form">' + sections.join('') + '</div>';
 }
 
 function aiPlatformBody() {
@@ -5087,9 +5062,9 @@ function aiPlatformBody() {
     providerCode: provider,
     displayName: $('aiProviderName').value,
     baseUrl: $('aiModelBaseUrl').value,
-    consoleBaseUrl: $('aiConsoleBaseUrl').value,
+    consoleBaseUrl: provider === 'acedata' ? null : $('aiConsoleBaseUrl').value,
     configJson: aiPlatformConfigJson(),
-    credentialJson: JSON.stringify(singleKey ? {
+    credentialJson: provider === 'acedata' ? (($('aiSharedApiKey').value.trim()) ? JSON.stringify({ apiKey: $('aiSharedApiKey').value.trim() }) : null) : JSON.stringify(singleKey ? {
       adminApiKey: sharedApiKey,
       modelApiKey: sharedApiKey,
       apiKey: sharedApiKey,
@@ -5141,6 +5116,8 @@ function aiPlatformConfigJson() {
     supportsChatCompletions: defaults.supportsChatCompletions !== false,
     supportsStreaming: !!defaults.supportsStreaming,
     supportsImages: !!defaults.supportsImages,
+    supportsVideos: !!defaults.supportsVideos,
+    supportsAudio: !!defaults.supportsAudio,
     docs: $('aiDocsUrl').value
   };
   if (!aiProviderUsesApi2dPricing(provider)) {
@@ -5170,7 +5147,7 @@ function aiPlatformConfigJson() {
 
 function isMoacodeProviderCode(providerCode) {
   var code = String(providerCode || "").toLowerCase();
-  return code === "moacode" || code === "moacode-team";
+  return code === "moacode";
 }
 
 function aiProviderUsesSingleKey(providerCode) {
@@ -5208,6 +5185,7 @@ function openAiPlatformDetail(id) {
       '状态': item.enabled ? '启用' : '停用'
     }) + sectionBlock('模型价格', '<div id="aiPlatformPricingBlock">加载中</div>');
     var footer = '<button class="secondary" type="button" onclick="openAiPlatformEdit(' + id + ')">配置</button>';
+    if (item.providerCode === 'acedata') footer += '<button type="button" onclick="openAceDataWorkbench(' + id + ')">接口工作台</button>';
     if (isMoacodeProviderCode(item.providerCode)) {
       footer += '<button class="secondary" type="button" onclick="openMoacodeUsage(' + id + ')">消耗</button>';
     }
