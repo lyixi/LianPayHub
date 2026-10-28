@@ -7,6 +7,9 @@ title 懒一夕Official
 
 echo Using the repository configuration. Optional environment variables can override it.
 if not defined SPRING_PROFILES_ACTIVE set "SPRING_PROFILES_ACTIVE=prod"
+if not defined SPRING_DATASOURCE_URL set "SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/lianpayhub?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai"
+if not defined SPRING_DATASOURCE_USERNAME set "SPRING_DATASOURCE_USERNAME=root"
+if not defined SPRING_DATASOURCE_PASSWORD set "SPRING_DATASOURCE_PASSWORD=iwxyiroot"
 
 where java >nul 2>&1
 if errorlevel 1 (

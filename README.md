@@ -39,7 +39,7 @@ node scripts/import-legacy-products.mjs --update-existing
 
 Windows Server 2012 上安装 JDK 8 或更新版本、Maven 3.8+ 和 MySQL 5.7+，并将 `java`、`mvn` 加入系统 `PATH`。双击项目根目录的 [start-server.bat](start-server.bat) 会直接使用仓库配置，先执行 Maven 构建和测试，再以 `prod` 配置启动服务；窗口标题为“懒一夕Official”，浏览器访问 `http://localhost:8888/`。命令窗口保持打开，按 `Ctrl+C` 停止服务。首次构建需要联网下载 Maven 依赖。
 
-默认会读取 `src/main/resources/application.yml` 中的数据库和本地运行配置，并默认启用 `prod` profile；如果服务器设置了 `SPRING_PROFILES_ACTIVE`，则优先使用该环境变量。数据库、密钥或 HTTPS 来源也支持通过 `SPRING_DATASOURCE_URL`、`SPRING_DATASOURCE_USERNAME`、`SPRING_DATASOURCE_PASSWORD`、`LIANPAYHUB_SECURITY_JWT_SECRET`、`LIANPAYHUB_ADMIN_DEFAULT_PASSWORD` 和 `LIANPAYHUB_SECURITY_CORS_ALLOWED_ORIGIN_PATTERNS` 环境变量覆盖，覆盖后重新双击脚本即可。
+默认使用本机 MySQL `lianpayhub` 数据库，并默认启用 `prod` profile；如果服务器设置了 `SPRING_PROFILES_ACTIVE` 或数据库相关环境变量，则优先使用环境变量。数据库、密钥或 HTTPS 来源也支持通过 `SPRING_DATASOURCE_URL`、`SPRING_DATASOURCE_USERNAME`、`SPRING_DATASOURCE_PASSWORD`、`LIANPAYHUB_SECURITY_JWT_SECRET`、`LIANPAYHUB_ADMIN_DEFAULT_PASSWORD` 和 `LIANPAYHUB_SECURITY_CORS_ALLOWED_ORIGIN_PATTERNS` 环境变量覆盖，覆盖后重新双击脚本即可。
 
 该脚本使用项目中已有的官网静态资源；修改 `web/` 前端源码后，先在有 Node.js 的构建环境执行 `npm --prefix web run deploy:spring`，再双击脚本。对公网提供服务还需要 HTTPS 反向代理、数据库备份，以及故障自动重启；保持批处理窗口打开本身不提供这些能力。
 
