@@ -23,20 +23,11 @@ if errorlevel 1 (
     goto failed
 )
 
-echo Building and testing the production server from the current source...
-call mvn -B clean package
-if errorlevel 1 goto failed
-
-if not exist "target\lianpayhub-server-0.1.0-SNAPSHOT.jar" (
-    echo [ERROR] The server JAR was not created.
-    goto failed
-)
-
 echo.
 echo Starting the production server at http://localhost:8888/
 echo Keep this window open while the server is running. Press Ctrl+C to stop it.
 echo.
-java -jar "target\lianpayhub-server-0.1.0-SNAPSHOT.jar"
+call mvn -B spring-boot:run
 if errorlevel 1 goto failed
 echo.
 echo Server stopped.
