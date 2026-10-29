@@ -1,6 +1,5 @@
 @echo off
 setlocal
-chcp 65001 >nul
 cd /d "%~dp0"
 if errorlevel 1 goto failed
 title 懒一夕Official
@@ -25,7 +24,7 @@ if errorlevel 1 (
 )
 
 echo Building and testing the production server from the current source...
-call mvn -B package
+call mvn -B clean package
 if errorlevel 1 goto failed
 
 if not exist "target\lianpayhub-server-0.1.0-SNAPSHOT.jar" (

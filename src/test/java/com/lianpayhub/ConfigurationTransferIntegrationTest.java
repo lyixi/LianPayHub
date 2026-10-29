@@ -25,10 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@MySqlIntegrationTest
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:configuration-transfer;MODE=MySQL;DB_CLOSE_ON_EXIT=FALSE",
-        "spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.username=sa", "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=create-drop", "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.jpa.show-sql=false", "logging.level.root=WARN",
         "spring.main.banner-mode=off", "spring.jpa.open-in-view=false",
         "lianpayhub.security.jwt-secret=test-jwt-secret-for-configuration-transfer",

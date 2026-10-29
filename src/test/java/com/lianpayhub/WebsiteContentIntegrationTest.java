@@ -16,7 +16,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:website-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_ON_EXIT=FALSE","spring.datasource.driver-class-name=org.h2.Driver","spring.datasource.username=sa","spring.datasource.password=","spring.jpa.hibernate.ddl-auto=create-drop","spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect","spring.main.banner-mode=off","logging.level.root=WARN","lianpayhub.security.jwt-secret=website-test-secret","lianpayhub.admin.default-username=admin","lianpayhub.admin.default-password=admin123456"})
+@MySqlIntegrationTest
+@SpringBootTest(properties={"spring.main.banner-mode=off","logging.level.root=WARN","lianpayhub.security.jwt-secret=website-test-secret","lianpayhub.admin.default-username=admin","lianpayhub.admin.default-password=admin123456"})
 @AutoConfigureMockMvc
 class WebsiteContentIntegrationTest {
  @Autowired MockMvc mvc; @Autowired ObjectMapper mapper;

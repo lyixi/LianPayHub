@@ -1,7 +1,4 @@
-spring:
-  flyway:
-    enabled: false
-
+# Test credentials and schema isolation are applied by MySqlTestDatabase.
 lianpayhub:
   admin:
     force-default-password-change: false
