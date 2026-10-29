@@ -55,8 +55,24 @@ public class ApiAppAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !Boolean.TRUE.equals(securityProperties.getApiAuthEnabled())
                 || !request.getRequestURI().startsWith("/api/")
+                || isPublicWebsiteRequest(request)
                 || isRefreshTokenAuthRequest(request)
                 || request.getRequestURI().startsWith("/api/payment/notify/");
+    }
+
+    private boolean isPublicWebsiteRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String method = request.getMethod();
+        if ("GET".equalsIgnoreCase(method)) {
+            return "/api/site/v1/site".equals(uri)
+                    || "/api/site/v1/products".equals(uri)
+                    || uri.startsWith("/api/site/v1/products/")
+                    || "/api/site/v1/articles".equals(uri)
+                    || uri.startsWith("/api/site/v1/articles/")
+                    || "/api/site/v1/pages".equals(uri)
+                    || uri.startsWith("/api/site/v1/pages/");
+        }
+        return "POST".equalsIgnoreCase(method) && "/api/site/v1/leads".equals(uri);
     }
 
     private boolean isRefreshTokenAuthRequest(HttpServletRequest request) {
