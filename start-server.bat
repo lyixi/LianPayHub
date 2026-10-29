@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 if errorlevel 1 goto failed
-title 懒一夕Official
+title Lyixi-Official
 
 echo Using the repository configuration. Optional environment variables can override it.
 if not defined SPRING_PROFILES_ACTIVE set "SPRING_PROFILES_ACTIVE=prod"
