@@ -44,6 +44,25 @@ try {
   results.push({ check: "published products readable without JavaScript", count: products.length });
 
   const context = await browser.newContext();
+  const delayedScripts = await context.newPage();
+  await delayedScripts.route("**/official-app/_next/**/*.js", route => route.abort());
+  await delayedScripts.goto(baseUrl, { waitUntil: "networkidle" });
+  assert.equal(await delayedScripts.locator("#seo-content").isVisible(), false, "Text fallback must never flash before hydration");
+  assert.equal(await delayedScripts.locator(".hero").isVisible(), true, "Exported homepage must render without client bundles");
+  assert.equal(await delayedScripts.locator("html[data-site-ready]").count(), 0);
+  await delayedScripts.close();
+  results.push({ check: "styled first paint with client bundles blocked", passed: true });
+  const slowPage = await context.newPage();
+  await slowPage.route("**/api/site/v1/**", async route => {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await slowPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  assert.equal(await slowPage.locator("#seo-content").isVisible(), false, "Text fallback must stay hidden while APIs load");
+  assert.equal(await slowPage.locator(".hero").isVisible(), true, "Styled homepage must be visible before APIs finish");
+  await slowPage.locator('html[data-site-ready="true"]').waitFor();
+  await slowPage.close();
+  results.push({ check: "slow APIs never expose the text fallback", passed: true });
   const interactive = await context.newPage();
   const errors = [];
   interactive.on("pageerror", error => errors.push(error.message));

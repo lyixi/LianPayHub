@@ -2,9 +2,10 @@
 
 import { ThemeProvider } from "next-themes";
 import { SiteBackground } from "./site-background";
+import { EffectsProvider } from "./effects-provider";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-    <div className="glass-root"><SiteBackground />{children}</div>
+    <EffectsProvider><SiteBackground />{children}</EffectsProvider>
   </ThemeProvider>;
 }

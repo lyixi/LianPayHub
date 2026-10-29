@@ -1214,6 +1214,38 @@ html[data-performance="reduced"] .drag-handle:active {
   }
 }
 
+/* Static color washes preserve depth without large animated blur layers. */
+.ambient {
+  background: linear-gradient(125deg, var(--orb-a), transparent 45%),
+    linear-gradient(310deg, var(--orb-b), transparent 55%), var(--bg-base);
+}
+
+/* Keep the glass highlights and borders; skip backdrop sampling on slower devices. */
+[data-effects="reduced"] .glass,
+[data-effects="reduced"] .fallback-card,
+[data-effects="reduced"] .product-media-note,
+[data-effects="reduced"] .mobile-site-nav {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-effects="reduced"] .nav-glass,
+[data-effects="reduced"] .mobile-site-nav {
+  background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
+}
+
+[data-effects="reduced"] .hero-prism {
+  display: none;
+}
+
+[data-effects="reduced"] main .glass-interactive:hover {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
 /* Asset cards: final cascade layer keeps every admin picker visually consistent. */
 .media-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .product-asset-stack{gap:22px}.asset-field-head{margin-bottom:10px}

@@ -2,14 +2,16 @@
 
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { HeroSection, type HeroSlide } from "@/components/hero-section";
 import { CompanyStory, Journal, ProductBento, SiteFooter } from "@/components/home-sections";
-import { ProductDetail } from "@/components/product-detail";
-import { RichTextContent } from "@/components/rich-text-content";
 import { SiteHeader } from "@/components/site-header";
 import { api, type Article, type ContentPage, type Product, type SiteContent } from "@/lib/site-api";
 
-const defaultSite = { name: "懒一夕智能科技", heroEyebrow: "杭州软件产品团队", heroTitle: "让复杂留在系统里｜把效率还给每一个人", heroDescription: "为创作、直播与高效工作打造更自然的软件工具，让技术融入工作，而不是打断工作。", heroLocation: "杭州余杭 · 2020 至今", productsIntro: "围绕真实工作流持续迭代。" } as SiteContent;
+const ProductDetail = dynamic(() => import("@/components/product-detail").then(module => module.ProductDetail));
+const RichTextContent = dynamic(() => import("@/components/rich-text-content").then(module => module.RichTextContent));
+
+const defaultSite = { name: "杭州懒一夕智能科技有限公司", heroEyebrow: "杭州软件产品团队", heroTitle: "让复杂留在系统里｜把效率还给每一个人", heroDescription: "为创作、直播与高效工作打造更自然的软件工具，让技术融入工作，而不是打断工作。", heroLocation: "杭州余杭 · 2020 至今", productsIntro: "围绕真实工作流持续迭代。" } as SiteContent;
 const defaultProduct: Product = { id: 0, slug: "writing-world", name: "写作天下", tagline: "AI 写作辅助软件", summary: "把灵感、素材、章节和智能辅助放进同一条工作流。", previewProject: "北境来信 · 长篇项目", previewChapter: "没有寄出的信", previewExcerpt: "雨是在傍晚停的。积水沿着屋檐落下，像一段迟迟不肯结束的省略号。", previewInsight: "这一段与前文的旧邮戳形成呼应，可以继续保持克制。" };
 
 function ArticleView({ article, site, products }: { article: Article; site: SiteContent; products: Product[] }) {
@@ -63,8 +65,13 @@ export default function Home() {
       }
     }
     if (!route.length) api<Article[]>("/api/site/v1/articles").then(data => { if (active) setArticles(data); }).catch(() => {});
-    loadPage().catch(() => { /* Keep the server content visible when required data fails. */ });
-    return () => { active = false; };
+    loadPage().catch(() => {
+      if (active) document.documentElement.setAttribute("data-site-failed", "true");
+    });
+    return () => {
+      active = false;
+      document.documentElement.removeAttribute("data-site-failed");
+    };
   }, []);
   useEffect(() => {
     if (ready) document.documentElement.setAttribute("data-site-ready", "true");

@@ -1,10 +1,5 @@
 export function SiteBackground() {
   return (
-    <div className="ambient" aria-hidden="true">
-      <span className="ambient-orb ambient-orb-a" />
-      <span className="ambient-orb ambient-orb-b" />
-      <span className="ambient-orb ambient-orb-c" />
-      <span className="noise" />
-    </div>
+    <div className="ambient" aria-hidden="true" />
   );
 }

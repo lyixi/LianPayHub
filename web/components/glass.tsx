@@ -1,8 +1,10 @@
 "use client";
 
-import { useLiquidGlass } from "@glinui/ui";
+import dynamic from "next/dynamic";
 import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEnhancedEffects } from "./effects-provider";
+
+const OpticalSurface = dynamic(() => import("./optical-surface"));
 
 type GlassVariant = "nav" | "hero" | "card" | "control";
 type GlassProps = { children: ReactNode; className?: string; id?: string; style?: CSSProperties; variant?: GlassVariant; interactive?: boolean; boosted?: boolean; liquid?: boolean; onClick?: MouseEventHandler<HTMLDivElement> };
@@ -15,38 +17,17 @@ const opticalOptions = {
 } as const;
 
 export function Glass({ children, className = "", id, style, variant = "card", interactive = false, boosted = false, liquid = false, onClick }: GlassProps) {
-  const [opticalEnabled, setOpticalEnabled] = useState(false);
-  useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 900px)");
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setOpticalEnabled(liquid && desktop.matches && !reduced.matches);
-    update();
-    desktop.addEventListener("change", update);
-    reduced.addEventListener("change", update);
-    return () => {
-      desktop.removeEventListener("change", update);
-      reduced.removeEventListener("change", update);
-    };
-  }, [liquid]);
+  const opticalEnabled = useEnhancedEffects() && liquid;
   const base = opticalOptions[variant];
-  const { ref, svgFilter, style: opticalStyle, isSupported } = useLiquidGlass({
-    ...base,
-    displacement: boosted ? base.displacement + 4 : base.displacement,
-    profile: "squircle",
-    disabled: !opticalEnabled,
-  });
   const classes = [
     "glass",
     `glass-${variant}`,
     liquid ? "glass-optical" : "glass-surface",
-    liquid && isSupported ? "is-refracting" : "",
     interactive ? "glass-interactive" : "",
     boosted ? "is-boosted" : "",
     className,
   ].filter(Boolean).join(" ");
 
-  return <>
-    {svgFilter}
-    <div ref={ref} id={id} className={classes} style={{ ...style, ...opticalStyle }} onClick={onClick}>{children}</div>
-  </>;
+  if (opticalEnabled) return <OpticalSurface options={{ ...base, displacement: boosted ? base.displacement + 4 : base.displacement }} id={id} className={classes} style={style} onClick={onClick}>{children}</OpticalSurface>;
+  return <div id={id} className={classes} style={style} onClick={onClick}>{children}</div>;
 }

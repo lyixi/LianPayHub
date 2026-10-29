@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowDown, ArrowUpRight, Image as ImageIcon } fr
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Glass } from "./glass";
+import { useEnhancedEffects } from "./effects-provider";
 
 export type HeroContent = { name: string; heroTitle: string; heroDescription: string; heroLocation: string; heroEyebrow?: string };
 export type HeroSlide = { type?: "product" | "article" | "custom"; display?: "card" | "banner" | "tag"; title: string; eyebrow?: string; description?: string; imageUrl?: string; href?: string };
@@ -19,9 +20,10 @@ function titleLines(title: string) {
 }
 
 function HeroPreview({ slides }: { slides: HeroSlide[] }) {
+  const enhanced = useEnhancedEffects();
   const [active, setActive] = useState(0);
   const slide = slides[active];
-  useEffect(() => { if (slides.length < 2) return; const timer = window.setInterval(() => setActive(value => (value + 1) % slides.length), 5200); return () => window.clearInterval(timer); }, [slides.length]);
+  useEffect(() => { if (slides.length < 2 || !enhanced) return; const timer = window.setInterval(() => { if (!document.hidden) setActive(value => (value + 1) % slides.length); }, 5200); return () => window.clearInterval(timer); }, [slides.length, enhanced]);
   if (!slide) return null;
   const media = slide.imageUrl;
   return <div className="hero-liquid-stage">
@@ -39,17 +41,18 @@ function HeroPreview({ slides }: { slides: HeroSlide[] }) {
 }
 
 export function HeroSection({ content, slides }: { content: HeroContent; slides?: HeroSlide[] }) {
+  const enhanced = useEnhancedEffects();
   return <section className={`hero ${slides?.length ? "has-hero-slides" : "without-hero-slides"}`} id="top">
     <div className="hero-copy">
-      <motion.h1 initial="hidden" animate="show" transition={{ staggerChildren: .09, delayChildren: .12 }}>
+      <motion.h1 initial={false} animate="show" transition={{ staggerChildren: .09, delayChildren: .12 }}>
         {titleLines(content.heroTitle).map((part, index, lines) => <motion.span variants={line} key={`${part}-${index}`}>{part}{index === lines.length - 1 && <span className="accent-dot">。</span>}</motion.span>)}
       </motion.h1>
-      <motion.p initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .48, duration: .6 }}>{content.heroDescription || "写作天下、神奇弹幕，两款为真实工作而生的产品。轻量、快速，不打断思路。"}</motion.p>
-      <motion.div className="hero-actions" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .58 }}>
+      <motion.p initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: enhanced ? .6 : 0 }}>{content.heroDescription || "写作天下、神奇弹幕，两款为真实工作而生的产品。轻量、快速，不打断思路。"}</motion.p>
+      <motion.div className="hero-actions" initial={false} animate={{ opacity: 1, y: 0 }}>
         <Glass variant="control" interactive className="hero-button hero-button-primary"><a href="#products">探索产品 <ArrowDown size={16} /></a></Glass>
         <Glass variant="control" interactive className="hero-button"><a href="#company">了解我们 <ArrowUpRight size={16} /></a></Glass>
       </motion.div>
     </div>
-    {slides?.length ? <motion.div id="preview" className="hero-preview-shell" initial={{ opacity: 0, scale: .94, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: .3, duration: .8, ease: [.16, 1, .3, 1] }}><HeroPreview slides={slides}/></motion.div> : null}
+    {slides?.length ? <motion.div id="preview" className="hero-preview-shell" initial={enhanced ? { opacity: 0, scale: .94, y: 30 } : false} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: enhanced ? .8 : 0 }}><HeroPreview slides={slides}/></motion.div> : null}
   </section>;
 }

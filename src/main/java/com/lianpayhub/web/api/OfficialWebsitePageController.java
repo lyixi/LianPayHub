@@ -141,7 +141,7 @@ public class OfficialWebsitePageController {
         );
     }
 
-    // Keep readable server content visible until the client has successfully loaded live data.
+    // Select the shell before body parsing; API latency must not expose the text fallback.
     private ResponseEntity<String> seoPage(String title, String description, String path, String image, String type,
                                            Map<String, Object> structuredData, String fallback) {
         String page = websiteShell()
@@ -155,8 +155,10 @@ public class OfficialWebsitePageController {
         meta(head, "name", "twitter:card", hasText(image) ? "summary_large_image" : "summary"); meta(head, "name", "twitter:title", title); meta(head, "name", "twitter:description", description);
         if (hasText(image)) { meta(head, "property", "og:image", absoluteUrl(image)); meta(head, "name", "twitter:image", absoluteUrl(image)); }
         if (structuredData != null) head.append("<script type=\"application/ld+json\">").append(json(structuredData)).append("</script>");
-        head.append("<style>html:not([data-site-ready]) body > :not(#seo-content):not(script){display:none!important}"
-                + "html[data-site-ready] #seo-content{display:none}"
+        head.append("<script>document.documentElement.setAttribute('data-site-js','true')</script>");
+        head.append("<style>html:not([data-site-js]) body > :not(#seo-content):not(script),"
+                + "html[data-site-failed] body > :not(#seo-content):not(script){display:none!important}"
+                + "html[data-site-js]:not([data-site-failed]) #seo-content{display:none}"
                 + "#seo-content{max-width:1120px;margin:auto;padding:48px 24px;line-height:1.8;overflow-wrap:anywhere}"
                 + "#seo-content img{max-width:100%;height:auto}#seo-content table{display:block;overflow:auto}"
                 + "#seo-content a{text-decoration:underline}</style>");
